@@ -1,12 +1,30 @@
-import { useNavigation } from '@react-navigation/core';
-import React, { useState } from 'react';
+import { useNavigation, NavigationProp } from '@react-navigation/core';
+import React, { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { auth } from '../firebaseConfig';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 
+type RootStackParamList = {
+    Home: undefined;
+    Login: undefined;
+  };
+
 const LoginScreen: React.FC = () => {
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
+
+
+ const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged(user => {
+        if (user) {
+            navigation.replace("Home")
+        }
+    })
+
+    return unsubscribe
+  }, [])
 
   const handleSignUp = async () => {
     try {
