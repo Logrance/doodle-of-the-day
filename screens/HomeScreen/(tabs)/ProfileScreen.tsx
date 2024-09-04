@@ -1,14 +1,14 @@
-import { useNavigation, NavigationProp } from '@react-navigation/core';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { auth } from '../firebaseConfig';
+import { auth } from '../../../firebaseConfig';
+import { useNavigation, NavigationProp } from '@react-navigation/core';
 
 type RootStackParamList = {
   Home: undefined;
   Login: undefined;
 };
 
-const HomeScreen: React.FC = () => {
+const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
 
   const handleSignOut = async () => {
@@ -30,7 +30,7 @@ const HomeScreen: React.FC = () => {
   );
 };
 
-export default HomeScreen;
+export default ProfileScreen;
 
 const styles = StyleSheet.create({
   container: {
