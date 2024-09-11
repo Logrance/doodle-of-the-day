@@ -1,10 +1,13 @@
-import React, { useState } from 'react';
-import { View, Dimensions, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useRef, useState, useEffect } from 'react';
+import { View, Dimensions, TouchableOpacity, StyleSheet, Button, Alert } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView} from 'react-native-gesture-handler'
-import { Canvas, Circle, Path, Skia, ImageSVG } from '@shopify/react-native-skia';
+import { Canvas, Circle, Path, Skia, ImageSVG, useCanvasRef } from '@shopify/react-native-skia';
 import Animated, {useSharedValue, withTiming, useAnimatedStyle, withSpring } from 'react-native-reanimated';
-import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
+import { FontAwesome5 } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
+import { collection, addDoc } from 'firebase/firestore';
+import { db } from '../../../firebaseConfig';
+import AntDesign from '@expo/vector-icons/AntDesign';
 
 interface IPath {
   segments: String[];
@@ -40,6 +43,10 @@ export default function CanvasScreen() {
   const [paths, setPaths] = useState<IPath[]>([]);
   const [circles, setCircles] = useState<ICircle[]>([]);
   const [stamps, setStamps] = useState<IStamp[]>([]);
+
+  //added for saving image logic
+  const [capturedImage, setCapturedImage] = useState('')
+  const ref = useCanvasRef();
 
   //Defining a Pan Gesture
   const pan = Gesture.Pan()
@@ -114,6 +121,32 @@ export default function CanvasScreen() {
   });
 
 
+//Canvas snapshot and send to Firestore db
+const addImageToDB = async (imageBase64: string) => {
+  try {
+    const docRef = await addDoc(collection(db, 'drawings'), {
+      title: "Captured Image",  
+      done: false,
+      image: imageBase64,  
+    });
+    console.log('Document written with ID: ', docRef.id);
+  } catch (e) {
+    console.error('Error adding document: ', e);
+  }
+}; 
+
+const captureCanvas = () => {
+  const image = ref.current?.makeImageSnapshot();
+
+  if (image) {
+    const imageConversion = image.encodeToBase64();
+     addImageToDB(imageConversion);
+    Alert.alert("Canvas Captured", "The canvas snapshot was successfully captured!");
+  } else {
+    Alert.alert("Capture Failed", "Could not capture the canvas.");
+  }
+}; 
+
 
   return (
     <>
@@ -121,7 +154,7 @@ export default function CanvasScreen() {
       <View style={{ height, width }}>
         <GestureDetector gesture={tap}>
           <GestureDetector gesture={pan}>
-            <Canvas style={{ flex: 8 }}>
+            <Canvas style={{ flex: 8 }} ref={ref}>
               {circles.map((c, index) => (
                 <Circle key={index} cx={c.x} cy={c.y} r={10} />
               ))}
@@ -220,11 +253,12 @@ export default function CanvasScreen() {
                 )}
               </View>
               <TouchableOpacity onPress={clearCanvas}>
-              <Ionicons
-                  name="md-trash-outline"
-                  style={styles.icon}
-                ></Ionicons>
+              <AntDesign name="delete" size={24} color="black" />
               </TouchableOpacity>
+              {/*<TouchableOpacity onPress={}>
+              <AntDesign name="save" size={24} color="black" />
+            </TouchableOpacity>*/}
+            <Button title="Capture" onPress={captureCanvas}/>
             </View>
           </View>
         </View>
