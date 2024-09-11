@@ -5,9 +5,10 @@ import { Canvas, Circle, Path, Skia, ImageSVG, useCanvasRef } from '@shopify/rea
 import Animated, {useSharedValue, withTiming, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, addDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig';
 import AntDesign from '@expo/vector-icons/AntDesign';
+import { auth } from '../../../firebaseConfig';
 
 interface IPath {
   segments: String[];
@@ -45,7 +46,7 @@ export default function CanvasScreen() {
   const [stamps, setStamps] = useState<IStamp[]>([]);
 
   //added for saving image logic
-  const [capturedImage, setCapturedImage] = useState('')
+  //const [capturedImage, setCapturedImage] = useState('')
   const ref = useCanvasRef();
 
   //Defining a Pan Gesture
@@ -122,18 +123,29 @@ export default function CanvasScreen() {
 
 
 //Canvas snapshot and send to Firestore db
+
 const addImageToDB = async (imageBase64: string) => {
   try {
+    // Ensure a user is logged in
+    const user = auth.currentUser;
+    if (!user) {
+      throw new Error("No user is signed in");
+    }
+
+  //try {
     const docRef = await addDoc(collection(db, 'drawings'), {
       title: "Captured Image",  
       done: false,
       image: imageBase64,  
+      userId: user.uid,
     });
     console.log('Document written with ID: ', docRef.id);
   } catch (e) {
     console.error('Error adding document: ', e);
   }
-}; 
+};
+
+
 
 const captureCanvas = () => {
   const image = ref.current?.makeImageSnapshot();

@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, Text, Image } from 'react-native';
-import { doc, getDoc } from "firebase/firestore"; 
+import { View, StyleSheet, Image } from 'react-native';
+import { collection, getDocs, query, where } from "firebase/firestore"; 
 import { db } from '../../../firebaseConfig';
+import { auth } from '../../../firebaseConfig';
 
 
 
@@ -9,19 +10,31 @@ export default function VoteScreen() {
 
   const [drawingInfo, setDrawingInfo] = useState<any | undefined>(null)
 
- const fetchData = async () => {
-  const docRef = doc(db, "drawings", "8R0eWLLsn5jCiAAAZEnX");
-  const docSnap = await getDoc(docRef);
-
-  if (docSnap.exists()) {
-    console.log("Document data:", docSnap.data());
-    const base64Image = docSnap.data()?.image;
-    setDrawingInfo(base64Image);
-  } else {
-    // docSnap.data() will be undefined in this case
-    console.log("No such document!");
-  }
- };
+  const fetchData = async () => {
+    try {
+      const user = auth.currentUser;
+      if (!user) {
+        throw new Error("No user is signed in");
+      }
+  
+    
+      const q = query(collection(db, "drawings"), where("userId", "==", user.uid));
+  
+      const querySnapshot = await getDocs(q);
+      
+      if (querySnapshot.empty) {
+        console.log("No documents found for this user!");
+      } else {
+        querySnapshot.forEach((doc) => {
+          const base64Image = doc.data()?.image;
+          setDrawingInfo(base64Image); 
+          console.log("Document data:", doc.data());
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching documents: ", error);
+    }
+  };
   
  useEffect(() => {
   fetchData();
