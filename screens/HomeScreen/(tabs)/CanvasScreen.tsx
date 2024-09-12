@@ -307,5 +307,6 @@ swatchContainer: {
   padding: 10,
   justifyContent: "space-between",
   alignItems: "center",
+  marginBottom: 35,
 },
 });
