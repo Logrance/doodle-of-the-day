@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, Image, FlatList } from 'react-native';
-import { collection, getDocs, query, where } from "firebase/firestore"; 
+import { View, StyleSheet, Image, FlatList, Text, Button } from 'react-native';
+import { collection, getDocs, query, where, orderBy, updateDoc, doc, increment } from "firebase/firestore"; 
 import { db } from '../../../firebaseConfig';
 import { auth } from '../../../firebaseConfig';
 
@@ -20,7 +20,9 @@ export default function VoteScreen() {
       //Test code for getting all the other user images to cote on
       const q = query(
         collection(db, "drawings"),
-        where("userId", "!=", user.uid)
+        where("userId", "!=", user.uid),
+        orderBy("votes", "desc"),
+        orderBy("userId", "desc")
       );
 
       const querySnapshot = await getDocs(q)
@@ -35,11 +37,24 @@ export default function VoteScreen() {
         setDrawingInfo(drawingArray);
       }
     } catch (error) {
-      console.log("Error message");
+      console.log("Error message", error);
     }
   };
   
-    
+  //Voting logic
+
+  const handleVote = async (userId: string) => {
+
+    try {
+      const drawingRef = doc(db, "drawings", userId);
+      await updateDoc(drawingRef, {
+        votes: increment(1)
+      });
+      fetchData();
+    } catch (error) {
+      console.log("Error", error)
+    }
+  }; 
   
  useEffect(() => {
   fetchData();
@@ -56,6 +71,8 @@ export default function VoteScreen() {
                 source={{ uri: `data:image/png;base64,${item.image}` }} 
                 style={styles.image}
                 />
+                <Text>{item.votes || 0}</Text>
+                <Button title="Vote" onPress={() => handleVote(item.id)} /> 
             </View>
           )}
         />

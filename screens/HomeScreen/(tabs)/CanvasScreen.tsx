@@ -138,6 +138,7 @@ const addImageToDB = async (imageBase64: string) => {
       done: false,
       image: imageBase64,  
       userId: user.uid,
+      votes: 0,
     });
     console.log('Document written with ID: ', docRef.id);
   } catch (e) {
