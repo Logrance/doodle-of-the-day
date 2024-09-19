@@ -17,7 +17,7 @@ export default function VoteScreen() {
         throw new Error("No user is signed in");
       }
 
-      //Test code for getting all the other user images to cote on
+    
       const q = query(
         collection(db, "drawings"),
         where("userId", "!=", user.uid),
