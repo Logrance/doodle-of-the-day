@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, FlatList, Image } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, FlatList, Image, Modal, Button } from 'react-native';
 import { auth, db } from '../../../firebaseConfig';
 import { useNavigation, NavigationProp } from '@react-navigation/core';
-import { collection, getDocs, query, where } from "firebase/firestore"; 
+import { collection, getDocs, query, where, orderBy, limit } from "firebase/firestore"; 
 
 type RootStackParamList = {
   Home: undefined;
@@ -17,6 +17,10 @@ const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
 
   const [winnerDrawing, setWinnerDrawing ] = useState<any | undefined>(null)
+
+  //For word theme state
+  const [word, setWord] = useState<string | null>(null);
+  const [isVisible, setIsVisible] = useState(false);
 
   const handleSignOut = async () => {
     try {
@@ -61,6 +65,30 @@ const ProfileScreen: React.FC = () => {
     fetchData();
   }, [])
 
+  //Popup logic
+
+  useEffect(() => {
+    const fetchWord = async () => {
+      try {
+        const themesTodaySnapshot = await getDocs(collection(db, 'themes_today'));
+  
+        if (!themesTodaySnapshot.empty) {
+          // Pick the first document or handle it as needed
+          const wordDoc = themesTodaySnapshot.docs[0]; // Or choose a random doc, etc.
+          setWord(wordDoc.data().word);
+          setIsVisible(true);
+        } else {
+          console.log("No themes found!");
+        }
+      } catch (error) {
+        console.error("Error fetching themes:", error);
+      }
+    };
+  
+    fetchWord();
+  }, []);
+  
+
   return (
     <View style={styles.container}>
       <Text>Email: {auth.currentUser?.email}</Text>
@@ -80,6 +108,14 @@ const ProfileScreen: React.FC = () => {
             </View>
                 )}
                 />
+              <Modal visible={isVisible} transparent={true} animationType="slide">
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+                <View style={{ backgroundColor: 'white', padding: 20, borderRadius: 10 }}>
+                    <Text style={{ fontSize: 20 }}>Today's Word: {word}</Text>
+                    <Button title="Close" onPress={() => setIsVisible(false)} />
+                </View>
+            </View>
+        </Modal>  
     </View>
   );
 };

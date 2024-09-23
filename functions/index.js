@@ -31,3 +31,34 @@ exports.pickDailyWinner = functions.pubsub.schedule("05 23 * * *")
       }
     });
 
+// select random word function
+
+exports.selectRandomWord = functions.pubsub.schedule("35 23 * * *")
+    .timeZone("Europe/London").onRun(async (context) => {
+      const themesSnapshot = await db.collection("themes").get();
+
+
+      if (!themesSnapshot.empty) {
+        const themeToday = themesSnapshot.docs[0];
+
+        const themeTodayData = {
+          id: themeToday.id,
+          word: themeToday.data().theme,
+        };
+
+
+        try {
+          const docRef = await db.collection("themes_today")
+              .add(themeTodayData);
+          console.log("Theme today written with ID:", docRef.id);
+          console.log(`Today's winner is: ${themeTodayData.word}`);
+        } catch (error) {
+          console.error("Error adding document:", error);
+        }
+      } else {
+        console.log("No themes available in the 'themes' collection");
+      }
+
+      return null;
+    });
+
