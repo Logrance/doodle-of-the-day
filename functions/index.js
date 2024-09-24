@@ -33,7 +33,7 @@ exports.pickDailyWinner = functions.pubsub.schedule("05 23 * * *")
 
 // select random word function
 
-exports.selectRandomWord = functions.pubsub.schedule("35 23 * * *")
+exports.selectRandomWord = functions.pubsub.schedule("55 11 * * *")
     .timeZone("Europe/London").onRun(async (context) => {
       const themesSnapshot = await db.collection("themes").get();
 
@@ -44,6 +44,7 @@ exports.selectRandomWord = functions.pubsub.schedule("35 23 * * *")
         const themeTodayData = {
           id: themeToday.id,
           word: themeToday.data().theme,
+          timestamp: admin.firestore.FieldValue.serverTimestamp(),
         };
 
 
@@ -52,6 +53,9 @@ exports.selectRandomWord = functions.pubsub.schedule("35 23 * * *")
               .add(themeTodayData);
           console.log("Theme today written with ID:", docRef.id);
           console.log(`Today's winner is: ${themeTodayData.word}`);
+
+          await db.collection("themes").doc(themeToday.id).delete();
+          console.log(`Delete theme with ID: ${themeToday.id} from themes`);
         } catch (error) {
           console.error("Error adding document:", error);
         }

@@ -69,24 +69,26 @@ const ProfileScreen: React.FC = () => {
 
   useEffect(() => {
     const fetchWord = async () => {
-      try {
-        const themesTodaySnapshot = await getDocs(collection(db, 'themes_today'));
+      try { 
+        const themesTodaySnapshot = await getDocs(
+          query(collection(db, 'themes_today'), orderBy('timestamp', 'desc'), limit(1))
+        );
   
         if (!themesTodaySnapshot.empty) {
-          // Pick the first document or handle it as needed
-          const wordDoc = themesTodaySnapshot.docs[0]; // Or choose a random doc, etc.
+          const wordDoc = themesTodaySnapshot.docs[0];
           setWord(wordDoc.data().word);
           setIsVisible(true);
         } else {
-          console.log("No themes found!");
+          console.log("No such document!");
         }
       } catch (error) {
-        console.error("Error fetching themes:", error);
+        console.error("Error fetching document:", error);
       }
     };
   
     fetchWord();
   }, []);
+  
   
 
   return (
