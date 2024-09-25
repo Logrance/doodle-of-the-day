@@ -5,7 +5,7 @@ import { Canvas, Circle, Path, Skia, ImageSVG, useCanvasRef } from '@shopify/rea
 import Animated, {useSharedValue, withTiming, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
-import { collection, addDoc, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, Timestamp, where, getDocs, query, doc, getDoc } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig';
 import AntDesign from '@expo/vector-icons/AntDesign';
 import { auth } from '../../../firebaseConfig';
@@ -124,7 +124,7 @@ export default function CanvasScreen() {
 
 //Canvas snapshot and send to Firestore db
 
-const addImageToDB = async (imageBase64: string) => {
+/* const addImageToDB = async (imageBase64: string) => {
   try {
     // Ensure a user is logged in
     const user = auth.currentUser;
@@ -139,8 +139,52 @@ const addImageToDB = async (imageBase64: string) => {
       image: imageBase64,  
       userId: user.uid,
       votes: 0,
+      date: Date.now(),
     });
     console.log('Document written with ID: ', docRef.id);
+  } catch (e) {
+    console.error('Error adding document: ', e);
+  }
+}; */
+
+const addImageToDB = async (imageBase64: string) => {
+  try {
+    // Ensure a user is logged in
+    const user = auth.currentUser;
+    if (!user) {
+      throw new Error("No user is signed in");
+    }
+
+    // Get the current date (midnight)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Set time to midnight
+
+    // Query for existing drawings for the current user on the current day
+    const querySnapshot = await getDocs(query(
+      collection(db, 'drawings'),
+      where('userId', '==', user.uid),
+      where('date', '>=', today.getTime()),
+      where('date', '<', today.getTime() + (24 * 60 * 60 * 1000)) // Add 24 hours
+    ));
+
+    // Check if there are any existing drawings for today
+    if (querySnapshot.empty) {
+      // No drawings found, proceed with adding the new drawing
+      const docRef = await addDoc(collection(db, 'drawings'), {
+        title: "Captured Image",  
+        done: false,
+        image: imageBase64,  
+        userId: user.uid,
+        votes: 0,
+        date: Date.now(),
+      });
+      Alert.alert("Canvas Captured", "The canvas snapshot was successfully captured!");
+      console.log('Document written with ID: ', docRef.id);
+    } else {
+      // User already has a drawing for today
+      Alert.alert("Capture Failed", "You have already doodled today!");
+      console.log('User already has a drawing for today.');
+    }
   } catch (e) {
     console.error('Error adding document: ', e);
   }
@@ -154,9 +198,11 @@ const captureCanvas = () => {
   if (image) {
     const imageConversion = image.encodeToBase64();
      addImageToDB(imageConversion);
-    Alert.alert("Canvas Captured", "The canvas snapshot was successfully captured!");
+     console.log("drawing captured")
+    //Alert.alert("Canvas Captured", "The canvas snapshot was successfully captured!");
   } else {
-    Alert.alert("Capture Failed", "Could not capture the canvas.");
+    console.log("Drawing unsuccessful")
+    //Alert.alert("Capture Failed", "Could not capture the canvas.");
   }
 }; 
 

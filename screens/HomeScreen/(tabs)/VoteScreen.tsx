@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, Image, FlatList, Text, Button } from 'react-native';
-import { collection, getDocs, query, where, orderBy, updateDoc, doc, increment } from "firebase/firestore"; 
+import { collection, getDocs, query, where, orderBy, updateDoc, doc, increment, getDoc, setDoc, onSnapshot } from "firebase/firestore"; 
 import { db } from '../../../firebaseConfig';
 import { auth } from '../../../firebaseConfig';
 
@@ -40,10 +40,22 @@ export default function VoteScreen() {
       console.log("Error message", error);
     }
   };
+
+  //Real-time listener to update votes 
+  /* useEffect(() => {
+    const unsub = onSnapshot(collection(db, "drawings"), (snapshot) => {
+      const updatedDrawingInfo =snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setDrawingInfo(updatedDrawingInfo);
+    })
+  }, []); */
   
   //Voting logic
 
-  const handleVote = async (userId: string) => {
+
+  /*const handleVote = async (userId: string) => {
 
     try {
       const drawingRef = doc(db, "drawings", userId);
@@ -58,7 +70,55 @@ export default function VoteScreen() {
   
  useEffect(() => {
   fetchData();
+ }, []) */
+
+ const handleVote = async (userId: string) => {
+  const currentUser = auth.currentUser?.uid; // Get current user ID
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // Reset time to midnight for consistent date checking
+
+  if (!currentUser) {
+    console.log("User not authenticated");
+    return;
+  }
+
+  try {
+    // Reference to the user's vote for today
+    const voteRef = doc(db, "user_votes", `${currentUser}_${today.toISOString().split('T')[0]}`);
+
+    // Fetch user's vote for today
+    const voteDoc = await getDoc(voteRef);
+
+    // If the user has already voted today
+    if (voteDoc.exists()) {
+      console.log("User has already voted today.");
+      return;
+    }
+
+    // If user hasn't voted today, proceed to cast vote
+    const drawingRef = doc(db, "drawings", userId);
+    await updateDoc(drawingRef, {
+      votes: increment(1)
+    });
+
+    // Store the vote in 'user_votes' collection
+    await setDoc(voteRef, {
+      userId: currentUser,
+      drawingId: userId,
+      voteDate: today
+    });
+
+    // Fetch updated data after voting
+    fetchData();
+  } catch (error) {
+    console.log("Error voting:", error);
+  }
+};
+
+useEffect(() => {
+  fetchData();
  }, [])
+
 
   return (
     <View style={styles.container}>

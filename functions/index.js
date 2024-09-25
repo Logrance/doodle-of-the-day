@@ -4,7 +4,7 @@ const admin = require("firebase-admin");
 admin.initializeApp();
 const db = admin.firestore();
 
-exports.pickDailyWinner = functions.pubsub.schedule("05 23 * * *")
+exports.pickDailyWinner = functions.pubsub.schedule("30 00 * * *")
     .timeZone("Europe/London").onRun(async (context) => {
       const drawingsRef = db.collection("drawings");
       const query = drawingsRef.orderBy("votes", "desc").limit(1);
@@ -33,7 +33,7 @@ exports.pickDailyWinner = functions.pubsub.schedule("05 23 * * *")
 
 // select random word function
 
-exports.selectRandomWord = functions.pubsub.schedule("55 11 * * *")
+exports.selectRandomWord = functions.pubsub.schedule("10 00 * * *")
     .timeZone("Europe/London").onRun(async (context) => {
       const themesSnapshot = await db.collection("themes").get();
 
