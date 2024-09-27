@@ -1,7 +1,7 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { View, Dimensions, TouchableOpacity, StyleSheet, Button, Alert } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView} from 'react-native-gesture-handler'
-import { Canvas, Circle, Path, Skia, ImageSVG, useCanvasRef } from '@shopify/react-native-skia';
+import { Canvas, Path, useCanvasRef, SkPath, Skia, TouchInfo, useTouchHandler } from '@shopify/react-native-skia';
 import Animated, {useSharedValue, withTiming, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
@@ -10,98 +10,75 @@ import { db } from '../../../firebaseConfig';
 import AntDesign from '@expo/vector-icons/AntDesign';
 import { auth } from '../../../firebaseConfig';
 
-interface IPath {
+/*interface IPath {
   segments: String[];
   color?: string;
-}
-
-interface ICircle {
-  x: number;
-  y: number;
-}
-interface IStamp {
-  x: number;
-  y: number;
-  color: string;
-}
-
-enum Tools {
-  Pencil,
-  Stamp,
-}
+} */
 
 
 export default function CanvasScreen() {
   const { width, height } = Dimensions.get("window");
 
-  const paletteColors = ["red", "green", "blue", "yellow"];
-
-  const svgStar =
-    '<svg class="star-svg" version="1.1" ……………..></polygon></svg>';
+  const paletteColors = ["black", "purple", "grey", "orange"];
 
   const [activePaletteColorIndex, setActivePaletteColorIndex] = useState(0);
-  const [activeTool, setActiveTool] = useState<Tools>(Tools.Pencil);
-  const [paths, setPaths] = useState<IPath[]>([]);
-  const [circles, setCircles] = useState<ICircle[]>([]);
-  const [stamps, setStamps] = useState<IStamp[]>([]);
+  //const [paths, setPaths] = useState<IPath[]>([]);
+  const [paths, setPaths] = useState<SkPath[]>([]);
 
-  //added for saving image logic
-  //const [capturedImage, setCapturedImage] = useState('')
   const ref = useCanvasRef();
 
   //Defining a Pan Gesture
-  const pan = Gesture.Pan()
+  /*const pan = Gesture.Pan()
     .runOnJS(true)
     .onStart((g) => {
-      if (activeTool === Tools.Pencil) {
         const newPaths = [...paths];
         newPaths[paths.length] = {
           segments: [],
           color: paletteColors[activePaletteColorIndex],
         };
-        newPaths[paths.length].segments.push(`M ${g.x} ${g.y}`);
+        newPaths[paths.length].segments.push(`M ${g.x} ${g.y}`); 
         setPaths(newPaths);
-      }
     })
     .onUpdate((g) => {
-      if (activeTool === Tools.Pencil) {
         const index = paths.length - 1;
         const newPaths = [...paths];
         if (newPaths?.[index]?.segments) {
           newPaths[index].segments.push(`L ${g.x} ${g.y}`);
           setPaths(newPaths);
         }
-      }
     })
-    .onTouchesUp((g) => {
-      if (activeTool === Tools.Pencil) {
-        const newPaths = [...paths];
-        setPaths(newPaths);
-      }
-    })
-    .minDistance(1);
+    .minDistance(1); */
 
-    //defining a tap gesture
-    const tap = Gesture.Tap()
-    .runOnJS(true)
-    .onStart((g) => {
-      if (activeTool === Tools.Stamp) {
-        setStamps([
-          ...stamps,
-          {
-            x: g.x - 25,
-            y: g.y - 25,
-            color: paletteColors[activePaletteColorIndex],
-          },
-        ]);
-      }
-    });
-
-  const clearCanvas = () => {
-    setPaths([]);
-    setCircles([]);
-    setStamps([]);
-  };
+    //Experiment code
+    const onDrawingStart = useCallback((touchInfo: TouchInfo) => {
+      setPaths((old) => {
+        const { x, y } = touchInfo;
+        const newPath = Skia.Path.Make();
+        newPath.moveTo(x, y);
+        return [...old, newPath];
+      });
+    }, []);
+  
+    const onDrawingActive = useCallback((touchInfo: TouchInfo) => {
+      setPaths((currentPaths) => {
+        const { x, y } = touchInfo;
+        const currentPath = currentPaths[currentPaths.length - 1];
+        const lastPoint = currentPath.getLastPt();
+        const xMid = (lastPoint.x + x) / 2;
+        const yMid = (lastPoint.y + y) / 2;
+  
+        currentPath.quadTo(lastPoint.x, lastPoint.y, xMid, yMid);
+        return [...currentPaths.slice(0, currentPaths.length - 1), currentPath];
+      });
+    }, []);
+  
+    const touchHandler = useTouchHandler(
+      {
+        onActive: onDrawingActive,
+        onStart: onDrawingStart,
+      },
+      [onDrawingActive, onDrawingStart]
+    );
 
   //defining animated styles with UseAnimatedStyle
   const paletteVisible = useSharedValue(false);
@@ -121,31 +98,12 @@ export default function CanvasScreen() {
     };
   });
 
+  const clearCanvas = () => {
+    setPaths([]);
+  };
+
 
 //Canvas snapshot and send to Firestore db
-
-/* const addImageToDB = async (imageBase64: string) => {
-  try {
-    // Ensure a user is logged in
-    const user = auth.currentUser;
-    if (!user) {
-      throw new Error("No user is signed in");
-    }
-
-  //try {
-    const docRef = await addDoc(collection(db, 'drawings'), {
-      title: "Captured Image",  
-      done: false,
-      image: imageBase64,  
-      userId: user.uid,
-      votes: 0,
-      date: Date.now(),
-    });
-    console.log('Document written with ID: ', docRef.id);
-  } catch (e) {
-    console.error('Error adding document: ', e);
-  }
-}; */
 
 const addImageToDB = async (imageBase64: string) => {
   try {
@@ -180,16 +138,17 @@ const addImageToDB = async (imageBase64: string) => {
       });
       Alert.alert("Canvas Captured", "The canvas snapshot was successfully captured!");
       console.log('Document written with ID: ', docRef.id);
+      clearCanvas();
     } else {
       // User already has a drawing for today
       Alert.alert("Capture Failed", "You have already doodled today!");
       console.log('User already has a drawing for today.');
+      clearCanvas();
     }
   } catch (e) {
     console.error('Error adding document: ', e);
   }
 };
-
 
 
 const captureCanvas = () => {
@@ -207,44 +166,25 @@ const captureCanvas = () => {
 }; 
 
 
-  return (
-    <>
-    <GestureHandlerRootView>
-      <View style={{ height, width }}>
-        <GestureDetector gesture={tap}>
-          <GestureDetector gesture={pan}>
-            <Canvas style={{ flex: 8 }} ref={ref}>
-              {circles.map((c, index) => (
-                <Circle key={index} cx={c.x} cy={c.y} r={10} />
-              ))}
-              {paths.map((p, index) => (
-                <Path
-                  key={index}
-                  path={p.segments.join(" ")}
-                  strokeWidth={5}
-                  style="stroke"
-                  color={p.color}
-                />
-              ))}
-              {stamps.map((s, index) => {
-                const image = Skia.SVG.MakeFromString(
-                  svgStar.replace("{{fillColor}}", s.color)
-                );
-                if (!image) return null;
-                return (
-                  <ImageSVG
-                    key={index}
-                    width={50}
-                    height={50}
-                    x={s.x}
-                    y={s.y}
-                    svg={image}
-                  />
-                );
-              })}
-            </Canvas>
-          </GestureDetector>
-        </GestureDetector>
+return (
+  <>
+  <GestureHandlerRootView>
+    <View style={{ height, width }}>
+      
+        
+          <Canvas style={{ flex: 8 }} ref={ref} onTouch={touchHandler}>
+            {paths.map((path, index) => (
+              <Path
+                key={index}
+                path={path}
+                strokeWidth={5}
+                style="stroke"
+                color={"black"}
+              />
+            ))}
+          </Canvas>
+          
+        
         <View style={{ padding: 10, flex: 1, backgroundColor: "#edede9" }}>
           <View style={{ flex: 1, flexDirection: "row" }}>
             <Animated.View
@@ -290,33 +230,11 @@ const captureCanvas = () => {
                   ]}
                 />
               </TouchableOpacity>
-              <View>
-                {activeTool === Tools.Pencil ? (
-                  <TouchableOpacity
-                    onPress={() => setActiveTool(Tools.Stamp)}
-                  >
-                    <FontAwesome5
-                      name="pencil-alt"
-                      style={styles.icon}
-                    ></FontAwesome5>
-                  </TouchableOpacity>
-                ) : (
-                  <TouchableOpacity
-                    onPress={() => setActiveTool(Tools.Pencil)}
-                  >
-                    <FontAwesome5
-                      name="stamp"
-                      style={styles.icon}
-                    ></FontAwesome5>
-                  </TouchableOpacity>
-                )}
-              </View>
+              
               <TouchableOpacity onPress={clearCanvas}>
               <AntDesign name="delete" size={24} color="black" />
               </TouchableOpacity>
-              {/*<TouchableOpacity onPress={}>
-              <AntDesign name="save" size={24} color="black" />
-            </TouchableOpacity>*/}
+            
             <Button title="Capture" onPress={captureCanvas}/>
             </View>
           </View>
