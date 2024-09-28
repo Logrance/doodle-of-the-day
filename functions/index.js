@@ -4,36 +4,50 @@ const admin = require("firebase-admin");
 admin.initializeApp();
 const db = admin.firestore();
 
-exports.pickDailyWinner = functions.pubsub.schedule("30 00 * * *")
+exports.pickDailyWinner = functions.pubsub.schedule("47 23 * * *")
     .timeZone("Europe/London").onRun(async (context) => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(today.getDate() + 1);
+
       const drawingsRef = db.collection("drawings");
-      const query = drawingsRef.orderBy("votes", "desc").limit(1);
 
-      const snapshot = await query.get();
 
-      if (!snapshot.empty) {
-        const winner = snapshot.docs[0];
-        const winnerData = {
-          id: winner.id,
-          votes: winner.data().votes,
-          userId: winner.data().userId,
-          image: winner.data().image,
-        };
+      const query = drawingsRef
+          .where("date", ">=", today.getTime())
+          .where("date", "<", tomorrow.getTime())
+          .orderBy("votes", "desc")
+          .limit(1);
 
-        db.collection("winners").add(winnerData)
-            .then((docRef) => {
-              console.log("Winner document written with ID:", docRef.id);
-              console.log(`Today's winner is: ${winner.id}`);
-            })
-            .catch((error) => {
-              console.error("Error adding document:", error);
-            });
+      try {
+        const snapshot = await query.get();
+
+        if (!snapshot.empty) {
+          const winner = snapshot.docs[0];
+          const winnerData = {
+            id: winner.id,
+            votes: winner.data().votes,
+            userId: winner.data().userId,
+            image: winner.data().image,
+          };
+
+          // Save the winner's data to the "winners" collection
+          await db.collection("winners").add(winnerData);
+
+          console.log("Winner document written with ID:", winner.id);
+          console.log(`Today's winner is: ${winner.id}`);
+        } else {
+          console.log("No drawings found for today.");
+        }
+      } catch (error) {
+        console.error("Error picking daily winner:", error);
       }
     });
 
 // select random word function
 
-exports.selectRandomWord = functions.pubsub.schedule("10 00 * * *")
+exports.selectRandomWord = functions.pubsub.schedule("05 00 * * *")
     .timeZone("Europe/London").onRun(async (context) => {
       const themesSnapshot = await db.collection("themes").get();
 

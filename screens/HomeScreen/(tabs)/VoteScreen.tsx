@@ -17,10 +17,15 @@ export default function VoteScreen() {
         throw new Error("No user is signed in");
       }
 
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
     
       const q = query(
         collection(db, "drawings"),
         where("userId", "!=", user.uid),
+        where("date", '>=', today.getTime()), 
+        where('date', '<', today.getTime() + (24 * 60 * 60 * 1000)),
         orderBy("votes", "desc"),
         orderBy("userId", "desc")
       );
