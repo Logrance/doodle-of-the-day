@@ -4,7 +4,7 @@ const admin = require("firebase-admin");
 admin.initializeApp();
 const db = admin.firestore();
 
-exports.pickDailyWinner = functions.pubsub.schedule("47 23 * * *")
+exports.pickDailyWinner = functions.pubsub.schedule("22 15 * * *")
     .timeZone("Europe/London").onRun(async (context) => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -14,29 +14,45 @@ exports.pickDailyWinner = functions.pubsub.schedule("47 23 * * *")
       const drawingsRef = db.collection("drawings");
 
 
-      const query = drawingsRef
+      const maxVotesQuery = drawingsRef
           .where("date", ">=", today.getTime())
           .where("date", "<", tomorrow.getTime())
           .orderBy("votes", "desc")
           .limit(1);
 
       try {
-        const snapshot = await query.get();
+        const maxVotesSnapshot = await maxVotesQuery.get();
 
-        if (!snapshot.empty) {
-          const winner = snapshot.docs[0];
-          const winnerData = {
-            id: winner.id,
-            votes: winner.data().votes,
-            userId: winner.data().userId,
-            image: winner.data().image,
-          };
+        if (!maxVotesSnapshot.empty) {
+          const maxVotes = maxVotesSnapshot.docs[0].data().votes;
 
-          // Save the winner's data to the "winners" collection
-          await db.collection("winners").add(winnerData);
+          const topDrawingsQuery = drawingsRef
+              .where("date", ">=", today.getTime())
+              .where("date", "<", tomorrow.getTime())
+              .where("votes", "==", maxVotes);
 
-          console.log("Winner document written with ID:", winner.id);
-          console.log(`Today's winner is: ${winner.id}`);
+          const topDrawingsSnapshot = await topDrawingsQuery.get();
+
+          if (!topDrawingsSnapshot.empty) {
+            const drawingsWithMaxVotes = topDrawingsSnapshot.docs;
+
+            for (const drawing of drawingsWithMaxVotes) {
+              const winnerData = {
+                id: drawing.id,
+                votes: drawing.data().votes,
+                userId: drawing.data().userId,
+                image: drawing.data().image,
+              };
+
+
+              await db.collection("winners").add(winnerData);
+
+              console.log("Winner document written with ID:", drawing.id);
+              console.log(`Today's winner is: ${drawing.id}`);
+            }
+          } else {
+            console.log("No drawings found for today.");
+          }
         } else {
           console.log("No drawings found for today.");
         }
