@@ -17,12 +17,32 @@ export default function VoteScreen() {
         throw new Error("No user is signed in");
       }
 
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
+    // Fetch the user's drawing to get the roomId
+    const userDrawingRef = query(
+      collection(db, "drawings"),
+      where("userId", "==", user.uid),
+      where("date", ">=", today.getTime()),
+      where("date", "<", today.getTime() + (24 * 60 * 60 * 1000))
+    );
     
+    const userDrawingSnapshot = await getDocs(userDrawingRef);
+
+    if (userDrawingSnapshot.empty) {
+      console.log("No drawing found for the current user.");
+      return;
+    }
+
+    // Assuming the user has only one drawing for today, retrieve their roomId
+    const userDrawing = userDrawingSnapshot.docs[0].data();
+    const userRoomId = userDrawing.roomId;
+
       const q = query(
         collection(db, "drawings"),
+        where("roomId", "==", userRoomId),
         where("userId", "!=", user.uid),
         where("date", '>=', today.getTime()), 
         where('date', '<', today.getTime() + (24 * 60 * 60 * 1000)),
@@ -45,37 +65,6 @@ export default function VoteScreen() {
       console.log("Error message", error);
     }
   };
-
-  //Real-time listener to update votes 
-  /* useEffect(() => {
-    const unsub = onSnapshot(collection(db, "drawings"), (snapshot) => {
-      const updatedDrawingInfo =snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setDrawingInfo(updatedDrawingInfo);
-    })
-  }, []); */
-  
-  //Voting logic
-
-
-  /*const handleVote = async (userId: string) => {
-
-    try {
-      const drawingRef = doc(db, "drawings", userId);
-      await updateDoc(drawingRef, {
-        votes: increment(1)
-      });
-      fetchData();
-    } catch (error) {
-      console.log("Error", error)
-    }
-  }; 
-  
- useEffect(() => {
-  fetchData();
- }, []) */
 
  const handleVote = async (userId: string) => {
   const currentUser = auth.currentUser?.uid; // Get current user ID

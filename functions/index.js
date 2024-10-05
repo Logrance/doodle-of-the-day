@@ -4,7 +4,7 @@ const admin = require("firebase-admin");
 admin.initializeApp();
 const db = admin.firestore();
 
-exports.pickDailyWinner = functions.pubsub.schedule("22 15 * * *")
+exports.pickDailyWinner = functions.pubsub.schedule("58 14 * * *")
     .timeZone("Europe/London").onRun(async (context) => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -13,51 +13,75 @@ exports.pickDailyWinner = functions.pubsub.schedule("22 15 * * *")
 
       const drawingsRef = db.collection("drawings");
 
-
-      const maxVotesQuery = drawingsRef
-          .where("date", ">=", today.getTime())
-          .where("date", "<", tomorrow.getTime())
-          .orderBy("votes", "desc")
-          .limit(1);
-
       try {
-        const maxVotesSnapshot = await maxVotesQuery.get();
+        // Query to get distinct roomIds for today
+        const roomQuery = drawingsRef
+            .where("date", ">=", today.getTime())
+            .where("date", "<", tomorrow.getTime())
+            .select("roomId");
 
-        if (!maxVotesSnapshot.empty) {
-          const maxVotes = maxVotesSnapshot.docs[0].data().votes;
+        const roomSnapshot = await roomQuery.get();
+        if (roomSnapshot.empty) {
+          console.log("No rooms found for today.");
+          return;
+        }
 
-          const topDrawingsQuery = drawingsRef
+        // Extract unique roomIds
+        const roomIds = new Set();
+        roomSnapshot.forEach((doc) => {
+          roomIds.add(doc.data().roomId);
+        });
+
+        // Iterate through each roomId and select the winner
+        for (const roomId of roomIds) {
+          console.log(`Selecting winner for room: ${roomId}`);
+
+          // Get the drawing with the maximum votes in the room
+          const maxVotesQuery = drawingsRef
+              .where("roomId", "==", roomId)
               .where("date", ">=", today.getTime())
               .where("date", "<", tomorrow.getTime())
-              .where("votes", "==", maxVotes);
+              .orderBy("votes", "desc")
+              .limit(1);
 
-          const topDrawingsSnapshot = await topDrawingsQuery.get();
+          const maxVotesSnapshot = await maxVotesQuery.get();
 
-          if (!topDrawingsSnapshot.empty) {
-            const drawingsWithMaxVotes = topDrawingsSnapshot.docs;
+          if (!maxVotesSnapshot.empty) {
+            const maxVotes = maxVotesSnapshot.docs[0].data().votes;
 
-            for (const drawing of drawingsWithMaxVotes) {
-              const winnerData = {
-                id: drawing.id,
-                votes: drawing.data().votes,
-                userId: drawing.data().userId,
-                image: drawing.data().image,
-              };
+            // Query all drawings with the maximum votes in the room
+            const topDrawingsQuery = drawingsRef
+                .where("roomId", "==", roomId)
+                .where("date", ">=", today.getTime())
+                .where("date", "<", tomorrow.getTime())
+                .where("votes", "==", maxVotes);
 
+            const topDrawingsSnapshot = await topDrawingsQuery.get();
 
-              await db.collection("winners").add(winnerData);
+            if (!topDrawingsSnapshot.empty) {
+              const drawingsWithMaxVotes = topDrawingsSnapshot.docs;
 
-              console.log("Winner document written with ID:", drawing.id);
-              console.log(`Today's winner is: ${drawing.id}`);
+              for (const drawing of drawingsWithMaxVotes) {
+                const winnerData = {
+                  id: drawing.id,
+                  votes: drawing.data().votes,
+                  userId: drawing.data().userId,
+                  roomId: roomId,
+                  image: drawing.data().image,
+                };
+
+                // Save the winner's data to the "winners" collection
+                await db.collection("winners").add(winnerData);
+
+                console.log(`Winner for room ${roomId} is: ${drawing.id}`);
+              }
             }
           } else {
-            console.log("No drawings found for today.");
+            console.log(`No drawings found for room ${roomId}.`);
           }
-        } else {
-          console.log("No drawings found for today.");
         }
       } catch (error) {
-        console.error("Error picking daily winner:", error);
+        console.error("Error picking daily winners:", error);
       }
     });
 
@@ -96,3 +120,28 @@ exports.selectRandomWord = functions.pubsub.schedule("05 00 * * *")
       return null;
     });
 
+// Fetch drawings & assign room IDs
+
+exports.assignRooms = functions.pubsub.schedule("35 11 * * *")
+    .timeZone("Europe/London").onRun(async (context) => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const drawings = await db.collection("drawings")
+          .where("date", ">=", today.getTime())
+          .where("date", "<", today.getTime() + (24 * 60 * 60 * 1000))
+          .get();
+
+      const totalDrawings = drawings.docs.length;
+      const maxRoomSize = 10;
+      const numRooms = Math.ceil(totalDrawings / maxRoomSize);
+
+      for (let i = 0; i < totalDrawings; i++) {
+        const roomId = i % numRooms;
+        await db.collection("drawings").doc(drawings.docs[i].id).update({
+          roomId: `room-${roomId}`,
+        });
+      }
+
+      return {message: "Room IDs assigned to drawings successfully"};
+    });
