@@ -4,7 +4,7 @@ const admin = require("firebase-admin");
 admin.initializeApp();
 const db = admin.firestore();
 
-exports.pickDailyWinner = functions.pubsub.schedule("58 14 * * *")
+exports.pickDailyWinner = functions.pubsub.schedule("30 23 * * *")
     .timeZone("Europe/London").onRun(async (context) => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -122,7 +122,7 @@ exports.selectRandomWord = functions.pubsub.schedule("05 00 * * *")
 
 // Fetch drawings & assign room IDs
 
-exports.assignRooms = functions.pubsub.schedule("35 11 * * *")
+exports.assignRooms = functions.pubsub.schedule("00 12 * * *")
     .timeZone("Europe/London").onRun(async (context) => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
