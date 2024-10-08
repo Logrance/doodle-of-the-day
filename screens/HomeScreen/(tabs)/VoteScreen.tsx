@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, Image, FlatList, Text, Button, Modal, TouchableNativeFeedback, Platform } from 'react-native';
-import { collection, getDocs, query, where, orderBy, updateDoc, doc, increment, getDoc, setDoc, onSnapshot } from "firebase/firestore"; 
+import { collection, getDocs, query, where, orderBy, updateDoc, doc, increment, getDoc, setDoc } from "firebase/firestore"; 
 import { db } from '../../../firebaseConfig';
 import { auth } from '../../../firebaseConfig';
 import { TouchableOpacity, GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -80,6 +80,39 @@ export default function VoteScreen() {
       console.log("Error message", error);
     }
   };
+
+  /*
+
+   //For word theme state
+   const [word, setWord] = useState<string | null>(null);
+   const [isVisible, setIsVisible] = useState(false);
+
+    //Popup logic
+
+    useEffect(() => {
+      const fetchWord = async () => {
+        try { 
+          const themesTodaySnapshot = await getDocs(
+            query(collection(db, 'themes_today'), orderBy('timestamp', 'desc'), limit(1))
+          );
+    
+          if (!themesTodaySnapshot.empty) {
+            const wordDoc = themesTodaySnapshot.docs[0];
+            setWord(wordDoc.data().word);
+            setIsVisible(true);
+          } else {
+            console.log("No such document!");
+          }
+        } catch (error) {
+          console.error("Error fetching document:", error);
+        }
+      };
+    
+      fetchWord();
+    }, []);
+
+    */
+  
 
  const handleVote = async (userId: string) => {
   const currentUser = auth.currentUser?.uid; // Get current user ID

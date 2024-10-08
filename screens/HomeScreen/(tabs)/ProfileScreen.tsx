@@ -68,7 +68,7 @@ const ProfileScreen: React.FC = () => {
   //Popup logic
 
   useEffect(() => {
-    const fetchWord = async () => {
+    const fetchWordAndCheckSubmission = async () => {
       try { 
         const themesTodaySnapshot = await getDocs(
           query(collection(db, 'themes_today'), orderBy('timestamp', 'desc'), limit(1))
@@ -77,26 +77,44 @@ const ProfileScreen: React.FC = () => {
         if (!themesTodaySnapshot.empty) {
           const wordDoc = themesTodaySnapshot.docs[0];
           setWord(wordDoc.data().word);
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const user = auth.currentUser;
+
+        const drawingQuery = query(
+          collection(db, 'drawings'),
+          where('userId', '==', user.uid),
+          where('date', '>=', today.getTime()),
+          where("date", "<", today.getTime() + (24 * 60 * 60 * 1000))
+        );
+
+        const drawingSnapshot = await getDocs(drawingQuery);
+
+        if (drawingSnapshot.empty) { 
           setIsVisible(true);
         } else {
-          console.log("No such document!");
+          console.log("User has already submitted a drawing today!");
+        }
+        } else {
+          console.log("No word document found today!");
         }
       } catch (error) {
         console.error("Error fetching document:", error);
       }
     };
   
-    fetchWord();
+    fetchWordAndCheckSubmission();
   }, []);
   
   
 
   return (
     <View style={styles.container}>
-      <Text>Email: {auth.currentUser?.email}</Text>
       <TouchableOpacity onPress={handleSignOut} style={styles.button}>
         <Text style={styles.buttonText}>Sign out</Text>
       </TouchableOpacity>
+      <Text>Email: {auth.currentUser?.email}</Text>
       <FlatList
           data={winnerDrawing}
           keyExtractor={(item) => item.id}
