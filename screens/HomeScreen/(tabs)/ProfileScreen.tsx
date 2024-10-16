@@ -8,16 +8,13 @@ type RootStackParamList = {
   Home: undefined;
   Login: undefined;
   UserDrawingsScreen: undefined;
+  WinnerDrawingsScreen: undefined;
 };
 
-interface Winner {
-  id: string;
-};
 
 const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
 
-  const [winnerDrawing, setWinnerDrawing ] = useState<any | undefined>(null)
 
   //For word theme state
   const [word, setWord] = useState<string | null>(null);
@@ -32,39 +29,6 @@ const ProfileScreen: React.FC = () => {
     }
   };
 
-  //Winner render logic
-
-  const fetchData = async () => {
-    try {
-      const user = auth.currentUser;
-      if (!user) {
-        console.log("You are not logged in")
-      }
-
-      const q = query (
-        collection(db, "winners"),
-        where("userId", "==", user.uid)
-      )
-
-      const querySnapshot = await getDocs(q);
-
-      if (querySnapshot.empty) {
-        console.log("Nothing to render")
-      } else {
-        const winnerArray: Winner[] = [];
-        querySnapshot.forEach((doc) => {
-          winnerArray.push({ id: doc.id, ...doc.data()})
-        });
-        setWinnerDrawing(winnerArray);
-      }
-    } catch (error) {
-      console.log("Error message", error)
-    }
-  };
-
-  useEffect(() => {
-    fetchData();
-  }, [])
 
   //Popup logic
 
@@ -116,25 +80,19 @@ const ProfileScreen: React.FC = () => {
         <Text style={styles.buttonText}>Sign out</Text>
       </TouchableOpacity>
       <Text>Email: {auth.currentUser?.email}</Text>
-      <View>
+      <View style={styles.buttonSmall}>
+        <Button
+          title='Winners'
+          onPress={() => navigation.navigate('WinnerDrawingsScreen')}
+        />
+      </View>
+      <View style={styles.buttonSmall}>
         <Button
           title='My drawings'
           onPress={() => navigation.navigate('UserDrawingsScreen')}
         />
       </View>
-      <FlatList
-          data={winnerDrawing}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <View style={styles.drawingContainer}>
-            <Text>Winner: {item.id} {item.userId}</Text>
-            <Image 
-                source={{ uri: `data:image/png;base64,${item.image}` }} 
-                style={styles.image}
-                />
-            </View>
-                )}
-                />
+
               <Modal visible={isVisible} transparent={true} animationType="slide">
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
                 <View style={{ backgroundColor: 'white', padding: 20, borderRadius: 10 }}>
@@ -177,4 +135,7 @@ const styles = StyleSheet.create({
     height: 200,
     resizeMode: 'contain',
   },
+  buttonSmall: {
+    margin: 20,
+  }
 });
