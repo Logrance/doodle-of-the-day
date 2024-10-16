@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, Image, FlatList, Text, Button, Modal, TouchableNativeFeedback, Platform } from 'react-native';
 import { collection, getDocs, query, where, orderBy, updateDoc, doc, increment, getDoc, setDoc } from "firebase/firestore"; 
-import { db } from '../../../firebaseConfig';
-import { auth } from '../../../firebaseConfig';
+import { db, auth } from '../../../firebaseConfig';
 import { TouchableOpacity, GestureHandlerRootView } from 'react-native-gesture-handler';
 
 

@@ -7,6 +7,7 @@ import { collection, getDocs, query, where, orderBy, limit } from "firebase/fire
 type RootStackParamList = {
   Home: undefined;
   Login: undefined;
+  UserDrawingsScreen: undefined;
 };
 
 interface Winner {
@@ -115,6 +116,12 @@ const ProfileScreen: React.FC = () => {
         <Text style={styles.buttonText}>Sign out</Text>
       </TouchableOpacity>
       <Text>Email: {auth.currentUser?.email}</Text>
+      <View>
+        <Button
+          title='My drawings'
+          onPress={() => navigation.navigate('UserDrawingsScreen')}
+        />
+      </View>
       <FlatList
           data={winnerDrawing}
           keyExtractor={(item) => item.id}
