@@ -1,14 +1,19 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, Image, FlatList, Text, Button, Modal, TouchableNativeFeedback, Platform } from 'react-native';
-import { collection, getDocs, query, where, orderBy, updateDoc, doc, increment, getDoc, setDoc } from "firebase/firestore"; 
+import { View, StyleSheet, Image, FlatList, Text, Modal, TouchableNativeFeedback, Platform } from 'react-native';
+import { collection, getDocs, query, where, orderBy, updateDoc, doc, increment, getDoc, setDoc, limit } from "firebase/firestore"; 
 import { db, auth } from '../../../firebaseConfig';
 import { TouchableOpacity, GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 
 
 export default function VoteScreen() {
 
   const [drawingInfo, setDrawingInfo] = useState<any | undefined>(null)
+
+  //For word theme state
+  const [word, setWord] = useState<string | null>(null);
+  const [isVisible, setIsVisible] = useState(false);
 
   //Modal logic
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -80,11 +85,7 @@ export default function VoteScreen() {
     }
   };
 
-  /*
 
-   //For word theme state
-   const [word, setWord] = useState<string | null>(null);
-   const [isVisible, setIsVisible] = useState(false);
 
     //Popup logic
 
@@ -110,7 +111,6 @@ export default function VoteScreen() {
       fetchWord();
     }, []);
 
-    */
   
 
  const handleVote = async (userId: string) => {
@@ -163,7 +163,10 @@ useEffect(() => {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
+    <View style={styles.themeContainer}>
+          <Text style={styles.themeText}>Theme of the Day: {word || "Loading..."}</Text>
+        </View>
         <FlatList
           data={drawingInfo}
           keyExtractor={(item) => item.id}
@@ -176,7 +179,9 @@ useEffect(() => {
               />
             </TouchableOpacity>
             <Text>{item.votes || 0}</Text>
-            <Button title="Vote" onPress={() => handleVote(item.id)} />
+            <TouchableOpacity onPress={() => handleVote(item.id)} style={styles.buttonOther}>
+           <Text style={styles.buttonText}>Vote</Text>
+          </TouchableOpacity>
           </View>
         )}
         showsVerticalScrollIndicator={false}
@@ -222,7 +227,7 @@ useEffect(() => {
     </TouchableOpacity>
   )}
   </Modal>
-</View>
+</SafeAreaView>
     </GestureHandlerRootView>
   );
 };
@@ -232,7 +237,8 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(247, 244, 246, 0.8)',
+    backgroundColor: 'rgb(224,183,202)',
+    paddingHorizontal: 10,
   },
   drawingContainer: {
     marginBottom: 20,
@@ -259,5 +265,28 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: 'white',
     resizeMode: 'contain',
+  },
+  buttonOther: {
+    backgroundColor: 'rgb(125,22,27)',
+    width: '60%',
+    padding:7,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginBottom: 5,
+  },
+  buttonText: {
+    color: 'white',
+    fontWeight: '700',
+    fontSize: 16,
+  },
+  themeText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  themeContainer: {
+    alignItems: 'center',
+    marginTop: 20,
+    marginBottom: 50,
   },
 });

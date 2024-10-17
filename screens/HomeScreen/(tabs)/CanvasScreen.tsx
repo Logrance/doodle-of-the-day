@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Dimensions, TouchableOpacity, StyleSheet, Button, Alert } from 'react-native';
+import { View, Dimensions, TouchableOpacity, StyleSheet, Button, Alert, Text } from 'react-native';
 import { GestureHandlerRootView} from 'react-native-gesture-handler'
 import { Canvas, Path, useCanvasRef, SkPath, Skia, TouchInfo, useTouchHandler } from '@shopify/react-native-skia';
 import { StatusBar } from 'expo-status-bar';
@@ -143,7 +143,9 @@ return (
               <AntDesign name="delete" size={24} color="black" />
               </TouchableOpacity>
             
-            <Button title="Capture" onPress={captureCanvas}/>
+              <TouchableOpacity onPress={captureCanvas} style={styles.buttonOther}>
+               <Text style={styles.buttonText}>Capture</Text>
+             </TouchableOpacity>
             </View>
           </View>
         </View>
@@ -162,5 +164,15 @@ swatchContainer: {
   justifyContent: "space-between",
   alignItems: "center",
   marginBottom: 35,
+},
+buttonOther: {
+  backgroundColor: 'rgb(206,151,132)',
+  padding:7,
+  borderRadius: 10,
+},
+buttonText: {
+  color: 'white',
+  fontWeight: '700',
+  fontSize: 16,
 },
 });

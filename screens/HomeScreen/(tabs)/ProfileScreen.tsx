@@ -100,10 +100,10 @@ const ProfileScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
+      <Text>{auth.currentUser?.email}</Text>
       <TouchableOpacity onPress={handleSignOut} style={styles.button}>
         <Text style={styles.buttonText}>Sign out</Text>
       </TouchableOpacity>
-      <Text>Email: {auth.currentUser?.email}</Text>
 
       {/* Button to trigger the password reset */}
       <TouchableOpacity onPress={handlePasswordReset} style={styles.resetButton} disabled={isResettingPassword}>
@@ -112,18 +112,14 @@ const ProfileScreen: React.FC = () => {
         </Text>
       </TouchableOpacity>
 
-      <View style={styles.buttonSmall}>
-        <Button
-          title='Winners'
-          onPress={() => navigation.navigate('WinnerDrawingsScreen')}
-        />
-      </View>
-      <View style={styles.buttonSmall}>
-        <Button
-          title='My drawings'
-          onPress={() => navigation.navigate('UserDrawingsScreen')}
-        />
-      </View>
+      <TouchableOpacity onPress={() => navigation.navigate('WinnerDrawingsScreen')} style={styles.buttonOther}>
+        <Text style={styles.buttonText}>Winners</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity onPress={() => navigation.navigate('UserDrawingsScreen')} style={styles.buttonOther}>
+        <Text style={styles.buttonText}>My drawings</Text>
+      </TouchableOpacity>
+
 
               <Modal visible={isVisible} transparent={true} animationType="slide">
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
@@ -144,9 +140,18 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: 'rgb(170,170,170)',
   },
   button: {
-    backgroundColor: '#0782F9',
+    backgroundColor: 'rgb(2,52,72)',
+    width: '60%',
+    padding: 15,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginTop: 40,
+  },
+  buttonOther: {
+    backgroundColor: 'rgb(125,22,27)',
     width: '60%',
     padding: 15,
     borderRadius: 10,
@@ -167,11 +172,8 @@ const styles = StyleSheet.create({
     height: 200,
     resizeMode: 'contain',
   },
-  buttonSmall: {
-    margin: 20,
-  },
   resetButton: {
-    backgroundColor: "#FFA726",
+    backgroundColor: 'rgb(206,151,132)',
     width: "60%",
     padding: 15,
     borderRadius: 10,
