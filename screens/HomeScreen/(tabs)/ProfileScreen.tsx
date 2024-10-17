@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, FlatList, Image, Modal, Button } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, Modal, Button, Alert } from 'react-native';
 import { auth, db } from '../../../firebaseConfig';
 import { useNavigation, NavigationProp } from '@react-navigation/core';
 import { collection, getDocs, query, where, orderBy, limit } from "firebase/firestore"; 
+import { sendPasswordResetEmail } from "firebase/auth";
+
 
 type RootStackParamList = {
   Home: undefined;
@@ -15,6 +17,10 @@ type RootStackParamList = {
 const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
 
+  //Password reset
+  const user = auth.currentUser;
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
+
 
   //For word theme state
   const [word, setWord] = useState<string | null>(null);
@@ -26,6 +32,24 @@ const ProfileScreen: React.FC = () => {
       navigation.replace('Login');
     } catch (error: any) {
       alert(error.message);
+    }
+  };
+
+  //Password reset
+
+  const handlePasswordReset = async () => {
+    if (user && user.email) {
+      setIsResettingPassword(true);
+      try {
+        await sendPasswordResetEmail(auth, user.email);
+        Alert.alert("Password Reset", `A password reset email has been sent to ${user.email}`);
+      } catch (error: any) {
+        Alert.alert("Error", error.message);
+      } finally {
+        setIsResettingPassword(false);
+      }
+    } else {
+      Alert.alert("Error", "User email not found. Please try again.");
     }
   };
 
@@ -80,6 +104,14 @@ const ProfileScreen: React.FC = () => {
         <Text style={styles.buttonText}>Sign out</Text>
       </TouchableOpacity>
       <Text>Email: {auth.currentUser?.email}</Text>
+
+      {/* Button to trigger the password reset */}
+      <TouchableOpacity onPress={handlePasswordReset} style={styles.resetButton} disabled={isResettingPassword}>
+        <Text style={styles.buttonText}>
+          {isResettingPassword ? "Sending reset email..." : "Reset Password"}
+        </Text>
+      </TouchableOpacity>
+
       <View style={styles.buttonSmall}>
         <Button
           title='Winners'
@@ -137,5 +169,13 @@ const styles = StyleSheet.create({
   },
   buttonSmall: {
     margin: 20,
-  }
+  },
+  resetButton: {
+    backgroundColor: "#FFA726",
+    width: "60%",
+    padding: 15,
+    borderRadius: 10,
+    alignItems: "center",
+    marginTop: 10,
+  },
 });
