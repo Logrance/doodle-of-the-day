@@ -4,7 +4,7 @@ import { auth, db } from '../../../firebaseConfig';
 import { useNavigation, NavigationProp } from '@react-navigation/core';
 import { collection, getDocs, query, where, orderBy, limit } from "firebase/firestore"; 
 import { sendPasswordResetEmail } from "firebase/auth";
-
+import { StackNavigationProp } from '@react-navigation/stack';
 
 type RootStackParamList = {
   Home: undefined;
@@ -15,7 +15,7 @@ type RootStackParamList = {
 
 
 const ProfileScreen: React.FC = () => {
-  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
 
   //Password reset
   const user = auth.currentUser;
