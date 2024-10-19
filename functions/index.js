@@ -4,7 +4,7 @@ const admin = require("firebase-admin");
 admin.initializeApp();
 const db = admin.firestore();
 
-exports.pickDailyWinner = functions.pubsub.schedule("30 23 * * *")
+exports.pickDailyWinner = functions.pubsub.schedule("00 23 * * *")
     .timeZone("Europe/London").onRun(async (context) => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -68,6 +68,7 @@ exports.pickDailyWinner = functions.pubsub.schedule("30 23 * * *")
                   userId: drawing.data().userId,
                   roomId: roomId,
                   image: drawing.data().image,
+                  date: admin.firestore.Timestamp.fromDate(new Date()),
                 };
 
                 // Save the winner's data to the "winners" collection

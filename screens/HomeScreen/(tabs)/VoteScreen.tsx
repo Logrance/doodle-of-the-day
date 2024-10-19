@@ -6,7 +6,6 @@ import { TouchableOpacity, GestureHandlerRootView } from 'react-native-gesture-h
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 
-
 export default function VoteScreen() {
 
   const [drawingInfo, setDrawingInfo] = useState<any | undefined>(null)
@@ -165,7 +164,7 @@ useEffect(() => {
     <GestureHandlerRootView style={{ flex: 1 }}>
     <SafeAreaView style={styles.container}>
     <View style={styles.themeContainer}>
-          <Text style={styles.themeText}>Theme of the Day: {word || "Loading..."}</Text>
+          <Text style={styles.themeText}>Theme of the Day: {"\n"}{word || "Loading..."}</Text>
         </View>
         <FlatList
           data={drawingInfo}
@@ -282,7 +281,8 @@ const styles = StyleSheet.create({
   themeText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+    color: 'rgb(2,52,72)',
+    textAlign: 'center',
   },
   themeContainer: {
     alignItems: 'center',

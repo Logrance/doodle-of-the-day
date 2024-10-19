@@ -1,6 +1,6 @@
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { useEffect, useState } from "react";
-import { View, Text, FlatList, Image, StyleSheet, Modal, TouchableNativeFeedback, Platform } from "react-native";
+import { View, Text, FlatList, Image, StyleSheet, Modal, TouchableNativeFeedback, Platform, ActivityIndicator } from "react-native";
 import { db, auth } from "../firebaseConfig";
 import { TouchableOpacity, GestureHandlerRootView } from 'react-native-gesture-handler';
 
@@ -15,6 +15,7 @@ const UserDrawingsScreen = () => {
      //Modal logic
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const openModal = (imageUri: string) => {
     setSelectedImage(imageUri);
@@ -28,6 +29,7 @@ const UserDrawingsScreen = () => {
 
     useEffect (() => {
         const fetchDrawings = async () => {
+            setLoading(true);
             const user = auth.currentUser;
             if (user) {
                 const q = query(
@@ -41,6 +43,7 @@ const UserDrawingsScreen = () => {
                 })) as Drawing[];
                 setDrawings(userDrawings)
             }
+            setLoading(false);
         };
 
         fetchDrawings()
@@ -49,8 +52,9 @@ const UserDrawingsScreen = () => {
     return (
         <GestureHandlerRootView style={{ flex: 1 }}>
         <View style={styles.container}>
-            <Text style={styles.header}>My Drawings</Text>
-            {drawings.length > 0 ? (
+            {loading ? ( 
+                    <ActivityIndicator size="large" color="grey" />
+                ) : drawings.length > 0 ? (
                 <FlatList
                     data={drawings}
                     keyExtractor={(item) => item.id}

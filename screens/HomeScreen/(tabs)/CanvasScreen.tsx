@@ -166,7 +166,7 @@ swatchContainer: {
   marginBottom: 35,
 },
 buttonOther: {
-  backgroundColor: 'rgb(206,151,132)',
+  backgroundColor: 'rgba(2,52,72,0.7)',
   padding:7,
   borderRadius: 10,
 },

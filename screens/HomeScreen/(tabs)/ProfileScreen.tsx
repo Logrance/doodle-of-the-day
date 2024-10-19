@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, Modal, Button, Alert } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, Modal } from 'react-native';
 import { auth, db } from '../../../firebaseConfig';
 import { useNavigation, NavigationProp } from '@react-navigation/core';
 import { collection, getDocs, query, where, orderBy, limit } from "firebase/firestore"; 
-import { sendPasswordResetEmail } from "firebase/auth";
 import { StackNavigationProp } from '@react-navigation/stack';
 
 type RootStackParamList = {
@@ -11,15 +10,12 @@ type RootStackParamList = {
   Login: undefined;
   UserDrawingsScreen: undefined;
   WinnerDrawingsScreen: undefined;
+  Deets: undefined;
 };
 
 
 const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
-
-  //Password reset
-  const user = auth.currentUser;
-  const [isResettingPassword, setIsResettingPassword] = useState(false);
 
 
   //For word theme state
@@ -34,25 +30,6 @@ const ProfileScreen: React.FC = () => {
       alert(error.message);
     }
   };
-
-  //Password reset
-
-  const handlePasswordReset = async () => {
-    if (user && user.email) {
-      setIsResettingPassword(true);
-      try {
-        await sendPasswordResetEmail(auth, user.email);
-        Alert.alert("Password Reset", `A password reset email has been sent to ${user.email}`);
-      } catch (error: any) {
-        Alert.alert("Error", error.message);
-      } finally {
-        setIsResettingPassword(false);
-      }
-    } else {
-      Alert.alert("Error", "User email not found. Please try again.");
-    }
-  };
-
 
   //Popup logic
 
@@ -100,20 +77,23 @@ const ProfileScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <Text>{auth.currentUser?.email}</Text>
+      <Text>Doodle 
+            {"\n"}
+            of the
+            {"\n"}
+            Day
+      </Text>
       <TouchableOpacity onPress={handleSignOut} style={styles.button}>
         <Text style={styles.buttonText}>Sign out</Text>
       </TouchableOpacity>
 
       {/* Button to trigger the password reset */}
-      <TouchableOpacity onPress={handlePasswordReset} style={styles.resetButton} disabled={isResettingPassword}>
-        <Text style={styles.buttonText}>
-          {isResettingPassword ? "Sending reset email..." : "Reset Password"}
-        </Text>
+      <TouchableOpacity onPress={() => navigation.navigate('Deets')} style={styles.resetButton}>
+        <Text style={styles.buttonText}>My deets</Text>
       </TouchableOpacity>
 
       <TouchableOpacity onPress={() => navigation.navigate('WinnerDrawingsScreen')} style={styles.buttonOther}>
-        <Text style={styles.buttonText}>Winners</Text>
+        <Text style={styles.buttonText}>My winners</Text>
       </TouchableOpacity>
 
       <TouchableOpacity onPress={() => navigation.navigate('UserDrawingsScreen')} style={styles.buttonOther}>
@@ -125,7 +105,9 @@ const ProfileScreen: React.FC = () => {
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
                 <View style={{ backgroundColor: 'white', padding: 20, borderRadius: 10 }}>
                     <Text style={{ fontSize: 20 }}>Today's Word: {word}</Text>
-                    <Button title="Close" onPress={() => setIsVisible(false)} />
+                    <TouchableOpacity onPress={() => setIsVisible(false)} style={styles.buttonModal}>
+                    <Text style={styles.buttonText}>Close</Text>
+                  </TouchableOpacity>
                 </View>
             </View>
         </Modal>  
@@ -139,22 +121,25 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',
-    alignItems: 'center',
+    alignItems: 'flex-start',
+    paddingLeft: 10,
     backgroundColor: 'rgb(170,170,170)',
   },
   button: {
-    backgroundColor: 'rgb(2,52,72)',
-    width: '60%',
+    backgroundColor: 'rgba(2,52,72,0.7)',
+    width: 100,
+    height: 100,
     padding: 15,
-    borderRadius: 10,
+    borderRadius: 50,
     alignItems: 'center',
     marginTop: 40,
   },
   buttonOther: {
-    backgroundColor: 'rgb(125,22,27)',
-    width: '60%',
+    backgroundColor: 'rgba(125,22,27,0.8)',
+    width: 100,
+    height: 100,
     padding: 15,
-    borderRadius: 10,
+    borderRadius: 50,
     alignItems: 'center',
     marginTop: 40,
   },
@@ -174,10 +159,18 @@ const styles = StyleSheet.create({
   },
   resetButton: {
     backgroundColor: 'rgb(206,151,132)',
-    width: "60%",
+    width: 100,
+    height: 100,
+    padding: 15,
+    borderRadius: 50,
+    alignItems: "center",
+    marginTop: 10,
+  },
+  buttonModal: {
+    backgroundColor: 'rgba(2,52,72,0.7)',
     padding: 15,
     borderRadius: 10,
     alignItems: "center",
     marginTop: 10,
-  },
+  }
 });
