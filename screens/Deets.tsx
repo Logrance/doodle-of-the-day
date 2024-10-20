@@ -27,7 +27,7 @@ export default function Deets() {
 
   return (
     <View style={styles.container}>
-      <Text>Email: {auth.currentUser?.email}</Text>
+      <Text style={{ fontFamily: 'Poppins_700Bold' }}>Email: {auth.currentUser?.email}</Text>
       
       {/* Button to trigger the password reset */}
       <TouchableOpacity
@@ -35,7 +35,7 @@ export default function Deets() {
         style={styles.resetButton}
         disabled={isResettingPassword}
       >
-        <Text style={styles.buttonText}>
+        <Text style={{ fontFamily: 'Poppins_700Bold' }}>
           Forgotten password? {isResettingPassword ? "Sending reset email..." : "Click here to reset"}
         </Text>
       </TouchableOpacity>

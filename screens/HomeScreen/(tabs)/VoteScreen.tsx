@@ -164,7 +164,7 @@ useEffect(() => {
     <GestureHandlerRootView style={{ flex: 1 }}>
     <SafeAreaView style={styles.container}>
     <View style={styles.themeContainer}>
-          <Text style={styles.themeText}>Theme of the Day: {"\n"}{word || "Loading..."}</Text>
+          <Text style={{ fontFamily: 'Poppins_700Bold', textAlign: 'center' }}>Theme of the Day: {"\n"}{word || "Loading..."}</Text>
         </View>
         <FlatList
           data={drawingInfo}
@@ -277,12 +277,6 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: '700',
     fontSize: 16,
-  },
-  themeText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: 'rgb(2,52,72)',
-    textAlign: 'center',
   },
   themeContainer: {
     alignItems: 'center',
