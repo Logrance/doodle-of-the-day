@@ -12,8 +12,8 @@ export default function ProfileStack() {
         <Stack.Navigator>
             <Stack.Screen name="ProfileScreen" component={ProfileScreen} options={{ headerShown: false }} />
             <Stack.Screen name="Deets" component={Deets} />
-            <Stack.Screen name="UserDrawingsScreen" component={UserDrawingsScreen} />
-            <Stack.Screen name="WinnerDrawingsScreen" component={WinnerDrawingsScreen} />
+            <Stack.Screen name="UserDrawingsScreen" component={UserDrawingsScreen} options={{ title: 'My drawings' }}/>
+            <Stack.Screen name="WinnerDrawingsScreen" component={WinnerDrawingsScreen} options={{ title: 'My wins' }}/>
         </Stack.Navigator>
     );
 }

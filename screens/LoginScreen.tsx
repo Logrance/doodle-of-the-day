@@ -1,11 +1,12 @@
 import { useNavigation, NavigationProp } from '@react-navigation/core';
 import React, { useEffect, useState } from 'react';
-import { KeyboardAvoidingView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { KeyboardAvoidingView, StyleSheet, Text, TextInput, TouchableOpacity, View , Image, ImageBackground} from 'react-native';
 import { auth } from '../firebaseConfig';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { StackNavigationProp } from '@react-navigation/stack';
 
 type RootStackParamList = {
-    Home: undefined;
+    HomeScreen: undefined;
     Login: undefined;
   };
 
@@ -14,12 +15,12 @@ const LoginScreen: React.FC = () => {
   const [password, setPassword] = useState<string>('');
 
 
- const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+ const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(user => {
         if (user) {
-            navigation.replace("Home")
+            navigation.replace("HomeScreen")
         }
     })
 
@@ -51,6 +52,16 @@ const LoginScreen: React.FC = () => {
       style={styles.container}
       behavior="padding"
     >
+      <ImageBackground 
+      source={require('../assets/download.png')} 
+      style={styles.backgroundImage}
+    >
+      <View style={styles.iconContainer}>
+      <Image 
+        source={require('../assets/icon.png')}  
+        style={styles.icon}
+      />
+      </View>
       <View style={styles.inputContainer}>
         <TextInput
           placeholder="Email"
@@ -81,6 +92,7 @@ const LoginScreen: React.FC = () => {
           <Text style={styles.buttonOutlineText}>Register</Text>
         </TouchableOpacity>
       </View>
+      </ImageBackground>
     </KeyboardAvoidingView>
   );
 };
@@ -90,18 +102,19 @@ export default LoginScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    //justifyContent: 'center',
+    //alignItems: 'center',
     backgroundColor: 'rgb(224,183,202)',
   },
   inputContainer: {
     width: '80%',
+    marginTop: 200,
   },
   input: {
     backgroundColor: 'white',
     paddingHorizontal: 15,
     paddingVertical: 10,
-    borderRadius: 10,
+    //borderRadius: 10,
     marginTop: 5,
   },
   buttonContainer: {
@@ -111,16 +124,16 @@ const styles = StyleSheet.create({
     marginTop: 40,
   },
   button: {
-    backgroundColor: 'rgba(2,52,72,0.7)',
+    backgroundColor: 'rgba(2,52,72,0.5)',
     width: '100%',
     padding: 15,
-    borderRadius: 10,
+    //borderRadius: 10,
     alignItems: 'center',
   },
   buttonOutline: {
-    backgroundColor: 'white',
+    backgroundColor: 'transparent',
     marginTop: 5,
-    borderColor: 'rgb(125,22,27)',
+    borderColor: 'black',
     borderWidth: 2,
   },
   buttonText: {
@@ -129,8 +142,25 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   buttonOutlineText: {
-    color: 'rgb(125,22,27)',
+    color: 'black',
     fontWeight: '700',
     fontSize: 16,
+  },
+  icon: {
+    width: 150,   // Adjust the size as needed
+    height: 150,  // Adjust the size as needed
+    //marginRight: 10,  // Space between the icon and text
+  },
+  iconContainer: {
+    position: 'absolute',
+    top:50,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backgroundImage: {
+    flex: 1,  // Ensure the background image takes up the full screen
+    //resizeMode: 'cover',
+    justifyContent: 'center',  // Centers the content within the image
+    alignItems: 'center',  // Make sure the image covers the entire background
   },
 });
