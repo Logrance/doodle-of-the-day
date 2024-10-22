@@ -11,6 +11,7 @@ type RootStackParamList = {
   UserDrawingsScreen: undefined;
   WinnerDrawingsScreen: undefined;
   Deets: undefined;
+  LeaderboardScreen: undefined;
 };
 
 
@@ -110,6 +111,10 @@ const ProfileScreen: React.FC = () => {
         <Text style={styles.buttonText}>My drawings</Text>
       </TouchableOpacity>
 
+      <TouchableOpacity onPress={() => navigation.navigate('LeaderboardScreen')} style={styles.buttonOtherTwo}>
+        <Text style={styles.buttonText}>Leaderboard</Text>
+      </TouchableOpacity>
+
       <TouchableOpacity onPress={handleSignOut} style={styles.button}>
         <Text style={styles.buttonText}>Sign out</Text>
       </TouchableOpacity>
@@ -158,6 +163,20 @@ const styles = StyleSheet.create({
   },
   buttonOther: {
     backgroundColor: 'rgba(224,183,202, 0.8)',
+    width: '95%',  // Same size for uniformity
+    height: 60,
+    justifyContent: 'center',
+    alignItems: 'center',
+    //borderRadius: 30,
+    marginTop: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    //elevation: 5,
+  },
+  buttonOtherTwo: {
+    backgroundColor: 'rgba(2,52,72, 0.5)',
     width: '95%',  // Same size for uniformity
     height: 60,
     justifyContent: 'center',

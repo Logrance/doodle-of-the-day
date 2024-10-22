@@ -1,9 +1,10 @@
 import { useNavigation, NavigationProp } from '@react-navigation/core';
 import React, { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, StyleSheet, Text, TextInput, TouchableOpacity, View , Image, ImageBackground} from 'react-native';
-import { auth } from '../firebaseConfig';
+import { auth, db } from '../firebaseConfig';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { StackNavigationProp } from '@react-navigation/stack';
+import { setDoc, doc } from 'firebase/firestore';
 
 type RootStackParamList = {
     HomeScreen: undefined;
@@ -13,7 +14,7 @@ type RootStackParamList = {
 const LoginScreen: React.FC = () => {
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
-
+  const [username, setUsername] = useState<string>('');
 
  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
 
@@ -32,6 +33,14 @@ const LoginScreen: React.FC = () => {
       const userCredentials = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredentials.user;
       console.log('Registered with:', user.email);
+
+      await setDoc(doc(db, 'users', user.uid), {
+        username,
+        email: user.email,
+        userId: user.uid,
+        winCount: 0,
+      });
+
     } catch (error: any) {
       alert(error.message);
     }
@@ -63,6 +72,12 @@ const LoginScreen: React.FC = () => {
       />
       </View>
       <View style={styles.inputContainer}>
+      <TextInput
+            placeholder="Username"
+            value={username}
+            onChangeText={text => setUsername(text)}
+            style={styles.input}
+          />
         <TextInput
           placeholder="Email"
           value={email}

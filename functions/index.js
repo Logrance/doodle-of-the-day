@@ -4,7 +4,7 @@ const admin = require("firebase-admin");
 admin.initializeApp();
 const db = admin.firestore();
 
-exports.pickDailyWinner = functions.pubsub.schedule("00 23 * * *")
+exports.pickDailyWinner = functions.pubsub.schedule("45 15 * * *")
     .timeZone("Europe/London").onRun(async (context) => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -74,6 +74,11 @@ exports.pickDailyWinner = functions.pubsub.schedule("00 23 * * *")
                 // Save the winner's data to the "winners" collection
                 await db.collection("winners").add(winnerData);
 
+                const userRef = db.collection("users").doc(winnerData.userId);
+                await userRef.update({
+                  winCount: admin.firestore.FieldValue.increment(1),
+                });
+
                 console.log(`Winner for room ${roomId} is: ${drawing.id}`);
               }
             }
@@ -123,7 +128,7 @@ exports.selectRandomWord = functions.pubsub.schedule("05 00 * * *")
 
 // Fetch drawings & assign room IDs
 
-exports.assignRooms = functions.pubsub.schedule("00 17 * * *")
+exports.assignRooms = functions.pubsub.schedule("35 15 * * *")
     .timeZone("Europe/London").onRun(async (context) => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
