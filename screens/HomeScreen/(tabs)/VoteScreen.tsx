@@ -243,6 +243,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     alignItems: 'center',
     backgroundColor: 'white',
+    elevation: 5,
   },
   image: {
     width: 200,
@@ -272,6 +273,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: 'center',
     marginBottom: 5,
+    elevation: 5,
   },
   buttonText: {
     color: 'white',

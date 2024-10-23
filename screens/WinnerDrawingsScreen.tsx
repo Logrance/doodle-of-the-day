@@ -7,10 +7,6 @@ import ConfettiCannon from 'react-native-confetti-cannon';
 import moment from 'moment';
 import { Timestamp } from "firebase/firestore";
 
-/*interface Drawing {
-    id: string;
-    image: string;
-} */
 
 interface Winner {
     id: string;
@@ -239,6 +235,18 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(0, 0, 0, 0.2)',
         justifyContent: 'center',
         alignItems: 'center',
+      },
+      shareButton: {
+        marginTop: 15,
+        paddingVertical: 10,
+        paddingHorizontal: 20,
+        backgroundColor: '#1E90FF',
+        borderRadius: 5,
+      },
+      shareButtonText: {
+        color: 'white',
+        fontSize: 16,
+        fontWeight: 'bold',
       },
 });
 

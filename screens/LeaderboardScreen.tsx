@@ -1,4 +1,4 @@
-import { collection, query, orderBy, getDocs } from "firebase/firestore";
+import { collection, query, orderBy, getDocs, limit, where, getDoc, doc } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import { View, Text, FlatList, StyleSheet, ActivityIndicator } from "react-native";
 import { db, auth } from "../firebaseConfig";
@@ -17,12 +17,14 @@ const LeaderboardScreen = () => {
 
   const fetchLeaderboard = async () => {
     try {
-      const q = query(
+      // Fetch top 10 users
+      const top10Query = query(
         collection(db, "users"),
-        orderBy("winCount", "desc")  // Sort users by wins in descending order
+        orderBy("winCount", "desc"),
+        limit(10) 
       );
 
-      const querySnapshot = await getDocs(q);
+      const querySnapshot = await getDocs(top10Query);
       const usersArray: User[] = [];
       querySnapshot.forEach((doc) => {
         const data = doc.data();
@@ -32,6 +34,28 @@ const LeaderboardScreen = () => {
           winCount: data.winCount,
         });
       });
+
+      // Get the current user
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        setCurrentUserId(currentUser.uid);
+        const isCurrentUserInTop10 = usersArray.some(user => user.id === currentUser.uid);
+
+        // Fetch current user separately if they are not in the top 10
+        if (!isCurrentUserInTop10) {
+          const currentUserDoc = await getDoc(doc(db, "users", currentUser.uid));
+          if (currentUserDoc.exists()) {
+            const data = currentUserDoc.data();
+            usersArray.push({
+              id: currentUserDoc.id,
+              username: data.username,
+              winCount: data.winCount,
+            });
+          }
+        }
+      }
+
+      // Update state with users
       setUsers(usersArray);
     } catch (error) {
       console.log("Error fetching leaderboard", error);
@@ -42,12 +66,6 @@ const LeaderboardScreen = () => {
 
   useEffect(() => {
     fetchLeaderboard();
-
-    const currentUser = auth.currentUser;
-    if (currentUser) {
-      setCurrentUserId(currentUser.uid);
-    }
-
   }, []);
 
   return (
@@ -89,7 +107,6 @@ const styles = StyleSheet.create({
     padding: 15,
     marginVertical: 5,
     backgroundColor: '#f9f9f9',
-    borderRadius: 10,
     shadowColor: '#000',
     shadowOpacity: 0.1,
     shadowRadius: 5,

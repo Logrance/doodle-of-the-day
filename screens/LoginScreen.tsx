@@ -1,6 +1,6 @@
 import { useNavigation, NavigationProp } from '@react-navigation/core';
 import React, { useEffect, useState } from 'react';
-import { KeyboardAvoidingView, StyleSheet, Text, TextInput, TouchableOpacity, View , Image, ImageBackground} from 'react-native';
+import { KeyboardAvoidingView, StyleSheet, Text, TextInput, TouchableOpacity, View , Image, ImageBackground, Alert} from 'react-native';
 import { auth, db } from '../firebaseConfig';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -28,7 +28,17 @@ const LoginScreen: React.FC = () => {
     return unsubscribe
   }, [])
 
+    // Validation function
+    const validateFields = (): boolean => {
+      if (!email || !password || !username) {
+        Alert.alert("Error", "All fields are required.");
+        return false;
+      }
+      return true;
+    };
+
   const handleSignUp = async () => {
+    if (!validateFields()) return;
     try {
       const userCredentials = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredentials.user;
@@ -73,7 +83,7 @@ const LoginScreen: React.FC = () => {
       </View>
       <View style={styles.inputContainer}>
       <TextInput
-            placeholder="Username"
+            placeholder="Username (only required for registration)"
             value={username}
             onChangeText={text => setUsername(text)}
             style={styles.input}

@@ -86,7 +86,7 @@ const addImageToDB = async (imageBase64: string) => {
         votes: 0,
         date: Date.now(),
       });
-      Alert.alert("Canvas Captured", "The canvas snapshot was successfully captured!");
+      Alert.alert("Canvas Captured", "Thanks for submitting your doodle for today!");
       console.log('Document written with ID: ', docRef.id);
       clearCanvas();
     } else {
@@ -172,7 +172,7 @@ buttonOther: {
 },
 buttonText: {
   color: 'white',
-  fontWeight: '700',
   fontSize: 16,
+  fontFamily: 'Poppins_700Bold',
 },
 });
