@@ -5,6 +5,7 @@ import { auth, db } from '../firebaseConfig';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { setDoc, doc } from 'firebase/firestore';
+import { center } from '@shopify/react-native-skia';
 
 type RootStackParamList = {
     HomeScreen: undefined;
@@ -72,7 +73,7 @@ const LoginScreen: React.FC = () => {
       behavior="padding"
     >
       <ImageBackground 
-      source={require('../assets/download.png')} 
+      source={require('../assets/loginbackground2.png')} 
       style={styles.backgroundImage}
     >
       <View style={styles.iconContainer}>
@@ -136,14 +137,14 @@ const styles = StyleSheet.create({
     marginTop: 200,
   },
   input: {
-    backgroundColor: 'white',
+    backgroundColor: 'rgba(224,183,202,0.5)',
     paddingHorizontal: 15,
     paddingVertical: 10,
     //borderRadius: 10,
     marginTop: 5,
   },
   buttonContainer: {
-    width: '60%',
+    width: '80%',
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 40,
