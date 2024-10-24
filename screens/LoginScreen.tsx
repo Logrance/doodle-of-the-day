@@ -50,6 +50,7 @@ const LoginScreen: React.FC = () => {
         email: user.email,
         userId: user.uid,
         winCount: 0,
+        hasSeenTutorial: false,
       });
 
     } catch (error: any) {

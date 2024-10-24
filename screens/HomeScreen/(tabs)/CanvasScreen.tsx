@@ -1,12 +1,11 @@
-import React, { useState, useCallback } from 'react';
-import { View, Dimensions, TouchableOpacity, StyleSheet, Button, Alert, Text } from 'react-native';
+import React, { useState, useCallback, useEffect } from 'react';
+import { View, Dimensions, TouchableOpacity, StyleSheet, Button, Alert, Text, Modal } from 'react-native';
 import { GestureHandlerRootView} from 'react-native-gesture-handler'
 import { Canvas, Path, useCanvasRef, SkPath, Skia, TouchInfo, useTouchHandler } from '@shopify/react-native-skia';
 import { StatusBar } from 'expo-status-bar';
-import { collection, addDoc, where, getDocs, query } from 'firebase/firestore';
-import { db } from '../../../firebaseConfig';
+import { collection, addDoc, where, getDocs, query, doc, updateDoc, getDoc } from 'firebase/firestore';
+import { db, auth } from '../../../firebaseConfig';
 import AntDesign from '@expo/vector-icons/AntDesign';
-import { auth } from '../../../firebaseConfig';
 
 
 
@@ -14,6 +13,9 @@ export default function CanvasScreen() {
   const { width, height } = Dimensions.get("window");
 
   const [paths, setPaths] = useState<SkPath[]>([]);
+
+  const [isVisible, setIsVisible] = useState(false); // Modal visibility state
+  const [hasSeenTutorial, setHasSeenTutorial] = useState(false);
 
   const ref = useCanvasRef();
 
@@ -115,6 +117,40 @@ const captureCanvas = () => {
   }
 }; 
 
+  // Fetch user tutorial status
+  useEffect(() => {
+    const fetchUserAndCheckTutorial = async () => {
+      const user = auth.currentUser;
+      if (user) {
+        const userRef = doc(db, 'users', user.uid);
+        const userDoc = await getDoc(userRef);
+
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          setHasSeenTutorial(userData.hasSeenTutorial);
+
+          // Show tutorial if not seen
+          if (!userData.hasSeenTutorial) {
+            setIsVisible(true);
+          }
+        }
+      }
+    };
+    fetchUserAndCheckTutorial();
+  }, []);
+
+    // Handle modal close
+    const handleModalClose = async () => {
+      setIsVisible(false); // Close the modal
+  
+      const user = auth.currentUser;
+      if (user) {
+        const userRef = doc(db, 'users', user.uid);
+        await updateDoc(userRef, { hasSeenTutorial: true });
+        setHasSeenTutorial(true); // Update local state
+      }
+    };
+
 
 return (
   <>
@@ -150,6 +186,27 @@ return (
           </View>
         </View>
       </View>
+
+      <Modal visible={isVisible} transparent={true} animationType="fade">
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.titleText}>
+              Welcome to Doodle of the Day! Here's how the app works: 
+              </Text>
+                <Text style={styles.modalText}>
+                • Draw your picture by 12pm UK time.
+                {"\n"}
+                • At 12pm you are allocated a voting room. You have one vote, and once cast, it can't be taken back, so use it wisely.
+                {"\n"}
+                • Winners are picked at 6pm.
+              </Text>
+              {/* Add any other tutorial content */}
+              <TouchableOpacity onPress={handleModalClose} style={styles.modalButton}>
+                <Text style={styles.buttonText}>Got it!</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
     </GestureHandlerRootView>
     <StatusBar style="auto" />
   </>
@@ -174,5 +231,36 @@ buttonText: {
   color: 'white',
   fontSize: 16,
   fontFamily: 'Poppins_700Bold',
+},
+modalOverlay: {
+  flex: 1,
+  justifyContent: 'center',
+  alignItems: 'center',
+  backgroundColor: 'rgba(0, 0, 0, 0.5)',
+},
+modalContent: {
+  width: '80%',
+  padding: 20,
+  backgroundColor: 'white',
+  borderRadius: 10,
+  alignItems: 'center',
+},
+modalText: {
+  fontSize: 16,
+  marginBottom: 20,
+  fontFamily: 'Poppins_700Bold',
+  lineHeight: 26,
+},
+titleText: {
+  fontSize: 18,
+  marginBottom: 20,
+  textAlign: 'center',
+  fontFamily: 'PressStart2P_400Regular',
+  lineHeight: 26,
+},
+modalButton: {
+  backgroundColor: 'rgba(2,52,72,0.7)',
+  padding: 10,
+  borderRadius: 10,
 },
 });

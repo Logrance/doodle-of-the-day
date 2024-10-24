@@ -74,7 +74,6 @@ const ProfileScreen: React.FC = () => {
     fetchWordAndCheckSubmission();
   }, []);
   
-  
 
   return (
     <View style={styles.container}>
@@ -135,6 +134,7 @@ const ProfileScreen: React.FC = () => {
                 </View>
             </View>
         </Modal>  
+
     </View>
   );
 };
