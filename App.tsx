@@ -9,10 +9,12 @@ import { useFonts } from 'expo-font';
 import { Poppins_400Regular, Poppins_700Bold } from '@expo-google-fonts/poppins';
 import * as SplashScreen from 'expo-splash-screen'; 
 import { PressStart2P_400Regular } from '@expo-google-fonts/press-start-2p';
+import Deets from './screens/Deets';
 
 type RootStackParamList = {
   Login: undefined;
   HomeScreen: undefined;
+  Deets: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -36,6 +38,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
       <Stack.Navigator>
         <Stack.Screen options={{ headerShown: false }} name="Login" component={LoginScreen} />
         <Stack.Screen options={{ headerShown: false }} name="HomeScreen" component={HomeScreen} />
+        <Stack.Screen options={{ headerShown: false }} name="Deets" component={Deets} />
       </Stack.Navigator>
     </NavigationContainer>
   );
