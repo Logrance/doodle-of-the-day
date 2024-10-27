@@ -5,6 +5,8 @@ import { auth, db } from "../firebaseConfig";
 import { doc, deleteDoc } from 'firebase/firestore';
 import { useNavigation, NavigationProp } from '@react-navigation/core';
 import { StackNavigationProp } from '@react-navigation/stack';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import AntDesign from '@expo/vector-icons/AntDesign';
 
 type RootStackParamList = {
   Login: undefined;
@@ -77,6 +79,11 @@ export default function Deets() {
   return (
     <View style={styles.container}>
       <Text style={{ fontFamily: 'Poppins_700Bold' }}>Email: {auth.currentUser?.email}</Text>
+      <Text style={{ fontFamily: 'Poppins_700Bold', marginTop: 5 }}>Verified: {auth.currentUser?.emailVerified ? 
+      (<MaterialIcons name="verified-user" size={24} color="black" />)
+      : (<AntDesign name="exclamationcircleo" size={24} color="black" />
+
+      )}</Text>
       
       {/* Button to trigger the password reset */}
       <TouchableOpacity
@@ -125,6 +132,7 @@ const styles = StyleSheet.create({
 },
   buttonText: {
     fontSize: 16,
-    fontWeight: 'bold',
+    fontFamily: 'Poppins_700Bold',
+    color: 'white',
   },
 });

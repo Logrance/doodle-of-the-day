@@ -2,7 +2,7 @@ import { useNavigation, NavigationProp } from '@react-navigation/core';
 import React, { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, StyleSheet, Text, TextInput, TouchableOpacity, View , Image, ImageBackground, Alert} from 'react-native';
 import { auth, db } from '../firebaseConfig';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { setDoc, doc } from 'firebase/firestore';
 import { center } from '@shopify/react-native-skia';
@@ -38,12 +38,29 @@ const LoginScreen: React.FC = () => {
       return true;
     };
 
+
   const handleSignUp = async () => {
     if (!validateFields()) return;
+
     try {
       const userCredentials = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredentials.user;
-      console.log('Registered with:', user.email);
+      //sendEmailVerification(auth.currentUser)
+      //console.log('Registered with:', user.email);
+
+      try {
+        await sendEmailVerification(auth.currentUser);
+        Alert.alert(
+          "Verification Sent",
+          "A verification email has been sent to your email. Please check your inbox and verify your email address.",
+          [{ text: "OK" }]
+        );
+
+      } catch (verificationError) {
+        console.error('Failed to send verification email:', verificationError);
+        alert('Verification email could not be sent. Please check your email address or try again later.');
+        return; // Exit the function if verification email fails
+      }
 
       await setDoc(doc(db, 'users', user.uid), {
         username,
