@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { sendPasswordResetEmail, deleteUser } from 'firebase/auth';
 import { auth, db } from "../firebaseConfig";
-import { doc, deleteDoc } from 'firebase/firestore';
+import { doc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { useNavigation, NavigationProp } from '@react-navigation/core';
 import { StackNavigationProp } from '@react-navigation/stack';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
@@ -19,6 +19,7 @@ export default function Deets() {
     const user = auth.currentUser;
     const [isResettingPassword, setIsResettingPassword] = useState(false);
     const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+    const [isVerified, setIsVerified] = useState(false)
 
   const handlePasswordReset = async () => {
     if (user && user.email) {
@@ -76,10 +77,22 @@ export default function Deets() {
     }
 };
 
+const verification = async () => {
+      if (user.emailVerified) {
+        const userRef = doc(db, 'users', user.uid);
+        await updateDoc(userRef, { isVerified: true });
+        setIsVerified(true); 
+      }
+    }
+
+    useEffect(() => {
+      verification();
+    }, []);
+
   return (
     <View style={styles.container}>
       <Text style={{ fontFamily: 'Poppins_700Bold' }}>Email: {auth.currentUser?.email}</Text>
-      <Text style={{ fontFamily: 'Poppins_700Bold', marginTop: 5 }}>Verified: {auth.currentUser?.emailVerified ? 
+      <Text style={{ fontFamily: 'Poppins_700Bold', marginTop: 5 }}>Verified: {isVerified ? 
       (<MaterialIcons name="verified-user" size={24} color="black" />)
       : (<AntDesign name="exclamationcircleo" size={24} color="black" />
 

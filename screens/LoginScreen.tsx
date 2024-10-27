@@ -68,6 +68,7 @@ const LoginScreen: React.FC = () => {
         userId: user.uid,
         winCount: 0,
         hasSeenTutorial: false,
+        isVerified: false,
       });
 
     } catch (error: any) {
