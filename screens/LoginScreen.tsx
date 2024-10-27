@@ -92,7 +92,7 @@ const LoginScreen: React.FC = () => {
       behavior="padding"
     >
       <ImageBackground 
-      source={require('../assets/loginbackground2.png')} 
+      source={require('../assets/loginbackground3.jpg')} 
       style={styles.backgroundImage}
     >
       <View style={styles.iconContainer}>
@@ -183,13 +183,15 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: 'white',
-    fontWeight: '700',
+    //fontWeight: '700',
     fontSize: 16,
+    fontFamily: 'Poppins_700Bold',
   },
   buttonOutlineText: {
     color: 'black',
-    fontWeight: '700',
+    //fontWeight: '700',
     fontSize: 16,
+    fontFamily: 'Poppins_700Bold',
   },
   icon: {
     width: 150,   // Adjust the size as needed
