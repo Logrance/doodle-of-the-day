@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert, ImageBackground } from 'react-native';
 import { sendPasswordResetEmail, deleteUser } from 'firebase/auth';
 import { auth, db } from "../firebaseConfig";
 import { doc, deleteDoc, updateDoc } from 'firebase/firestore';
@@ -91,6 +91,10 @@ const verification = async () => {
 
   return (
     <View style={styles.container}>
+       <ImageBackground 
+      source={require('../assets/deetsbackground3.jpg')} 
+      style={styles.backgroundImage}
+    >
       <Text style={{ fontFamily: 'Poppins_700Bold' }}>Email: {auth.currentUser?.email}</Text>
       <Text style={{ fontFamily: 'Poppins_700Bold', marginTop: 5 }}>Verified: {isVerified ? 
       (<MaterialIcons name="verified-user" size={24} color="black" />)
@@ -118,6 +122,7 @@ const verification = async () => {
                     {isDeletingAccount ? "Deleting Account..." : "Delete Account"}
                 </Text>
             </TouchableOpacity>
+            </ImageBackground>
     </View>
   );
 }
@@ -125,9 +130,9 @@ const verification = async () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
+    //justifyContent: 'center',
+    //alignItems: 'center',
+    //padding: 20,
   },
   resetButton: {
     marginTop: 20,
@@ -140,12 +145,18 @@ const styles = StyleSheet.create({
   deleteButton: {
     marginTop: 20,
     padding: 10,
-    borderRadius: 5,
-    backgroundColor: 'red',
+    //borderRadius: 5,
+    backgroundColor: 'rgba(2,52,72,0.7)',
 },
   buttonText: {
     fontSize: 16,
     fontFamily: 'Poppins_700Bold',
     color: 'white',
+  },
+  backgroundImage: {
+    flex: 1,  // Ensure the background image takes up the full screen
+    resizeMode: 'cover',
+    justifyContent: 'center',  // Centers the content within the image
+    alignItems: 'center',  // Make sure the image covers the entire background
   },
 });
