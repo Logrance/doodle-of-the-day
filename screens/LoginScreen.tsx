@@ -52,7 +52,7 @@ const LoginScreen: React.FC = () => {
         await sendEmailVerification(auth.currentUser);
         Alert.alert(
           "Verification Sent",
-          "A verification email has been sent to your email. Please check your inbox and verify your email address.",
+          "A verification email has been sent. Please check your inbox and verify your email address.",
           [{ text: "OK" }]
         );
 

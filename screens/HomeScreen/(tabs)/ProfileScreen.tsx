@@ -78,7 +78,7 @@ const ProfileScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       <ImageBackground 
-      source={require('../../../assets/download.png')} // Path to your image in the assets folder
+      source={require('../../../assets/profilebackground4.jpg')} // Path to your image in the assets folder
       style={styles.backgroundImage}
     >
        <View style={styles.topTextContainer}>
@@ -144,7 +144,6 @@ export default ProfileScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'rgba(170,170,170,0.5)',
   },
   button: {
     backgroundColor: 'transparent',  // No background color
