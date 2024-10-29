@@ -1,9 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, Image, FlatList, Text, Modal, TouchableNativeFeedback, Platform } from 'react-native';
+import { View, StyleSheet, Image, FlatList, Text, Modal, TouchableNativeFeedback, Platform, Alert } from 'react-native';
 import { collection, getDocs, query, where, orderBy, updateDoc, doc, increment, getDoc, setDoc, limit } from "firebase/firestore"; 
 import { db, auth } from '../../../firebaseConfig';
 import { TouchableOpacity, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Entypo from '@expo/vector-icons/Entypo';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system';
 
 
 export default function VoteScreen() {
@@ -83,6 +87,56 @@ export default function VoteScreen() {
       console.log("Error message", error);
     }
   };
+
+  // Function to handle flagging
+  const handleFlag = async (drawingId: string, image: string) => {
+    Alert.alert(
+      "Flag Content",
+      "Are you sure you want to flag this drawing for review?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Flag",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const flagRef = doc(collection(db, "flags"));
+              await setDoc(flagRef, {
+                drawingId,
+                image,
+                flaggedBy: auth.currentUser.uid,
+                timestamp: new Date(),
+              });
+              alert("Drawing has been flagged for review.");
+            } catch (error) {
+              console.log("Error flagging content:", error);
+            }
+          },
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
+// Function to handle share
+const handleShare = async (image: string) => {
+  // Convert base64 to a file
+  const filename = `${FileSystem.cacheDirectory}shared-image.jpg`;
+  await FileSystem.writeAsStringAsync(filename, image, { encoding: FileSystem.EncodingType.Base64 });
+
+  // Share the file if available on device
+  if (await Sharing.isAvailableAsync()) {
+    await Sharing.shareAsync(filename, {
+      mimeType: 'image/jpg',
+      dialogTitle: 'Share your drawing!',
+    });
+  } else {
+    alert("Sharing is not available on this device");
+  }
+};
 
 
 
@@ -176,12 +230,22 @@ useEffect(() => {
                 source={{ uri: `data:image/png;base64,${item.image}` }} 
                 style={styles.image}
               />
+             
             </TouchableOpacity>
             <Text>{item.votes || 0}</Text>
-            <TouchableOpacity onPress={() => handleVote(item.id)} style={styles.buttonOther}>
+
+            <View style={styles.buttonRow}>
+          <TouchableOpacity onPress={() => handleFlag(item.id, item.image)} style={styles.buttonOther}>
+          <Ionicons name="flag" size={24} color="black" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => handleVote(item.id)} style={styles.buttonVote}>
            <Text style={styles.buttonText}>Vote</Text>
           </TouchableOpacity>
-          </View>
+          <TouchableOpacity onPress={() => handleShare(item.image)} style={styles.buttonOther}>
+          <Entypo name="share" size={24} color="black" />
+        </TouchableOpacity>
+        </View>
+      </View>
         )}
         showsVerticalScrollIndicator={false}
       />
@@ -262,27 +326,44 @@ const styles = StyleSheet.create({
   enlargedImage: {
     width: 400,
     height: 400,
-    borderRadius: 8,
+    //borderRadius: 8,
     backgroundColor: 'white',
     resizeMode: 'contain',
   },
   buttonOther: {
-    backgroundColor: 'rgb(125,22,27)',
-    width: '60%',
+    backgroundColor: 'white',
+    //width: '60%',
     padding:7,
     borderRadius: 10,
     alignItems: 'center',
+    //alignContent: 'center',
     marginBottom: 5,
+    elevation: 5,
+  },
+  buttonVote: {
+    backgroundColor: 'rgb(125,22,27)',
+    //width: '60%',
+    padding:7,
+    borderRadius: 10,
+    alignContent: 'center',
+    marginBottom: 5,
+    marginHorizontal: 10,
     elevation: 5,
   },
   buttonText: {
     color: 'white',
     fontWeight: '700',
     fontSize: 16,
+    
   },
   themeContainer: {
     alignItems: 'center',
     marginTop: 20,
     marginBottom: 50,
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between', 
+    marginTop: 8,
   },
 });

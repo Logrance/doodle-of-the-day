@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { View, Dimensions, TouchableOpacity, StyleSheet, Button, Alert, Text, Modal } from 'react-native';
 import { GestureHandlerRootView} from 'react-native-gesture-handler'
-import { Canvas, Path, useCanvasRef, SkPath, Skia, TouchInfo, useTouchHandler } from '@shopify/react-native-skia';
+import { Canvas, Path, useCanvasRef, SkPath, Skia, TouchInfo, useTouchHandler, Rect } from '@shopify/react-native-skia';
 import { StatusBar } from 'expo-status-bar';
 import { collection, addDoc, where, getDocs, query, doc, updateDoc, getDoc } from 'firebase/firestore';
 import { db, auth } from '../../../firebaseConfig';
@@ -93,7 +93,7 @@ const addImageToDB = async (imageBase64: string) => {
       clearCanvas();
     } else {
       // User already has a drawing for today
-      Alert.alert("Capture Failed", "You have already doodled today!");
+      Alert.alert("Submit Failed", "You have already doodled today!");
       console.log('User already has a drawing for today.');
       clearCanvas();
     }
@@ -104,8 +104,20 @@ const addImageToDB = async (imageBase64: string) => {
 
 
 const captureCanvas = () => {
+  Alert.alert(
+    "Submit Drawing?",
+    "You can only submit one drawing per day.",
+    [
+      {
+        text: "Cancel",
+        style: "cancel",
+        onPress: () => console.log("Submission canceled"),
+      },
+      {
+        text: "Submit",
+        style: "default",
+        onPress: () => {
   const image = ref.current?.makeImageSnapshot();
-
   if (image) {
     const imageConversion = image.encodeToBase64();
      addImageToDB(imageConversion);
@@ -115,7 +127,11 @@ const captureCanvas = () => {
     console.log("Drawing unsuccessful")
     //Alert.alert("Capture Failed", "Could not capture the canvas.");
   }
-}; 
+},
+},
+]
+);
+};
 
   // Fetch user tutorial status
   useEffect(() => {
@@ -159,6 +175,7 @@ return (
       
         
           <Canvas style={{ flex: 8 }} ref={ref} onTouch={touchHandler}>
+          <Rect x={0} y={0} width={width} height={height} color="white" />
             {paths.map((path, index) => (
               <Path
                 key={index}
@@ -180,7 +197,7 @@ return (
               </TouchableOpacity>
             
               <TouchableOpacity onPress={captureCanvas} style={styles.buttonOther}>
-               <Text style={styles.buttonText}>Capture</Text>
+               <Text style={styles.buttonText}>Submit</Text>
              </TouchableOpacity>
             </View>
           </View>

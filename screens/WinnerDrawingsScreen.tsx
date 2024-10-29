@@ -6,7 +6,10 @@ import { TouchableOpacity, GestureHandlerRootView } from 'react-native-gesture-h
 import ConfettiCannon from 'react-native-confetti-cannon';
 import moment from 'moment';
 import { Timestamp } from "firebase/firestore";
-
+import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system';
+import * as MediaLibrary from 'expo-media-library';
+import Entypo from '@expo/vector-icons/Entypo';
 
 interface Winner {
     id: string;
@@ -41,6 +44,31 @@ const WinnerDrawingsScreen = () => {
   const closeWinnerModal = () => {
     setShowWinnerModal(false);
   };
+
+
+  // Function to handle share
+const handleShare = async (image: string) => {
+  // Convert base64 to a file
+  
+  const base64Image = image.replace(/^data:image\/\w+;base64,/, "");
+
+  const filename = `${FileSystem.cacheDirectory}shared-image.png`;
+  await FileSystem.writeAsStringAsync(filename, base64Image, { encoding: FileSystem.EncodingType.Base64 });
+
+  const asset = await MediaLibrary.createAssetAsync(filename);
+  await MediaLibrary.createAlbumAsync("Shared Images", asset, false);
+
+
+  // Share the file if available on device
+  if (await Sharing.isAvailableAsync()) {
+    await Sharing.shareAsync(filename, {
+      mimeType: 'image/png',
+      dialogTitle: 'Share your drawing!',
+    });
+  } else {
+    alert("Sharing is not available on this device");
+  }
+}; 
 
     //Winner render logic
 
@@ -114,6 +142,9 @@ const WinnerDrawingsScreen = () => {
                                     style={styles.image}
                                 />
                             </TouchableOpacity>
+                            <TouchableOpacity onPress={() => handleShare(item.image)} style={styles.buttonOther}>
+                            <Entypo name="share" size={24} color="black" />
+                          </TouchableOpacity>
                    </View>
                        )}
                     showsVerticalScrollIndicator={false}
@@ -220,7 +251,7 @@ const styles = StyleSheet.create({
       enlargedImage: {
         width: 400,
         height: 400,
-        borderRadius: 8,
+        //borderRadius: 8,
         backgroundColor: 'white',
         resizeMode: 'contain',
       },
@@ -247,6 +278,22 @@ const styles = StyleSheet.create({
         color: 'white',
         fontSize: 16,
         fontWeight: 'bold',
+      },
+      buttonOther: {
+        backgroundColor: 'white',
+        //width: '60%',
+        padding:7,
+        borderRadius: 10,
+        alignItems: 'center',
+        //alignContent: 'center',
+        marginBottom: 5,
+        marginTop: 7,
+        elevation: 5,
+      },
+      buttonText: {
+        color: 'white',
+        fontWeight: '700',
+        fontSize: 16,
       },
 });
 

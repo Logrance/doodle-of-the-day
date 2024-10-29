@@ -78,7 +78,7 @@ const ProfileScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       <ImageBackground 
-      source={require('../../../assets/profilebackground4.jpg')} // Path to your image in the assets folder
+      source={require('../../../assets/profilebackground7.png')} // Path to your image in the assets folder
       style={styles.backgroundImage}
     >
        <View style={styles.topTextContainer}>

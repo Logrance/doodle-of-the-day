@@ -3,6 +3,9 @@ import { useEffect, useState } from "react";
 import { View, Text, FlatList, Image, StyleSheet, Modal, TouchableNativeFeedback, Platform, ActivityIndicator } from "react-native";
 import { db, auth } from "../firebaseConfig";
 import { TouchableOpacity, GestureHandlerRootView } from 'react-native-gesture-handler';
+import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system';
+import Entypo from '@expo/vector-icons/Entypo';
 
 interface Drawing {
     id: string;
@@ -16,6 +19,30 @@ const UserDrawingsScreen = () => {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [loading, setLoading] = useState(true);
+
+    // Function to handle share
+const handleShare = async (image: string) => {
+    // Convert base64 to a file
+    
+    const base64Image = image.replace(/^data:image\/\w+;base64,/, "");
+  
+    const filename = `${FileSystem.cacheDirectory}shared-image.png`;
+    await FileSystem.writeAsStringAsync(filename, base64Image, { encoding: FileSystem.EncodingType.Base64 });
+  
+    //const asset = await MediaLibrary.createAssetAsync(filename);
+    //await MediaLibrary.createAlbumAsync("Shared Images", asset, false);
+  
+  
+    // Share the file if available on device
+    if (await Sharing.isAvailableAsync()) {
+      await Sharing.shareAsync(filename, {
+        mimeType: 'image/png',
+        dialogTitle: 'Share your drawing!',
+      });
+    } else {
+      alert("Sharing is not available on this device");
+    }
+  }; 
 
   const openModal = (imageUri: string) => {
     setSelectedImage(imageUri);
@@ -66,6 +93,9 @@ const UserDrawingsScreen = () => {
                                     style={styles.image}
                                 />
                             </TouchableOpacity>
+                            <TouchableOpacity onPress={() => handleShare(item.image)} style={styles.buttonOther}>
+                            <Entypo name="share" size={24} color="black" />
+                          </TouchableOpacity>
                         </View>
                     )}
                     showsVerticalScrollIndicator={false}
@@ -153,9 +183,25 @@ const styles = StyleSheet.create({
       enlargedImage: {
         width: 400,
         height: 400,
-        borderRadius: 8,
+        //borderRadius: 8,
         backgroundColor: 'white',
         resizeMode: 'contain',
+      },
+      buttonOther: {
+        backgroundColor: 'white',
+        //width: '60%',
+        padding:7,
+        borderRadius: 10,
+        alignItems: 'center',
+        //alignContent: 'center',
+        marginBottom: 5,
+        marginTop: 7,
+        elevation: 5,
+      },
+      buttonText: {
+        color: 'white',
+        fontWeight: '700',
+        fontSize: 16,
       },
 });
 
