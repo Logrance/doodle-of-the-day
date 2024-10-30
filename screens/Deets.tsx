@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Alert, ImageBackground } from
 import { sendPasswordResetEmail, deleteUser } from 'firebase/auth';
 import { auth, db } from "../firebaseConfig";
 import { doc, deleteDoc, updateDoc } from 'firebase/firestore';
-import { useNavigation, NavigationProp } from '@react-navigation/core';
+import { useNavigation } from '@react-navigation/core';
 import { StackNavigationProp } from '@react-navigation/stack';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import AntDesign from '@expo/vector-icons/AntDesign';
@@ -50,14 +50,10 @@ export default function Deets() {
                     onPress: async () => {
                         setIsDeletingAccount(true);
                         try {
-                            // Delete user data from Firestore
                             const userDocRef = doc(db, "users", user.uid);
                             await deleteDoc(userDocRef);
 
-                            // Delete user authentication
                             await deleteUser(user);
-
-                            
 
                             await auth.signOut();
                             navigation.replace('Login');
@@ -102,7 +98,6 @@ const verification = async () => {
 
       )}</Text>
       
-      {/* Button to trigger the password reset */}
       <TouchableOpacity
         onPress={handlePasswordReset}
         style={styles.resetButton}
@@ -130,9 +125,6 @@ const verification = async () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    //justifyContent: 'center',
-    //alignItems: 'center',
-    //padding: 20,
   },
   resetButton: {
     marginTop: 20,
@@ -145,7 +137,6 @@ const styles = StyleSheet.create({
   deleteButton: {
     marginTop: 20,
     padding: 10,
-    //borderRadius: 5,
     backgroundColor: 'rgba(2,52,72,0.7)',
 },
   buttonText: {
@@ -154,9 +145,9 @@ const styles = StyleSheet.create({
     color: 'white',
   },
   backgroundImage: {
-    flex: 1,  // Ensure the background image takes up the full screen
+    flex: 1,  
     resizeMode: 'cover',
-    justifyContent: 'center',  // Centers the content within the image
-    alignItems: 'center',  // Make sure the image covers the entire background
+    justifyContent: 'center',  
+    alignItems: 'center',  
   },
 });

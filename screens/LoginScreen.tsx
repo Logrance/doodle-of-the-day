@@ -1,11 +1,10 @@
-import { useNavigation, NavigationProp } from '@react-navigation/core';
+import { useNavigation } from '@react-navigation/core';
 import React, { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, StyleSheet, Text, TextInput, TouchableOpacity, View , Image, ImageBackground, Alert} from 'react-native';
 import { auth, db } from '../firebaseConfig';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { setDoc, doc } from 'firebase/firestore';
-import { center } from '@shopify/react-native-skia';
 
 type RootStackParamList = {
     HomeScreen: undefined;
@@ -45,8 +44,6 @@ const LoginScreen: React.FC = () => {
     try {
       const userCredentials = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredentials.user;
-      //sendEmailVerification(auth.currentUser)
-      //console.log('Registered with:', user.email);
 
       try {
         await sendEmailVerification(auth.currentUser);
@@ -57,9 +54,8 @@ const LoginScreen: React.FC = () => {
         );
 
       } catch (verificationError) {
-        console.error('Failed to send verification email:', verificationError);
         alert('Verification email could not be sent. Please check your email address or try again later.');
-        return; // Exit the function if verification email fails
+        return; 
       }
 
       await setDoc(doc(db, 'users', user.uid), {
@@ -147,9 +143,6 @@ export default LoginScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    //justifyContent: 'center',
-    //alignItems: 'center',
-    backgroundColor: 'rgb(224,183,202)',
   },
   inputContainer: {
     width: '80%',
@@ -159,7 +152,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(224,183,202,0.5)',
     paddingHorizontal: 15,
     paddingVertical: 10,
-    //borderRadius: 10,
     marginTop: 5,
   },
   buttonContainer: {
@@ -172,7 +164,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(2,52,72,0.5)',
     width: '100%',
     padding: 15,
-    //borderRadius: 10,
     alignItems: 'center',
   },
   buttonOutline: {
@@ -183,20 +174,17 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: 'white',
-    //fontWeight: '700',
     fontSize: 16,
     fontFamily: 'Poppins_700Bold',
   },
   buttonOutlineText: {
     color: 'black',
-    //fontWeight: '700',
     fontSize: 16,
     fontFamily: 'Poppins_700Bold',
   },
   icon: {
-    width: 150,   // Adjust the size as needed
-    height: 150,  // Adjust the size as needed
-    //marginRight: 10,  // Space between the icon and text
+    width: 150,  
+    height: 150,  
   },
   iconContainer: {
     position: 'absolute',
@@ -205,9 +193,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   backgroundImage: {
-    flex: 1,  // Ensure the background image takes up the full screen
-    //resizeMode: 'cover',
-    justifyContent: 'center',  // Centers the content within the image
-    alignItems: 'center',  // Make sure the image covers the entire background
+    flex: 1,  
+    justifyContent: 'center',  
+    alignItems: 'center',  
   },
 });

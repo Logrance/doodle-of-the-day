@@ -8,7 +8,6 @@ import moment from 'moment';
 import { Timestamp } from "firebase/firestore";
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
-import * as MediaLibrary from 'expo-media-library';
 import Entypo from '@expo/vector-icons/Entypo';
 
 interface Winner {
@@ -47,19 +46,17 @@ const WinnerDrawingsScreen = () => {
 
 
   // Function to handle share
+
 const handleShare = async (image: string) => {
-  // Convert base64 to a file
   
   const base64Image = image.replace(/^data:image\/\w+;base64,/, "");
 
   const filename = `${FileSystem.cacheDirectory}shared-image.png`;
   await FileSystem.writeAsStringAsync(filename, base64Image, { encoding: FileSystem.EncodingType.Base64 });
 
-  const asset = await MediaLibrary.createAssetAsync(filename);
-  await MediaLibrary.createAlbumAsync("Shared Images", asset, false);
-
 
   // Share the file if available on device
+
   if (await Sharing.isAvailableAsync()) {
     await Sharing.shareAsync(filename, {
       mimeType: 'image/png',
@@ -96,26 +93,25 @@ const handleShare = async (image: string) => {
 
           let date: string | Date = "";
         if (data.date instanceof Timestamp) {
-          date = data.date.toDate(); // Convert Firestore Timestamp to JavaScript Date
+          date = data.date.toDate(); 
         }
 
           const winner = {
             id: doc.id,
             image: data.image,
-            date: data, // Assuming a date field exists
+            date: data, 
           };
           winnerArray.push(winner);
 
           // Compare the drawing's date with today's date
           if (moment(date).isSame(moment(), 'day')) {
-            setShowConfetti(true); // Trigger confetti if the date is today
+            setShowConfetti(true); 
             setShowWinnerModal(true);
           }
         });
         setWinnerDrawing(winnerArray);
       }
     } catch (error) {
-      console.log("Error message", error);
     } finally {
       setLoading(false);
     }
@@ -251,7 +247,6 @@ const styles = StyleSheet.create({
       enlargedImage: {
         width: 400,
         height: 400,
-        //borderRadius: 8,
         backgroundColor: 'white',
         resizeMode: 'contain',
       },
@@ -281,11 +276,9 @@ const styles = StyleSheet.create({
       },
       buttonOther: {
         backgroundColor: 'white',
-        //width: '60%',
         padding:7,
         borderRadius: 10,
         alignItems: 'center',
-        //alignContent: 'center',
         marginBottom: 5,
         marginTop: 7,
         elevation: 5,

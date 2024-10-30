@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View, Modal, Image, ImageBackground } from 'react-native';
 import { auth, db } from '../../../firebaseConfig';
-import { useNavigation, NavigationProp } from '@react-navigation/core';
+import { useNavigation } from '@react-navigation/core';
 import { collection, getDocs, query, where, orderBy, limit } from "firebase/firestore"; 
 import { StackNavigationProp } from '@react-navigation/stack';
 
@@ -61,13 +61,10 @@ const ProfileScreen: React.FC = () => {
         if (drawingSnapshot.empty) { 
           setIsVisible(true);
         } else {
-          console.log("User has already submitted a drawing today!");
         }
         } else {
-          console.log("No word document found today!");
         }
       } catch (error) {
-        console.error("Error fetching document:", error);
       }
     };
   
@@ -78,7 +75,7 @@ const ProfileScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       <ImageBackground 
-      source={require('../../../assets/profilebackground7.png')} // Path to your image in the assets folder
+      source={require('../../../assets/profilebackground7.png')} 
       style={styles.backgroundImage}
     >
        <View style={styles.topTextContainer}>
@@ -97,7 +94,7 @@ const ProfileScreen: React.FC = () => {
   
       <View style={styles.buttonContainer}>
       
-      {/* Button to trigger the password reset */}
+    
       <TouchableOpacity onPress={() => navigation.navigate('Deets')} style={styles.resetButton}>
         <Text style={styles.buttonText}>My deets</Text>
       </TouchableOpacity>
@@ -146,52 +143,47 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   button: {
-    backgroundColor: 'transparent',  // No background color
-    width: '95%',  // Keep wider button
-    height: 60,  // Taller button
-    justifyContent: 'center',  // Center text vertically
+    backgroundColor: 'transparent',  
+    width: '95%', 
+    height: 60,  
+    justifyContent: 'center',  
     alignItems: 'center',
-    borderColor: '#000',  // Black border
-    borderWidth: 2,  // Define the border thickness
-    marginTop: 20,  // Maintain margin for spacing
+    borderColor: '#000',  
+    borderWidth: 2,  
+    marginTop: 20,  
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,  // Subtle shadow for depth
+    shadowOpacity: 0.2,  
     shadowRadius: 4,
-    //elevation: 5,  // Android elevation for shadow
   },
   buttonOther: {
     backgroundColor: 'rgba(224,183,202, 0.8)',
-    width: '95%',  // Same size for uniformity
+    width: '95%',  
     height: 60,
     justifyContent: 'center',
     alignItems: 'center',
-    //borderRadius: 30,
     marginTop: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
-    //elevation: 5,
   },
   buttonOtherTwo: {
     backgroundColor: 'rgba(2,52,72, 0.5)',
-    width: '95%',  // Same size for uniformity
+    width: '95%', 
     height: 60,
     justifyContent: 'center',
     alignItems: 'center',
-    //borderRadius: 30,
     marginTop: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
-    //elevation: 5,
   },
   buttonText: {
     color: 'black',
-    fontWeight: 'bold',  // Bold text for emphasis
-    fontSize: 18,  // Larger text for better readability
+    fontWeight: 'bold',  
+    fontSize: 18,  
     textTransform: 'uppercase',
   },
   drawingContainer: {
@@ -209,13 +201,11 @@ const styles = StyleSheet.create({
       height: 60,
       justifyContent: 'center',
       alignItems: "center",
-      //borderRadius: 30,
       marginTop: 20,
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.2,
       shadowRadius: 4,
-      //elevation: 5,
     },
   buttonModal: {
     backgroundColor: 'rgba(2,52,72,0.7)',
@@ -236,20 +226,19 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center', 
     alignItems: 'center',
-    //backgroundColor: '#F8F8F8',
   },
   icon: {
-    width: 100,   // Adjust the size as needed
-    height: 100,  // Adjust the size as needed
-    marginRight: 10,  // Space between the icon and text
+    width: 100,   
+    height: 100,
+    marginRight: 10,  
   },
   backgroundImage: {
-    flex: 1,  // Ensure the background image takes up the full screen
-    resizeMode: 'cover',  // Make sure the image covers the entire background
+    flex: 1,  
+    resizeMode: 'cover',  
   },
   cow: {
-    width: 100,   // Adjust the size as needed
-    height: 100,  // Adjust the size as needed
-    marginRight: 10,  // Space between the icon and text
+    width: 100,   
+    height: 100,  
+    marginRight: 10,  
   },
 });

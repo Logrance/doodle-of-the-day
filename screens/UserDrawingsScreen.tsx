@@ -22,18 +22,13 @@ const UserDrawingsScreen = () => {
 
     // Function to handle share
 const handleShare = async (image: string) => {
-    // Convert base64 to a file
     
     const base64Image = image.replace(/^data:image\/\w+;base64,/, "");
   
     const filename = `${FileSystem.cacheDirectory}shared-image.png`;
     await FileSystem.writeAsStringAsync(filename, base64Image, { encoding: FileSystem.EncodingType.Base64 });
+
   
-    //const asset = await MediaLibrary.createAssetAsync(filename);
-    //await MediaLibrary.createAlbumAsync("Shared Images", asset, false);
-  
-  
-    // Share the file if available on device
     if (await Sharing.isAvailableAsync()) {
       await Sharing.shareAsync(filename, {
         mimeType: 'image/png',
@@ -183,17 +178,14 @@ const styles = StyleSheet.create({
       enlargedImage: {
         width: 400,
         height: 400,
-        //borderRadius: 8,
         backgroundColor: 'white',
         resizeMode: 'contain',
       },
       buttonOther: {
         backgroundColor: 'white',
-        //width: '60%',
         padding:7,
         borderRadius: 10,
         alignItems: 'center',
-        //alignContent: 'center',
         marginBottom: 5,
         marginTop: 7,
         elevation: 5,
