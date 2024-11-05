@@ -4,7 +4,7 @@ import { getFirestore }from "firebase/firestore";
 import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
 
 const firebaseConfig = {
-  API KEY
+  apiKey: "AIzaSyD9ZI_2P-TNvVPFmqEV62szK6zPgiuBOFA",
   authDomain: "doodle-of-the-day-a7278.firebaseapp.com",
   projectId: "doodle-of-the-day-a7278",
   storageBucket: "doodle-of-the-day-a7278.appspot.com",
