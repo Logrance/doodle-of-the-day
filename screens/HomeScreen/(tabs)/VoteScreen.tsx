@@ -21,6 +21,8 @@ type GetRoomDrawingsResponse = {
   drawings: Drawing[];
 };
 
+//Laurence
+
 export default function VoteScreen() {
 
   const [drawingInfo, setDrawingInfo] = useState<any | undefined>(null)
