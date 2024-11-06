@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, Image, FlatList, Text, Modal, TouchableNativeFeedback, Platform, Alert } from 'react-native';
-import { collection, getDocs, query, where, orderBy, updateDoc, doc, increment, getDoc, setDoc, limit } from "firebase/firestore"; 
-import { db, auth, getCallableFunction } from '../../../firebaseConfig';
+import { View, StyleSheet, Image, FlatList, Text, Modal, TouchableNativeFeedback, Platform, Alert, ActivityIndicator } from 'react-native';
+import { auth, getCallableFunction } from '../../../firebaseConfig';
 import { TouchableOpacity, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Entypo from '@expo/vector-icons/Entypo';
@@ -21,11 +20,11 @@ type GetRoomDrawingsResponse = {
   drawings: Drawing[];
 };
 
-//Laurence
 
 export default function VoteScreen() {
 
   const [drawingInfo, setDrawingInfo] = useState<any | undefined>(null)
+  const [loading, setLoading] = useState(true);
 
   //For word theme state
   const [word, setWord] = useState<string | null>(null);
@@ -45,123 +44,84 @@ export default function VoteScreen() {
   };
 
   const fetchData = async () => {
+    setLoading(true);
     try {
         const user = auth.currentUser;
         if (!user) {
             throw new Error("No user is signed in");
         }
 
-        // Ensure TypeScript knows getRoomDrawings is a callable function with specific response type
         const getRoomDrawings = getCallableFunction("getRoomDrawings") as (
             data: { date: string; userId: string }
         ) => Promise<{ data: GetRoomDrawingsResponse }>;
 
-        // Call the function with parameters
         const response = await getRoomDrawings({
             date: new Date().toISOString(),
             userId: user.uid,
         });
 
-        // Now TypeScript knows response.data is of type GetRoomDrawingsResponse
         const drawings = response.data.drawings;
         setDrawingInfo(drawings);
+        setLoading(false);
 
     } catch (error) {
-        console.error("Error fetching drawings:", error);
     }
 };
 
-  /*const fetchData = async () => {
-    try {
-      const user = auth.currentUser;
-      if (!user) {
-        throw new Error("No user is signed in");
-      }
-
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    // Fetch the user's drawing to get the roomId
-    const userDrawingRef = query(
-      collection(db, "drawings"),
-      where("userId", "==", user.uid),
-      where("date", ">=", today.getTime()),
-      where("date", "<", today.getTime() + (24 * 60 * 60 * 1000))
-    );
-    
-    const userDrawingSnapshot = await getDocs(userDrawingRef);
-
-    if (userDrawingSnapshot.empty) {
-      return;
-    }
-
-    const userDrawing = userDrawingSnapshot.docs[0].data();
-    const userRoomId = userDrawing.roomId;
-
-      const q = query(
-        collection(db, "drawings"),
-        where("roomId", "==", userRoomId),
-        where("userId", "!=", user.uid),
-        where("date", '>=', today.getTime()), 
-        where('date', '<', today.getTime() + (24 * 60 * 60 * 1000)),
-        orderBy("votes", "desc"),
-        orderBy("userId", "desc")
-      );
-
-      const querySnapshot = await getDocs(q)
-
-      if (querySnapshot.empty) {
-      } else {
-        const drawingArray: any[] = [];
-        querySnapshot.forEach((doc) => {
-          drawingArray.push({ id: doc.id, ...doc.data() });
-        });
-        setDrawingInfo(drawingArray);
-      }
-    } catch (error) {
-    }
-  }; */
-
-  // Function to handle flagging
-  const handleFlag = async (drawingId: string, image: string) => {
-    Alert.alert(
-      "Flag Content",
-      "Are you sure you want to flag this drawing for review?",
-      [
-        {
-          text: "Cancel",
-          style: "cancel",
+// Function to handle flagging
+const handleFlag = async (drawingId: string, image: string) => {
+  Alert.alert(
+    "Flag Content",
+    "Are you sure you want to flag this drawing for review?",
+    [
+      {
+        text: "Cancel",
+        style: "cancel",
+      },
+      {
+        text: "Flag",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            const flagDrawing = getCallableFunction("flagDrawing");
+            const response = await flagDrawing({ drawingId, image }) as { data: { message: string } };
+            alert(response.data.message);
+          } catch (error) {
+            alert("Failed to flag drawing. Please try again later.");
+          }
         },
-        {
-          text: "Flag",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              const flagRef = doc(collection(db, "flags"));
-              await setDoc(flagRef, {
-                drawingId,
-                image,
-                flaggedBy: auth.currentUser.uid,
-                timestamp: new Date(),
-              });
-              alert("Drawing has been flagged for review.");
-            } catch (error) {
-            }
-          },
-        },
-      ],
-      { cancelable: true }
-    );
-  };
+      },
+    ],
+    { cancelable: true }
+  );
+};
+
+// Function to handle voting
+const handleVote = async (userId: string) => {
+  const currentUser = auth.currentUser?.uid;
+  if (!currentUser) {
+    return;
+  }
+
+  try {
+    const voteFunction = getCallableFunction("handleVote") as unknown as (
+      data: { userId: string }
+    ) => Promise<{ data: { message: string } }>;
+
+    const response = await voteFunction({ userId });
+    alert(response.data.message);
+
+    fetchData();
+  } catch (error) {
+    alert("Already voted");
+  }
+};
 
 // Function to handle share
 const handleShare = async (image: string) => {
-  // Convert base64 to a file
   const filename = `${FileSystem.cacheDirectory}shared-image.jpg`;
   await FileSystem.writeAsStringAsync(filename, image, { encoding: FileSystem.EncodingType.Base64 });
 
-  // Share the file if available on device
   if (await Sharing.isAvailableAsync()) {
     await Sharing.shareAsync(filename, {
       mimeType: 'image/jpg',
@@ -173,65 +133,19 @@ const handleShare = async (image: string) => {
 };
 
 
-    useEffect(() => {
-      const fetchWord = async () => {
-        try { 
-          const themesTodaySnapshot = await getDocs(
-            query(collection(db, 'themes_today'), orderBy('timestamp', 'desc'), limit(1))
-          );
-    
-          if (!themesTodaySnapshot.empty) {
-            const wordDoc = themesTodaySnapshot.docs[0];
-            setWord(wordDoc.data().word);
-          } 
-        } catch (error) {
-        }
-      };
-    
-      fetchWord();
-    }, []);
+useEffect(() => {
+  const fetchWord = async () => {
+    try {
+      const fetchLatestWord = getCallableFunction("fetchLatestWord") as unknown as () => Promise<{ data: { word: string } }>;
+      const response = await fetchLatestWord();
 
-  
-
- const handleVote = async (userId: string) => {
-  const currentUser = auth.currentUser?.uid; 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0); 
-
-  if (!currentUser) {
-    return;
-  }
-
-  try {
-    // Reference to the user's vote for today
-    const voteRef = doc(db, "user_votes", `${currentUser}_${today.toISOString().split('T')[0]}`);
-
-    // Fetch user's vote for today
-    const voteDoc = await getDoc(voteRef);
-
-    // If the user has already voted today
-    if (voteDoc.exists()) {
-      return;
+      setWord(response.data.word);
+    } catch (error) {
     }
+  };
 
-    // If user hasn't voted today, proceed to cast vote
-    const drawingRef = doc(db, "drawings", userId);
-    await updateDoc(drawingRef, {
-      votes: increment(1)
-    });
-
-    // Store the vote in 'user_votes' collection
-    await setDoc(voteRef, {
-      userId: currentUser,
-      drawingId: userId,
-      voteDate: today
-    });
-
-    // Fetch updated data after voting
-    fetchData();
-  } catch (error) {
-  }
-};
+  fetchWord();
+}, []);
 
 useEffect(() => {
   fetchData();
@@ -244,6 +158,9 @@ useEffect(() => {
     <View style={styles.themeContainer}>
           <Text style={{ fontFamily: 'PressStart2P_400Regular', textAlign: 'center', lineHeight: 22 }}>Theme of the Day: {"\n"}{word || "Loading..."}</Text>
         </View>
+        {loading ? ( 
+                    <ActivityIndicator size="large" color="grey" />
+                ) : drawingInfo.length > 0 ? (
         <FlatList
           data={drawingInfo}
           keyExtractor={(item) => item.id}
@@ -273,6 +190,9 @@ useEffect(() => {
         )}
         showsVerticalScrollIndicator={false}
       />
+    ) : (
+      <Text>No drawings found</Text> 
+  )}
 
       
       <Modal

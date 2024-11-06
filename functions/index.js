@@ -4,7 +4,7 @@ const admin = require("firebase-admin");
 admin.initializeApp();
 const db = admin.firestore();
 
-exports.pickDailyWinner = functions.pubsub.schedule("30 18 * * *")
+exports.pickDailyWinner = functions.pubsub.schedule("30 13 * * *")
     .timeZone("Europe/London").onRun(async (context) => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -93,7 +93,7 @@ exports.pickDailyWinner = functions.pubsub.schedule("30 18 * * *")
 
 // select random word function
 
-exports.selectRandomWord = functions.pubsub.schedule("17 15 * * *")
+exports.selectRandomWord = functions.pubsub.schedule("10 13 * * *")
     .timeZone("Europe/London").onRun(async (context) => {
       const themesSnapshot = await db.collection("themes").get();
 
@@ -128,7 +128,7 @@ exports.selectRandomWord = functions.pubsub.schedule("17 15 * * *")
 
 // Fetch drawings & assign room IDs
 
-exports.assignRooms = functions.pubsub.schedule("45 16 * * *")
+exports.assignRooms = functions.pubsub.schedule("23 13 * * *")
     .timeZone("Europe/London").onRun(async (context) => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -204,6 +204,136 @@ exports.getRoomDrawings = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError(
         "internal",
         "Unable to fetch room drawings.",
+    );
+  }
+});
+
+exports.flagDrawing = functions.https.onCall(async (data, context) => {
+  // Check if the request is authenticated
+  if (!context.auth) {
+    throw new functions.https.HttpsError(
+        "unauthenticated",
+        "User must be authenticated to flag content.",
+    );
+  }
+
+  const {drawingId, image} = data;
+  const flaggedBy = context.auth.uid;
+
+  // Validate the data
+  if (!drawingId || !image) {
+    throw new functions.https.HttpsError(
+        "invalid-argument",
+        "The function must be called with a drawingId and image.",
+    );
+  }
+
+  try {
+    // Create a reference for a new document in the 'flags' collection
+    const flagRef = db.collection("flags").doc();
+
+    // Set the document data
+    await flagRef.set({
+      drawingId,
+      image,
+      flaggedBy,
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    return {message: "Drawing has been flagged for review."};
+  } catch (error) {
+    console.error("Error flagging drawing:", error);
+    throw new functions.https.HttpsError(
+        "internal",
+        "Failed to flag drawing. Please try again later.",
+    );
+  }
+});
+
+exports.handleVote = functions.https.onCall(async (data, context) => {
+  const {userId} = data;
+  const currentUser = context.auth.uid;
+
+  if (!currentUser) {
+    throw new functions.https.HttpsError(
+        "unauthenticated",
+        "User must be authenticated.",
+    );
+  }
+
+  try {
+    // Date key for today's vote record
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dateKey = today.toISOString().split("T")[0];
+
+    // Reference to the user's vote for today
+    const voteRef = db.collection("user_votes")
+        .doc(`${currentUser}_${dateKey}`);
+    const voteDoc = await voteRef.get();
+
+    // Check if the user has already voted today
+    if (voteDoc.exists) {
+      throw new functions.https.HttpsError(
+          "already-exists",
+          "User has already voted today.");
+    }
+
+    // Proceed to cast the vote
+    const drawingRef = db.collection("drawings").doc(userId);
+    await db.runTransaction(async (transaction) => {
+      const drawingDoc = await transaction.get(drawingRef);
+
+      if (!drawingDoc.exists) {
+        throw new functions.https.HttpsError(
+            "not-found",
+            "Drawing does not exist.");
+      }
+
+      // Increment the vote count for the drawing
+      transaction.update(drawingRef,
+          {votes: admin.firestore.FieldValue.increment(1)});
+
+      // Store the vote in 'user_votes' collection
+      transaction.set(voteRef, {
+        userId: currentUser,
+        drawingId: userId,
+        voteDate: admin.firestore.Timestamp.fromDate(today),
+      });
+    });
+
+    return {message: "Vote successfully cast!"};
+  } catch (error) {
+    console.error("Error casting vote:", error);
+    throw new functions.https.HttpsError(
+        "unknown",
+        "Already voted");
+  }
+});
+
+
+exports.fetchLatestWord = functions.https.onCall(async (data, context) => {
+  try {
+    // Query to get the latest theme word by timestamp
+    const themesTodaySnapshot = await db
+        .collection("themes_today")
+        .orderBy("timestamp", "desc")
+        .limit(1)
+        .get();
+
+    // Check if there's a document and return the word
+    if (!themesTodaySnapshot.empty) {
+      const wordDoc = themesTodaySnapshot.docs[0];
+      const wordData = wordDoc.data();
+      return {word: wordData.word};
+    } else {
+      throw new functions.https.HttpsError("not-found", "No theme word found.");
+    }
+  } catch (error) {
+    console.error("Error fetching word:", error);
+    throw new functions.https.HttpsError(
+        "unknown",
+        "Failed to fetch theme word.",
     );
   }
 });
