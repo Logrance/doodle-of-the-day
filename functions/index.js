@@ -4,7 +4,7 @@ const admin = require("firebase-admin");
 admin.initializeApp();
 const db = admin.firestore();
 
-exports.pickDailyWinner = functions.pubsub.schedule("15 17 * * *")
+exports.pickDailyWinner = functions.pubsub.schedule("30 18 * * *")
     .timeZone("Europe/London").onRun(async (context) => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -93,7 +93,7 @@ exports.pickDailyWinner = functions.pubsub.schedule("15 17 * * *")
 
 // select random word function
 
-exports.selectRandomWord = functions.pubsub.schedule("05 00 * * *")
+exports.selectRandomWord = functions.pubsub.schedule("17 15 * * *")
     .timeZone("Europe/London").onRun(async (context) => {
       const themesSnapshot = await db.collection("themes").get();
 
@@ -128,7 +128,7 @@ exports.selectRandomWord = functions.pubsub.schedule("05 00 * * *")
 
 // Fetch drawings & assign room IDs
 
-exports.assignRooms = functions.pubsub.schedule("00 17 * * *")
+exports.assignRooms = functions.pubsub.schedule("45 16 * * *")
     .timeZone("Europe/London").onRun(async (context) => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -151,3 +151,59 @@ exports.assignRooms = functions.pubsub.schedule("00 17 * * *")
 
       return {message: "Room IDs assigned to drawings successfully"};
     });
+
+//  fetch drawings logic
+exports.getRoomDrawings = functions.https.onCall(async (data, context) => {
+// Ensure user is authenticated
+  const userId = context.auth.uid;
+  if (!userId) {
+    throw new functions.https.HttpsError(
+        "unauthenticated",
+        "User must be signed in.",
+    );
+  }
+
+  // Get the provided date or default to today
+  const today = new Date(data.date || Date.now());
+  today.setHours(0, 0, 0, 0);
+  const startOfDay = today.getTime();
+  const endOfDay = startOfDay + 24 * 60 * 60 * 1000;
+
+  try {
+  // Step 1: Fetch the user's drawing for today to get the roomId
+    const userDrawingSnapshot = await db.collection("drawings")
+        .where("userId", "==", userId)
+        .where("date", ">=", startOfDay)
+        .where("date", "<", endOfDay)
+        .limit(1)
+        .get();
+
+    if (userDrawingSnapshot.empty) {
+      return {drawings: []}; // No drawing found for the user today
+    }
+
+    const userDrawing = userDrawingSnapshot.docs[0].data();
+    const userRoomId = userDrawing.roomId;
+
+    // Step 2: Query the room's drawings, excluding the user's own drawing
+    const roomDrawingsSnapshot = await db.collection("drawings")
+        .where("roomId", "==", userRoomId)
+        .where("userId", "!=", userId)
+        .where("date", ">=", startOfDay)
+        .where("date", "<", endOfDay)
+        .orderBy("votes", "desc")
+        .orderBy("userId", "desc")
+        .get();
+
+    // Map and return drawing data
+    const drawings = roomDrawingsSnapshot.docs.map((doc) =>
+      ({id: doc.id, ...doc.data()}));
+    return {drawings};
+  } catch (error) {
+    console.error("Error fetching room drawings:", error);
+    throw new functions.https.HttpsError(
+        "internal",
+        "Unable to fetch room drawings.",
+    );
+  }
+});

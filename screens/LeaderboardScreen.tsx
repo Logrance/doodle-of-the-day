@@ -1,4 +1,4 @@
-import { collection, query, orderBy, getDocs, limit, getDoc, doc } from "firebase/firestore";
+import { collection, query, orderBy, getDocs } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import { View, Text, FlatList, StyleSheet, ActivityIndicator } from "react-native";
 import { db, auth } from "../firebaseConfig";
@@ -34,7 +34,7 @@ const LeaderboardScreen = () => {
         });
       });
   
-      // Get the current user
+      
       const currentUser = auth.currentUser;
       let currentUserRank = -1;
       let currentUserData: User | null = null;
@@ -42,12 +42,12 @@ const LeaderboardScreen = () => {
       if (currentUser) {
         setCurrentUserId(currentUser.uid);
         
-        // Find the rank of the current user in the sorted list
+        
         currentUserRank = allUsersArray.findIndex(
           (user) => user.id === currentUser.uid
         ) + 1;
 
-        // If the current user is outside the top 10, get their data
+
         if (currentUserRank > 12) {
           currentUserData = allUsersArray.find(
             (user) => user.id === currentUser.uid
@@ -55,13 +55,11 @@ const LeaderboardScreen = () => {
         }
       }
   
-      // Update state with top 10 users, current user rank, and data if outside top 10
       setUsers(allUsersArray.slice(0, 12));
       setCurrentUserRank(currentUserRank);
       setCurrentUserData(currentUserData);
   
     } catch (error) {
-      console.log("Error fetching leaderboard", error);
     } finally {
       setLoading(false);
     }
@@ -94,7 +92,6 @@ const LeaderboardScreen = () => {
             )}
             showsVerticalScrollIndicator={false}
           />
-          {/* Show the current user’s rank if they’re outside the top 10 */}
           {currentUserRank > 12 && currentUserData && (
             <View style={styles.leaderboardItemTwo}>
               <Text style={styles.rank}>{currentUserRank}</Text>
@@ -111,7 +108,6 @@ const LeaderboardScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    //padding: 20,
     paddingHorizontal: 20,
     paddingTop: 5,
     backgroundColor: 'white',

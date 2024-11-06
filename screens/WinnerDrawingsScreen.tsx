@@ -153,7 +153,6 @@ const handleShare = async (image: string) => {
                       <ConfettiCannon count={200} origin={{ x: -10, y: 0 }} fadeOut={true} onAnimationEnd={() => setShowConfetti(false)} />
                     )}
 
-            {/* Winner Modal */}
         <Modal
           visible={showWinnerModal}
           transparent={true}

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, Image, FlatList, Text, Modal, TouchableNativeFeedback, Platform, Alert } from 'react-native';
 import { collection, getDocs, query, where, orderBy, updateDoc, doc, increment, getDoc, setDoc, limit } from "firebase/firestore"; 
-import { db, auth } from '../../../firebaseConfig';
+import { db, auth, getCallableFunction } from '../../../firebaseConfig';
 import { TouchableOpacity, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Entypo from '@expo/vector-icons/Entypo';
@@ -9,6 +9,17 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
 
+type Drawing = {
+  id: string;
+  roomId: string;
+  userId: string;
+  date: number;
+  votes: number;
+};
+
+type GetRoomDrawingsResponse = {
+  drawings: Drawing[];
+};
 
 export default function VoteScreen() {
 
@@ -16,7 +27,6 @@ export default function VoteScreen() {
 
   //For word theme state
   const [word, setWord] = useState<string | null>(null);
-  const [isVisible, setIsVisible] = useState(false);
 
   //Modal logic
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -33,6 +43,33 @@ export default function VoteScreen() {
   };
 
   const fetchData = async () => {
+    try {
+        const user = auth.currentUser;
+        if (!user) {
+            throw new Error("No user is signed in");
+        }
+
+        // Ensure TypeScript knows getRoomDrawings is a callable function with specific response type
+        const getRoomDrawings = getCallableFunction("getRoomDrawings") as (
+            data: { date: string; userId: string }
+        ) => Promise<{ data: GetRoomDrawingsResponse }>;
+
+        // Call the function with parameters
+        const response = await getRoomDrawings({
+            date: new Date().toISOString(),
+            userId: user.uid,
+        });
+
+        // Now TypeScript knows response.data is of type GetRoomDrawingsResponse
+        const drawings = response.data.drawings;
+        setDrawingInfo(drawings);
+
+    } catch (error) {
+        console.error("Error fetching drawings:", error);
+    }
+};
+
+  /*const fetchData = async () => {
     try {
       const user = auth.currentUser;
       if (!user) {
@@ -54,11 +91,9 @@ export default function VoteScreen() {
     const userDrawingSnapshot = await getDocs(userDrawingRef);
 
     if (userDrawingSnapshot.empty) {
-      console.log("No drawing found for the current user.");
       return;
     }
 
-    // Assuming the user has only one drawing for today, retrieve their roomId
     const userDrawing = userDrawingSnapshot.docs[0].data();
     const userRoomId = userDrawing.roomId;
 
@@ -75,7 +110,6 @@ export default function VoteScreen() {
       const querySnapshot = await getDocs(q)
 
       if (querySnapshot.empty) {
-        console.log("No documents init");
       } else {
         const drawingArray: any[] = [];
         querySnapshot.forEach((doc) => {
@@ -84,9 +118,8 @@ export default function VoteScreen() {
         setDrawingInfo(drawingArray);
       }
     } catch (error) {
-      console.log("Error message", error);
     }
-  };
+  }; */
 
   // Function to handle flagging
   const handleFlag = async (drawingId: string, image: string) => {
@@ -112,7 +145,6 @@ export default function VoteScreen() {
               });
               alert("Drawing has been flagged for review.");
             } catch (error) {
-              console.log("Error flagging content:", error);
             }
           },
         },
@@ -139,9 +171,6 @@ const handleShare = async (image: string) => {
 };
 
 
-
-    //Popup logic
-
     useEffect(() => {
       const fetchWord = async () => {
         try { 
@@ -152,12 +181,8 @@ const handleShare = async (image: string) => {
           if (!themesTodaySnapshot.empty) {
             const wordDoc = themesTodaySnapshot.docs[0];
             setWord(wordDoc.data().word);
-            setIsVisible(true);
-          } else {
-            console.log("No such document!");
-          }
+          } 
         } catch (error) {
-          console.error("Error fetching document:", error);
         }
       };
     
@@ -167,12 +192,11 @@ const handleShare = async (image: string) => {
   
 
  const handleVote = async (userId: string) => {
-  const currentUser = auth.currentUser?.uid; // Get current user ID
+  const currentUser = auth.currentUser?.uid; 
   const today = new Date();
-  today.setHours(0, 0, 0, 0); // Reset time to midnight for consistent date checking
+  today.setHours(0, 0, 0, 0); 
 
   if (!currentUser) {
-    console.log("User not authenticated");
     return;
   }
 
@@ -185,7 +209,6 @@ const handleShare = async (image: string) => {
 
     // If the user has already voted today
     if (voteDoc.exists()) {
-      console.log("User has already voted today.");
       return;
     }
 
@@ -205,7 +228,6 @@ const handleShare = async (image: string) => {
     // Fetch updated data after voting
     fetchData();
   } catch (error) {
-    console.log("Error voting:", error);
   }
 };
 
@@ -326,23 +348,19 @@ const styles = StyleSheet.create({
   enlargedImage: {
     width: 400,
     height: 400,
-    //borderRadius: 8,
     backgroundColor: 'white',
     resizeMode: 'contain',
   },
   buttonOther: {
     backgroundColor: 'white',
-    //width: '60%',
     padding:7,
     borderRadius: 10,
     alignItems: 'center',
-    //alignContent: 'center',
     marginBottom: 5,
     elevation: 5,
   },
   buttonVote: {
     backgroundColor: 'rgb(125,22,27)',
-    //width: '60%',
     padding:7,
     borderRadius: 10,
     alignContent: 'center',

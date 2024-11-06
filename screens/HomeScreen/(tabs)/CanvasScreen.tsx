@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { View, Dimensions, TouchableOpacity, StyleSheet, Button, Alert, Text, Modal } from 'react-native';
+import { View, Dimensions, TouchableOpacity, StyleSheet, Alert, Text, Modal } from 'react-native';
 import { GestureHandlerRootView} from 'react-native-gesture-handler'
 import { Canvas, Path, useCanvasRef, SkPath, Skia, TouchInfo, useTouchHandler, Rect } from '@shopify/react-native-skia';
 import { StatusBar } from 'expo-status-bar';
@@ -11,11 +11,8 @@ import AntDesign from '@expo/vector-icons/AntDesign';
 
 export default function CanvasScreen() {
   const { width, height } = Dimensions.get("window");
-
   const [paths, setPaths] = useState<SkPath[]>([]);
-
-  const [isVisible, setIsVisible] = useState(false); // Modal visibility state
-  const [hasSeenTutorial, setHasSeenTutorial] = useState(false);
+  const [isVisible, setIsVisible] = useState(false); 
 
   const ref = useCanvasRef();
 
@@ -59,28 +56,26 @@ export default function CanvasScreen() {
 
 const addImageToDB = async (imageBase64: string) => {
   try {
-    // Ensure a user is logged in
     const user = auth.currentUser;
     if (!user) {
       throw new Error("No user is signed in");
     }
 
-    // Get the current date (midnight)
     const today = new Date();
-    today.setHours(0, 0, 0, 0); // Set time to midnight
+    today.setHours(0, 0, 0, 0); 
 
-    // Query for existing drawings for the current user on the current day
+    
     const querySnapshot = await getDocs(query(
       collection(db, 'drawings'),
       where('userId', '==', user.uid),
       where('date', '>=', today.getTime()),
-      where('date', '<', today.getTime() + (24 * 60 * 60 * 1000)) // Add 24 hours
+      where('date', '<', today.getTime() + (24 * 60 * 60 * 1000)) 
     ));
 
     // Check if there are any existing drawings for today
     if (querySnapshot.empty) {
       // No drawings found, proceed with adding the new drawing
-      const docRef = await addDoc(collection(db, 'drawings'), {
+      await addDoc(collection(db, 'drawings'), {
         title: "Captured Image",  
         done: false,
         image: imageBase64,  
@@ -88,17 +83,13 @@ const addImageToDB = async (imageBase64: string) => {
         votes: 0,
         date: Date.now(),
       });
-      Alert.alert("Canvas Captured", "Thanks for submitting your doodle for today!");
-      console.log('Document written with ID: ', docRef.id);
+      Alert.alert("Drawing Submitted", "Thanks for submitting your doodle for today!");
       clearCanvas();
     } else {
-      // User already has a drawing for today
-      Alert.alert("Submit Failed", "You have already doodled today!");
-      console.log('User already has a drawing for today.');
+      Alert.alert("Submission Failed", "You have already doodled today!");
       clearCanvas();
     }
   } catch (e) {
-    console.error('Error adding document: ', e);
   }
 };
 
@@ -118,20 +109,13 @@ const captureCanvas = () => {
         style: "default",
         onPress: () => {
   const image = ref.current?.makeImageSnapshot();
-  if (image) {
     const imageConversion = image.encodeToBase64();
      addImageToDB(imageConversion);
-     console.log("drawing captured")
-    //Alert.alert("Canvas Captured", "The canvas snapshot was successfully captured!");
-  } else {
-    console.log("Drawing unsuccessful")
-    //Alert.alert("Capture Failed", "Could not capture the canvas.");
-  }
-},
-},
-]
-);
-};
+     },
+    },
+   ]
+  );
+ };
 
   // Fetch user tutorial status
   useEffect(() => {
@@ -143,7 +127,6 @@ const captureCanvas = () => {
 
         if (userDoc.exists()) {
           const userData = userDoc.data();
-          setHasSeenTutorial(userData.hasSeenTutorial);
 
           // Show tutorial if not seen
           if (!userData.hasSeenTutorial) {
@@ -157,13 +140,12 @@ const captureCanvas = () => {
 
     // Handle modal close
     const handleModalClose = async () => {
-      setIsVisible(false); // Close the modal
+      setIsVisible(false); 
   
       const user = auth.currentUser;
       if (user) {
         const userRef = doc(db, 'users', user.uid);
         await updateDoc(userRef, { hasSeenTutorial: true });
-        setHasSeenTutorial(true); // Update local state
       }
     };
 
@@ -217,7 +199,6 @@ return (
                 {"\n"}
                 • Winners are picked at 6pm.
               </Text>
-              {/* Add any other tutorial content */}
               <TouchableOpacity onPress={handleModalClose} style={styles.modalButton}>
                 <Text style={styles.buttonText}>Got it!</Text>
               </TouchableOpacity>
