@@ -365,3 +365,52 @@ exports.createUserDocument = functions.https.onCall(async (data, context) => {
     );
   }
 });
+
+exports.fetchWordAndCheckSubmission = functions.https.onCall(
+    async (data, context) => {
+      if (!context.auth) {
+        throw new functions.https.HttpsError(
+            "unauthenticated",
+            "User must be authenticated to access this function.",
+        );
+      }
+
+      try {
+        const themesTodaySnapshot = await db
+            .collection("themes_today")
+            .orderBy("timestamp", "desc")
+            .limit(1)
+            .get();
+
+        let word = null;
+        if (!themesTodaySnapshot.empty) {
+          const wordDoc = themesTodaySnapshot.docs[0];
+          word = wordDoc.data().word;
+        }
+
+        const userId = context.auth.uid;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const startOfDay = today.getTime();
+        const endOfDay = startOfDay + 24 * 60 * 60 * 1000;
+
+        const drawingSnapshot = await db
+            .collection("drawings")
+            .where("userId", "==", userId)
+            .where("date", ">=", startOfDay)
+            .where("date", "<", endOfDay)
+            .get();
+
+        const isVisible = drawingSnapshot.empty;
+
+        return {
+          word,
+          isVisible,
+        };
+      } catch (error) {
+        throw new functions.https.HttpsError(
+            "internal",
+            "Error fetching theme word or checking submission",
+        );
+      }
+    });

@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View, Modal, Image, ImageBackground } from 'react-native';
-import { auth, db } from '../../../firebaseConfig';
+import { auth, getCallableFunction } from '../../../firebaseConfig';
 import { useNavigation } from '@react-navigation/core';
-import { collection, getDocs, query, where, orderBy, limit } from "firebase/firestore"; 
 import { StackNavigationProp } from '@react-navigation/stack';
 
 type RootStackParamList = {
@@ -14,9 +13,16 @@ type RootStackParamList = {
   LeaderboardScreen: undefined;
 };
 
+interface FetchWordAndCheckSubmissionResponse {
+  word: string | null;
+  isVisible: boolean;
+}
+
 
 const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
+  const fetchWordAndCheckSubmission = getCallableFunction("fetchWordAndCheckSubmission");
+
 
 
   //For word theme state
@@ -32,45 +38,23 @@ const ProfileScreen: React.FC = () => {
     }
   };
 
-  //Popup logic
 
-  useEffect(() => {
-    const fetchWordAndCheckSubmission = async () => {
-      try { 
-        const themesTodaySnapshot = await getDocs(
-          query(collection(db, 'themes_today'), orderBy('timestamp', 'desc'), limit(1))
-        );
   
-        if (!themesTodaySnapshot.empty) {
-          const wordDoc = themesTodaySnapshot.docs[0];
-          setWord(wordDoc.data().word);
+useEffect(() => {
+  const fetchData = async () => {
+    try {
+      const response = await fetchWordAndCheckSubmission({}) as { data: FetchWordAndCheckSubmissionResponse };
+      const { word, isVisible } = response.data;
+      setWord(word);
+      setIsVisible(isVisible);
+    } catch (error: any) {
+      console.error("Error fetching theme word or checking submission:", error.message);
+    }
+  };
 
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const user = auth.currentUser;
+  fetchData();
+}, []);
 
-        const drawingQuery = query(
-          collection(db, 'drawings'),
-          where('userId', '==', user.uid),
-          where('date', '>=', today.getTime()),
-          where("date", "<", today.getTime() + (24 * 60 * 60 * 1000))
-        );
-
-        const drawingSnapshot = await getDocs(drawingQuery);
-
-        if (drawingSnapshot.empty) { 
-          setIsVisible(true);
-        } else {
-        }
-        } else {
-        }
-      } catch (error) {
-      }
-    };
-  
-    fetchWordAndCheckSubmission();
-  }, []);
-  
 
   return (
     <View style={styles.container}>
