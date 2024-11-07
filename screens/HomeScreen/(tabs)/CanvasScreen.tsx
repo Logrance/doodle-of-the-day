@@ -4,15 +4,18 @@ import { GestureHandlerRootView} from 'react-native-gesture-handler'
 import { Canvas, Path, useCanvasRef, SkPath, Skia, TouchInfo, useTouchHandler, Rect } from '@shopify/react-native-skia';
 import { StatusBar } from 'expo-status-bar';
 import { collection, addDoc, where, getDocs, query, doc, updateDoc, getDoc } from 'firebase/firestore';
-import { db, auth } from '../../../firebaseConfig';
+import { db, auth, getCallableFunction } from '../../../firebaseConfig';
 import AntDesign from '@expo/vector-icons/AntDesign';
-
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 
 
 export default function CanvasScreen() {
   const { width, height } = Dimensions.get("window");
   const [paths, setPaths] = useState<SkPath[]>([]);
   const [isVisible, setIsVisible] = useState(false); 
+
+    //For word theme state
+    const [word, setWord] = useState<string | null>(null);
 
   const ref = useCanvasRef();
 
@@ -149,6 +152,20 @@ const captureCanvas = () => {
       }
     };
 
+    useEffect(() => {
+      const fetchWord = async () => {
+        try {
+          const fetchLatestWord = getCallableFunction("fetchLatestWord") as unknown as () => Promise<{ data: { word: string } }>;
+          const response = await fetchLatestWord();
+    
+          setWord(response.data.word);
+        } catch (error) {
+        }
+      };
+    
+      fetchWord();
+    }, []);
+
 
 return (
   <>
@@ -174,12 +191,22 @@ return (
           <View style={{ flex: 1, flexDirection: "row"}}>
           <View style={styles.swatchContainer}>
               
-              <TouchableOpacity onPress={clearCanvas}>
+              <TouchableOpacity onPress={clearCanvas} style={styles.buttonAnother}>
               <AntDesign name="delete" size={24} color="black" />
               </TouchableOpacity>
+
+               <Text style={{ 
+                fontFamily: 'PressStart2P_400Regular',
+                textAlign: 'center',
+                lineHeight: 22,
+                fontSize: 14,
+              }}
+            >
+                Today's theme:{"\n"}{word || "Loading..."}
+            </Text>
             
               <TouchableOpacity onPress={captureCanvas} style={styles.buttonOther}>
-               <Text style={styles.buttonText}>Submit</Text>
+              <MaterialIcons name="keyboard-return" size={24} color="black" />
              </TouchableOpacity>
             </View>
           </View>
@@ -193,7 +220,7 @@ return (
               Welcome to Doodle of the Day! Here's how the app works: 
               </Text>
                 <Text style={styles.modalText}>
-                • Draw your picture by 12pm UK time.
+                • Draw your picture based on the daily theme by 12pm UK time.
                 {"\n"}
                 • At 12pm you are allocated a voting room. You have one vote, and once cast, it can't be taken back, so use it wisely.
                 {"\n"}
@@ -221,7 +248,12 @@ swatchContainer: {
   marginBottom: 35,
 },
 buttonOther: {
-  backgroundColor: 'rgba(2,52,72,0.7)',
+  backgroundColor: 'rgb(224,183,202)',
+  padding:7,
+  borderRadius: 10,
+},
+buttonAnother: {
+  backgroundColor: 'rgba(2,52,72, 0.5)',
   padding:7,
   borderRadius: 10,
 },

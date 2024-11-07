@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, Modal, Image, ImageBackground } from 'react-native';
-import { auth, getCallableFunction } from '../../../firebaseConfig';
+import React from 'react';
+import { StyleSheet, Text, TouchableOpacity, View, Image, ImageBackground } from 'react-native';
+import { auth } from '../../../firebaseConfig';
 import { useNavigation } from '@react-navigation/core';
 import { StackNavigationProp } from '@react-navigation/stack';
 
@@ -13,21 +13,10 @@ type RootStackParamList = {
   LeaderboardScreen: undefined;
 };
 
-interface FetchWordAndCheckSubmissionResponse {
-  word: string | null;
-  isVisible: boolean;
-}
-
 
 const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
-  const fetchWordAndCheckSubmission = getCallableFunction("fetchWordAndCheckSubmission");
 
-
-
-  //For word theme state
-  const [word, setWord] = useState<string | null>(null);
-  const [isVisible, setIsVisible] = useState(false);
 
   const handleSignOut = async () => {
     try {
@@ -37,23 +26,6 @@ const ProfileScreen: React.FC = () => {
       alert(error.message);
     }
   };
-
-
-  
-useEffect(() => {
-  const fetchData = async () => {
-    try {
-      const response = await fetchWordAndCheckSubmission({}) as { data: FetchWordAndCheckSubmissionResponse };
-      const { word, isVisible } = response.data;
-      setWord(word);
-      setIsVisible(isVisible);
-    } catch (error: any) {
-      console.error("Error fetching theme word or checking submission:", error.message);
-    }
-  };
-
-  fetchData();
-}, []);
 
 
   return (
@@ -79,7 +51,7 @@ useEffect(() => {
       <View style={styles.buttonContainer}>
       
     
-      <TouchableOpacity onPress={() => navigation.navigate('Deets')} style={styles.resetButton}>
+      <TouchableOpacity onPress={() => navigation.navigate('Deets')} style={styles.buttonDeets}>
         <Text style={styles.buttonText}>My deets</Text>
       </TouchableOpacity>
 
@@ -104,17 +76,6 @@ useEffect(() => {
       />
       </View>
       </ImageBackground>
-
-              <Modal visible={isVisible} transparent={true} animationType="slide">
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
-                <View style={{ backgroundColor: 'white', padding: 20, borderRadius: 10 }}>
-                    <Text style={{ fontSize: 20 }}>Today's Word: {word}</Text>
-                    <TouchableOpacity onPress={() => setIsVisible(false)} style={styles.buttonModal}>
-                    <Text style={styles.buttonText}>Close</Text>
-                  </TouchableOpacity>
-                </View>
-            </View>
-        </Modal>  
 
     </View>
   );
@@ -179,7 +140,7 @@ const styles = StyleSheet.create({
     height: 200,
     resizeMode: 'contain',
   },
-    resetButton: {
+    buttonDeets: {
       backgroundColor: 'rgba(170,170,170, 0.5)',
       width: '95%', 
       height: 60,
@@ -191,13 +152,6 @@ const styles = StyleSheet.create({
       shadowOpacity: 0.2,
       shadowRadius: 4,
     },
-  buttonModal: {
-    backgroundColor: 'rgba(2,52,72,0.7)',
-    padding: 15,
-    borderRadius: 10,
-    alignItems: "center",
-    marginTop: 10,
-  },
   topTextContainer: {
     alignItems: 'center',
     flexDirection: 'row',
