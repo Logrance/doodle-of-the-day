@@ -337,3 +337,31 @@ exports.fetchLatestWord = functions.https.onCall(async (data, context) => {
     );
   }
 });
+
+exports.createUserDocument = functions.https.onCall(async (data, context) => {
+  const {username, email, userId} = data;
+
+  if (!context.auth) {
+    throw new functions.https.HttpsError(
+        "unauthenticated",
+        "User must be authenticated.",
+    );
+  }
+
+  try {
+    await db.collection("users").doc(userId).set({
+      username,
+      email,
+      userId,
+      winCount: 0,
+      hasSeenTutorial: false,
+      isVerified: false,
+    });
+    return {success: true};
+  } catch (error) {
+    throw new functions.https.HttpsError(
+        "internal",
+        "Failed to create user document.",
+    );
+  }
+});

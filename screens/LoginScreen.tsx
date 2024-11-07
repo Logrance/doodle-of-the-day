@@ -1,10 +1,9 @@
 import { useNavigation } from '@react-navigation/core';
 import React, { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, StyleSheet, Text, TextInput, TouchableOpacity, View , Image, ImageBackground, Alert} from 'react-native';
-import { auth, db } from '../firebaseConfig';
+import { auth, getCallableFunction } from '../firebaseConfig';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { setDoc, doc } from 'firebase/firestore';
 
 type RootStackParamList = {
     HomeScreen: undefined;
@@ -17,6 +16,7 @@ const LoginScreen: React.FC = () => {
   const [username, setUsername] = useState<string>('');
 
  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
+ const createUserDocument = getCallableFunction("createUserDocument");
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(user => {
@@ -38,39 +38,27 @@ const LoginScreen: React.FC = () => {
     };
 
 
-  const handleSignUp = async () => {
-    if (!validateFields()) return;
+const handleSignUp = async () => {
+  if (!validateFields()) return;
 
-    try {
-      const userCredentials = await createUserWithEmailAndPassword(auth, email, password);
-      const user = userCredentials.user;
+  try {
+    const userCredentials = await createUserWithEmailAndPassword(auth, email, password);
+    const user = userCredentials.user;
 
-      try {
-        await sendEmailVerification(auth.currentUser);
-        Alert.alert(
-          "Verification Sent",
-          "A verification email has been sent. Please check your inbox and verify your email address.",
-          [{ text: "OK" }]
-        );
+    await sendEmailVerification(user);
+    Alert.alert("Verification Sent", "A verification email has been sent.");
 
-      } catch (verificationError) {
-        alert('Verification email could not be sent. Please check your email address or try again later.');
-        return; 
-      }
+    await createUserDocument({
+      username,
+      email: user.email,
+      userId: user.uid,
+    });
 
-      await setDoc(doc(db, 'users', user.uid), {
-        username,
-        email: user.email,
-        userId: user.uid,
-        winCount: 0,
-        hasSeenTutorial: false,
-        isVerified: false,
-      });
+  } catch (error: any) {
+    alert(error.message);
+  }
+};
 
-    } catch (error: any) {
-      alert(error.message);
-    }
-  };
 
   const handleLogin = async () => {
     try {
