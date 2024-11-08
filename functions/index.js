@@ -4,7 +4,7 @@ const admin = require("firebase-admin");
 admin.initializeApp();
 const db = admin.firestore();
 
-exports.pickDailyWinner = functions.pubsub.schedule("30 13 * * *")
+exports.pickDailyWinner = functions.pubsub.schedule("45 00 * * *")
     .timeZone("Europe/London").onRun(async (context) => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -93,7 +93,7 @@ exports.pickDailyWinner = functions.pubsub.schedule("30 13 * * *")
 
 // select random word function
 
-exports.selectRandomWord = functions.pubsub.schedule("10 13 * * *")
+exports.selectRandomWord = functions.pubsub.schedule("25 00 * * *")
     .timeZone("Europe/London").onRun(async (context) => {
       const themesSnapshot = await db.collection("themes").get();
 
@@ -128,7 +128,7 @@ exports.selectRandomWord = functions.pubsub.schedule("10 13 * * *")
 
 // Fetch drawings & assign room IDs
 
-exports.assignRooms = functions.pubsub.schedule("23 13 * * *")
+exports.assignRooms = functions.pubsub.schedule("35 00 * * *")
     .timeZone("Europe/London").onRun(async (context) => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -363,5 +363,102 @@ exports.createUserDocument = functions.https.onCall(async (data, context) => {
         "internal",
         "Failed to create user document.",
     );
+  }
+});
+
+exports.addImageToDB = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError(
+        "unauthenticated",
+        "User must be authenticated to submit a drawing.",
+    );
+  }
+
+  const {imageBase64} = data;
+  const userId = context.auth.uid;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const startOfDay = today.getTime();
+  const endOfDay = startOfDay + 24 * 60 * 60 * 1000;
+
+  try {
+    const drawingQuery = await db.collection("drawings")
+        .where("userId", "==", userId)
+        .where("date", ">=", startOfDay)
+        .where("date", "<", endOfDay)
+        .get();
+
+    if (!drawingQuery.empty) {
+      throw new functions.https.HttpsError(
+          "failed-precondition",
+          "You have already doodled today.",
+      );
+    }
+
+    await db.collection("drawings").add({
+      title: "Captured Image",
+      done: false,
+      image: imageBase64,
+      userId,
+      votes: 0,
+      date: Date.now(),
+    });
+
+    return {success: true, message: "Drawing submitted successfully!"};
+  } catch (error) {
+    throw new functions.https.HttpsError(
+        "internal",
+        "Failed to submit drawing.", error);
+  }
+});
+
+exports.fetchUserAndCheckTutorial = functions.https.onCall(
+    async (data, context) => {
+      if (!context.auth) {
+        throw new functions.https.HttpsError(
+            "unauthenticated",
+            "User must be authenticated.",
+        );
+      }
+
+      const userId = context.auth.uid;
+      const userRef = db.collection("users").doc(userId);
+
+      try {
+        const userDoc = await userRef.get();
+        if (!userDoc.exists) {
+          throw new functions.https.HttpsError(
+              "not-found",
+              "User document not found.",
+          );
+        }
+
+        const userData = userDoc.data();
+        return {hasSeenTutorial: !!userData.hasSeenTutorial};
+      } catch (error) {
+        throw new functions.https.HttpsError(
+            "internal",
+            "Failed to fetch tutorial status.", error);
+      }
+    });
+
+exports.updateTutorialStatus = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError(
+        "unauthenticated",
+        "User must be authenticated.",
+    );
+  }
+
+  const userId = context.auth.uid;
+  const userRef = db.collection("users").doc(userId);
+
+  try {
+    await userRef.update({hasSeenTutorial: true});
+    return {success: true};
+  } catch (error) {
+    throw new functions.https.HttpsError(
+        "internal",
+        "Failed to update tutorial status.", error);
   }
 });

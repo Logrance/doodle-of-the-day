@@ -3,10 +3,11 @@ import { View, Dimensions, TouchableOpacity, StyleSheet, Alert, Text, Modal } fr
 import { GestureHandlerRootView} from 'react-native-gesture-handler'
 import { Canvas, Path, useCanvasRef, SkPath, Skia, TouchInfo, useTouchHandler, Rect } from '@shopify/react-native-skia';
 import { StatusBar } from 'expo-status-bar';
-import { collection, addDoc, where, getDocs, query, doc, updateDoc, getDoc } from 'firebase/firestore';
-import { db, auth, getCallableFunction } from '../../../firebaseConfig';
+import { getCallableFunction } from '../../../firebaseConfig';
 import AntDesign from '@expo/vector-icons/AntDesign';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+
+type AddImageResponse = { data: { message: string } };
 
 
 export default function CanvasScreen() {
@@ -55,47 +56,17 @@ export default function CanvasScreen() {
   };
 
 
-//Canvas snapshot and send to Firestore db
-
 const addImageToDB = async (imageBase64: string) => {
   try {
-    const user = auth.currentUser;
-    if (!user) {
-      throw new Error("No user is signed in");
-    }
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); 
-
-    
-    const querySnapshot = await getDocs(query(
-      collection(db, 'drawings'),
-      where('userId', '==', user.uid),
-      where('date', '>=', today.getTime()),
-      where('date', '<', today.getTime() + (24 * 60 * 60 * 1000)) 
-    ));
-
-    // Check if there are any existing drawings for today
-    if (querySnapshot.empty) {
-      // No drawings found, proceed with adding the new drawing
-      await addDoc(collection(db, 'drawings'), {
-        title: "Captured Image",  
-        done: false,
-        image: imageBase64,  
-        userId: user.uid,
-        votes: 0,
-        date: Date.now(),
-      });
-      Alert.alert("Drawing Submitted", "Thanks for submitting your doodle for today!");
-      clearCanvas();
-    } else {
-      Alert.alert("Submission Failed", "You have already doodled today!");
-      clearCanvas();
-    }
-  } catch (e) {
+    const addImage = getCallableFunction("addImageToDB") as unknown as (params: { imageBase64: string }) => Promise<AddImageResponse>;
+    const response = await addImage({ imageBase64 });
+    Alert.alert("Success", response.data.message);
+    clearCanvas();
+  } catch (error) {
+    Alert.alert("Submission Failed", error.message || "Error submitting drawing");
+    clearCanvas();
   }
 };
-
 
 const captureCanvas = () => {
   Alert.alert(
@@ -120,37 +91,32 @@ const captureCanvas = () => {
   );
  };
 
-  // Fetch user tutorial status
-  useEffect(() => {
-    const fetchUserAndCheckTutorial = async () => {
-      const user = auth.currentUser;
-      if (user) {
-        const userRef = doc(db, 'users', user.uid);
-        const userDoc = await getDoc(userRef);
+ useEffect(() => {
+  const checkTutorialStatus = async () => {
+    try {
+      const fetchUserAndCheckTutorial = getCallableFunction("fetchUserAndCheckTutorial");
+      const response = await fetchUserAndCheckTutorial({}) as { data: { hasSeenTutorial: boolean } };
+      setIsVisible(!response.data.hasSeenTutorial);
+    } catch (error) {
+      console.error("Error checking tutorial status:", error.message);
+    }
+  };
 
-        if (userDoc.exists()) {
-          const userData = userDoc.data();
+  checkTutorialStatus();
+}, []);
 
-          // Show tutorial if not seen
-          if (!userData.hasSeenTutorial) {
-            setIsVisible(true);
-          }
-        }
-      }
-    };
-    fetchUserAndCheckTutorial();
-  }, []);
+const handleModalClose = async () => {
+  setIsVisible(false);
 
-    // Handle modal close
-    const handleModalClose = async () => {
-      setIsVisible(false); 
-  
-      const user = auth.currentUser;
-      if (user) {
-        const userRef = doc(db, 'users', user.uid);
-        await updateDoc(userRef, { hasSeenTutorial: true });
-      }
-    };
+  try {
+    const updateTutorialStatus = getCallableFunction("updateTutorialStatus");
+    await updateTutorialStatus({});
+  } catch (error) {
+    console.error("Error updating tutorial status:", error.message);
+  }
+};
+
+
 
     useEffect(() => {
       const fetchWord = async () => {
