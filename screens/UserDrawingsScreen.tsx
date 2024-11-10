@@ -1,7 +1,6 @@
-import { collection, query, where, getDocs } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import { View, Text, FlatList, Image, StyleSheet, Modal, TouchableNativeFeedback, Platform, ActivityIndicator } from "react-native";
-import { db, auth } from "../firebaseConfig";
+import { getCallableFunction } from "../firebaseConfig";
 import { TouchableOpacity, GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
@@ -11,6 +10,10 @@ interface Drawing {
     id: string;
     image: string;
 }
+
+type GetFetchUserDrawingsResponse = {
+  drawings: Drawing[];
+};
 
 const UserDrawingsScreen = () => {
     const [drawings, setDrawings] = useState<Drawing[]>([]);
@@ -49,27 +52,25 @@ const handleShare = async (image: string) => {
     setModalVisible(false);
   };
 
-    useEffect (() => {
-        const fetchDrawings = async () => {
-            setLoading(true);
-            const user = auth.currentUser;
-            if (user) {
-                const q = query(
-                    collection(db, 'drawings'),
-                    where('userId', '==', user.uid)
-                );
-                const querySnapshot = await getDocs(q);
-                const userDrawings = querySnapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data(),
-                })) as Drawing[];
-                setDrawings(userDrawings)
-            }
-            setLoading(false);
-        };
+  useEffect(() => {
+    const fetchDrawings = async () => {
+      try {
+        setLoading(true);
+        
+        const fetchUserDrawings = getCallableFunction('fetchUserDrawings');
+        
+        const result = await fetchUserDrawings({});
+        const data = result.data as GetFetchUserDrawingsResponse;
+        
+        setDrawings(data.drawings);
+      } catch (error) {
+      } finally {
+        setLoading(false);
+      }
+    };
 
-        fetchDrawings()
-    }, []);
+    fetchDrawings();
+  }, []);
 
     return (
         <GestureHandlerRootView style={{ flex: 1 }}>

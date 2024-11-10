@@ -1,9 +1,10 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { View, Dimensions, TouchableOpacity, StyleSheet, Alert, Text, Modal } from 'react-native';
+import { collection, query, orderBy, limit, getDocs } from "firebase/firestore";
 import { GestureHandlerRootView} from 'react-native-gesture-handler'
 import { Canvas, Path, useCanvasRef, SkPath, Skia, TouchInfo, useTouchHandler, Rect } from '@shopify/react-native-skia';
 import { StatusBar } from 'expo-status-bar';
-import { getCallableFunction } from '../../../firebaseConfig';
+import { db, getCallableFunction } from '../../../firebaseConfig';
 import AntDesign from '@expo/vector-icons/AntDesign';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 
@@ -117,22 +118,25 @@ const handleModalClose = async () => {
 };
 
 
+useEffect(() => {
+  const fetchWord = async () => {
+    try { 
+      const themesTodaySnapshot = await getDocs(
+        query(collection(db, 'themes_today'), orderBy('timestamp', 'desc'), limit(1))
+      );
 
-    useEffect(() => {
-      const fetchWord = async () => {
-        try {
-          const fetchLatestWord = getCallableFunction("fetchLatestWord") as unknown as () => Promise<{ data: { word: string } }>;
-          const response = await fetchLatestWord();
-    
-          setWord(response.data.word);
-        } catch (error) {
-        }
-      };
-    
-      fetchWord();
-    }, []);
+      if (!themesTodaySnapshot.empty) {
+        const wordDoc = themesTodaySnapshot.docs[0];
+        setWord(wordDoc.data().word);
+      } 
+    } catch (error) {
+    }
+  };
 
+  fetchWord();
+}, []);
 
+   
 return (
   <>
   <GestureHandlerRootView>

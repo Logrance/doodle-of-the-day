@@ -1,13 +1,18 @@
-import { collection, query, orderBy, getDocs } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import { View, Text, FlatList, StyleSheet, ActivityIndicator } from "react-native";
-import { db, auth } from "../firebaseConfig";
+import { auth, getCallableFunction } from "../firebaseConfig";
 
 interface User {
   id: string;
   username: string;
   winCount: number;
 }
+
+type GetLeaderboardResponse = {
+  leaderboard: User[];
+  currentUserRank: number;
+  currentUserData: User | null;
+};
 
 const LeaderboardScreen = () => {
   const [users, setUsers] = useState<User[]>([]);
@@ -18,53 +23,21 @@ const LeaderboardScreen = () => {
 
   const fetchLeaderboard = async () => {
     try {
-      const allUsersQuery = query(
-        collection(db, "users"),
-        orderBy("winCount", "desc")
-      );
-  
-      const querySnapshot = await getDocs(allUsersQuery);
-      const allUsersArray: User[] = [];
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        allUsersArray.push({
-          id: doc.id,
-          username: data.username,
-          winCount: data.winCount,
-        });
-      });
-  
-      
-      const currentUser = auth.currentUser;
-      let currentUserRank = -1;
-      let currentUserData: User | null = null;
-  
-      if (currentUser) {
-        setCurrentUserId(currentUser.uid);
-        
-        
-        currentUserRank = allUsersArray.findIndex(
-          (user) => user.id === currentUser.uid
-        ) + 1;
+      const getLeaderboard = getCallableFunction("getLeaderboard");
+      const response = await getLeaderboard();
+      const data = response.data as GetLeaderboardResponse;
 
-
-        if (currentUserRank > 12) {
-          currentUserData = allUsersArray.find(
-            (user) => user.id === currentUser.uid
-          ) || null;
-        }
-      }
-  
-      setUsers(allUsersArray.slice(0, 12));
-      setCurrentUserRank(currentUserRank);
-      setCurrentUserData(currentUserData);
-  
+      setUsers(data.leaderboard);
+      setCurrentUserRank(data.currentUserRank);
+      setCurrentUserData(data.currentUserData);
+      setCurrentUserId(auth.currentUser?.uid || null);
     } catch (error) {
+      console.error("Error fetching leaderboard:", error);
     } finally {
       setLoading(false);
     }
   };
-  
+
   useEffect(() => {
     fetchLeaderboard();
   }, []);

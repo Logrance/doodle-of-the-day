@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, Image, FlatList, Text, Modal, TouchableNativeFeedback, Platform, Alert, ActivityIndicator } from 'react-native';
-import { auth, getCallableFunction } from '../../../firebaseConfig';
+import { auth, db, getCallableFunction } from '../../../firebaseConfig';
+import { collection, query, orderBy, limit, getDocs } from "firebase/firestore";
 import { TouchableOpacity, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Entypo from '@expo/vector-icons/Entypo';
@@ -133,19 +134,23 @@ const handleShare = async (image: string) => {
 };
 
 
-useEffect(() => {
-  const fetchWord = async () => {
-    try {
-      const fetchLatestWord = getCallableFunction("fetchLatestWord") as unknown as () => Promise<{ data: { word: string } }>;
-      const response = await fetchLatestWord();
-
-      setWord(response.data.word);
-    } catch (error) {
-    }
-  };
-
-  fetchWord();
-}, []);
+    useEffect(() => {
+      const fetchWord = async () => {
+        try { 
+          const themesTodaySnapshot = await getDocs(
+            query(collection(db, 'themes_today'), orderBy('timestamp', 'desc'), limit(1))
+          );
+    
+          if (!themesTodaySnapshot.empty) {
+            const wordDoc = themesTodaySnapshot.docs[0];
+            setWord(wordDoc.data().word);
+          } 
+        } catch (error) {
+        }
+      };
+    
+      fetchWord();
+    }, []);
 
 useEffect(() => {
   fetchData();

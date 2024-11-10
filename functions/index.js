@@ -4,7 +4,7 @@ const admin = require("firebase-admin");
 admin.initializeApp();
 const db = admin.firestore();
 
-exports.pickDailyWinner = functions.pubsub.schedule("45 00 * * *")
+exports.pickDailyWinner = functions.pubsub.schedule("20 19 * * *")
     .timeZone("Europe/London").onRun(async (context) => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -93,7 +93,7 @@ exports.pickDailyWinner = functions.pubsub.schedule("45 00 * * *")
 
 // select random word function
 
-exports.selectRandomWord = functions.pubsub.schedule("25 00 * * *")
+exports.selectRandomWord = functions.pubsub.schedule("06 19 * * *")
     .timeZone("Europe/London").onRun(async (context) => {
       const themesSnapshot = await db.collection("themes").get();
 
@@ -128,7 +128,7 @@ exports.selectRandomWord = functions.pubsub.schedule("25 00 * * *")
 
 // Fetch drawings & assign room IDs
 
-exports.assignRooms = functions.pubsub.schedule("35 00 * * *")
+exports.assignRooms = functions.pubsub.schedule("15 19 * * *")
     .timeZone("Europe/London").onRun(async (context) => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -311,33 +311,6 @@ exports.handleVote = functions.https.onCall(async (data, context) => {
   }
 });
 
-
-exports.fetchLatestWord = functions.https.onCall(async (data, context) => {
-  try {
-    // Query to get the latest theme word by timestamp
-    const themesTodaySnapshot = await db
-        .collection("themes_today")
-        .orderBy("timestamp", "desc")
-        .limit(1)
-        .get();
-
-    // Check if there's a document and return the word
-    if (!themesTodaySnapshot.empty) {
-      const wordDoc = themesTodaySnapshot.docs[0];
-      const wordData = wordDoc.data();
-      return {word: wordData.word};
-    } else {
-      throw new functions.https.HttpsError("not-found", "No theme word found.");
-    }
-  } catch (error) {
-    console.error("Error fetching word:", error);
-    throw new functions.https.HttpsError(
-        "unknown",
-        "Failed to fetch theme word.",
-    );
-  }
-});
-
 exports.createUserDocument = functions.https.onCall(async (data, context) => {
   const {username, email, userId} = data;
 
@@ -460,5 +433,169 @@ exports.updateTutorialStatus = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError(
         "internal",
         "Failed to update tutorial status.", error);
+  }
+});
+
+exports.deleteUserAccount = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError(
+        "unauthenticated",
+        "User must be authenticated.",
+    );
+  }
+
+  const uid = context.auth.uid;
+
+  try {
+    const batch = db.batch();
+    const winnersQuerySnapshot = await db.collection("winners")
+        .where("userId", "==", uid).get();
+    winnersQuerySnapshot.forEach((doc) => batch.delete(doc.ref));
+    const drawingsQuerySnapshot = await db.collection("drawings")
+        .where("userId", "==", uid).get();
+    drawingsQuerySnapshot.forEach((doc) => batch.delete(doc.ref));
+    const votesQuerySnapshot = await db.collection("user_votes")
+        .where("userId", "==", uid).get();
+    votesQuerySnapshot.forEach((doc) => batch.delete(doc.ref));
+    const flagsQuerySnapshot = await db.collection("flags")
+        .where("flaggedBy", "==", uid).get();
+    flagsQuerySnapshot.forEach((doc) => batch.delete(doc.ref));
+    await batch.commit();
+    // Delete user from Firestore
+    await admin.firestore().collection("users").doc(uid).delete();
+    // Delete user from Authentication
+    await admin.auth().deleteUser(uid);
+
+    return {message: "Account deleted successfully"};
+  } catch (error) {
+    throw new functions.https.HttpsError(
+        "internal",
+        "Error deleting account: " + error.message);
+  }
+});
+
+exports.updateUserVerification = functions.https.onCall(
+    async (data, context) => {
+      if (!context.auth) {
+        throw new functions.https.HttpsError(
+            "unauthenticated",
+            "User must be authenticated.",
+        );
+      }
+
+      const uid = context.auth.uid;
+
+      try {
+        const userRecord = await admin.auth().getUser(uid);
+        if (!userRecord.emailVerified) {
+          throw new functions.https.HttpsError(
+              "failed-precondition",
+              "User's email is not verified.",
+          );
+        }
+
+        await admin.firestore().collection("users")
+            .doc(uid).update({isVerified: true});
+
+        return {message: "Verification status updated"};
+      } catch (error) {
+        throw new functions.https.HttpsError(
+            "internal", "Error updating verification: " + error.message);
+      }
+    });
+
+exports.getLeaderboard = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError(
+        "unauthenticated",
+        "User must be authenticated to access the leaderboard.",
+    );
+  }
+
+  const currentUserId = context.auth.uid;
+
+  try {
+    const leaderboardSnapshot = await db
+        .collection("users")
+        .orderBy("winCount", "desc")
+        .limit(12)
+        .get();
+
+    const leaderboard = leaderboardSnapshot.docs.map((doc) => ({
+      id: doc.id,
+      username: doc.data().username,
+      winCount: doc.data().winCount,
+    }));
+
+
+    let currentUserRank = null;
+    let currentUserData = null;
+    if (!leaderboard.find((user) => user.id === currentUserId)) {
+      const allUsersSnapshot = await db
+          .collection("users")
+          .orderBy("winCount", "desc")
+          .get();
+
+      const allUsers = allUsersSnapshot.docs.map((doc) => doc.id);
+      currentUserRank = allUsers.indexOf(currentUserId) + 1;
+
+      const currentUserDoc = allUsersSnapshot.docs.find(
+          (doc) => doc.id === currentUserId,
+      );
+      if (currentUserDoc) {
+        currentUserData = {
+          id: currentUserDoc.id,
+          username: currentUserDoc.data().username,
+          winCount: currentUserDoc.data().winCount,
+        };
+      }
+    }
+
+    return {
+      leaderboard,
+      currentUserRank,
+      currentUserData,
+    };
+  } catch (error) {
+    throw new functions.https.HttpsError(
+        "internal",
+        "Failed to retrieve leaderboard data.",
+    );
+  }
+});
+
+exports.fetchUserDrawings = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError(
+        "unauthenticated",
+        "User must be authenticated",
+    );
+  }
+
+  const userId = context.auth.uid;
+
+  try {
+    // Query Firestore to fetch drawings by the authenticated user
+    const drawingsSnapshot = await admin.firestore()
+        .collection("drawings")
+        .where("userId", "==", userId)
+        .get();
+
+    // If no drawings, return an empty array
+    if (drawingsSnapshot.empty) {
+      return {drawings: []};
+    }
+
+    // Map over the documents and return their data
+    const drawings = drawingsSnapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+
+    return {drawings};
+  } catch (error) {
+    throw new functions.https.HttpsError(
+        "unknown",
+        "Failed to fetch user drawings", error);
   }
 });

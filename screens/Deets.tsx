@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert, ImageBackground } from 'react-native';
-import { sendPasswordResetEmail, deleteUser } from 'firebase/auth';
-import { auth, db } from "../firebaseConfig";
-import { doc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { sendPasswordResetEmail } from 'firebase/auth';
+import { auth, getCallableFunction } from "../firebaseConfig";
 import { useNavigation } from '@react-navigation/core';
 import { StackNavigationProp } from '@react-navigation/stack';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
@@ -11,6 +10,8 @@ import AntDesign from '@expo/vector-icons/AntDesign';
 type RootStackParamList = {
   Login: undefined;
 };
+
+type DeleteUserResponse = { message: string };
 
 
 export default function Deets() {
@@ -37,52 +38,53 @@ export default function Deets() {
     }
   };
 
+
   const handleDeleteAccount = async () => {
     if (user) {
-        Alert.alert(
-            "Delete Account",
-            "Are you sure you want to delete your account? This action cannot be undone.",
-            [
-                { text: "Cancel", style: "cancel" },
-                {
-                    text: "Delete",
-                    style: "destructive",
-                    onPress: async () => {
-                        setIsDeletingAccount(true);
-                        try {
-                            const userDocRef = doc(db, "users", user.uid);
-                            await deleteDoc(userDocRef);
-
-                            await deleteUser(user);
-
-                            await auth.signOut();
-                            navigation.replace('Login');
-
-                        Alert.alert("Account Deleted", "Your account has been successfully deleted.");
-                        } catch (error: any) {
-                            Alert.alert("Error", error.message);
-                        } finally {
-                            setIsDeletingAccount(false);
-                        }
-                    },
-                },
-            ]
-        );
+      Alert.alert(
+        "Delete Account",
+        "Are you sure you want to delete your account? This action cannot be undone.",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Delete",
+            style: "destructive",
+            onPress: async () => {
+              try {
+                const deleteUserAccount = getCallableFunction("deleteUserAccount");
+                const response = await deleteUserAccount({});
+                
+                const data = response.data as DeleteUserResponse;
+                setIsDeletingAccount(true);
+  
+                Alert.alert("Account Deleted", data.message);
+  
+                await auth.signOut();
+                navigation.replace('Login');
+              } catch (error: any) {
+                Alert.alert("Error", error.message || "Error deleting account");
+              }
+            }
+          }
+        ]
+      );
     } else {
-        Alert.alert("Error", "User not found. Please try again.");
+      Alert.alert("Error", "User not found. Please try again.");
     }
-};
+  };
 
-const verification = async () => {
-      if (user.emailVerified) {
-        const userRef = doc(db, 'users', user.uid);
-        await updateDoc(userRef, { isVerified: true });
-        setIsVerified(true); 
-      }
-    }
 
     useEffect(() => {
-      verification();
+      const checkVerificationStatus = async () => {
+        try {
+          const updateUserVerification = getCallableFunction("updateUserVerification");
+          await updateUserVerification({});
+          setIsVerified(true);
+        } catch (error: any) {
+        }
+      };
+    
+      checkVerificationStatus();
     }, []);
 
   return (

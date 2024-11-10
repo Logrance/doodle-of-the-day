@@ -67,6 +67,8 @@ const handleShare = async (image: string) => {
   }
 }; 
 
+ 
+ 
     //Winner render logic
 
   const fetchData = async () => {
