@@ -62,9 +62,7 @@ const handleSignUp = async () => {
 
   const handleLogin = async () => {
     try {
-      const userCredentials = await signInWithEmailAndPassword(auth, email, password);
-      const user = userCredentials.user;
-      console.log('Logged in with:', user.email);
+      await signInWithEmailAndPassword(auth, email, password);
     } catch (error: any) {
       alert(error.message);
     }

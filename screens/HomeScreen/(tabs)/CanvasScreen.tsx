@@ -99,7 +99,6 @@ const captureCanvas = () => {
       const response = await fetchUserAndCheckTutorial({}) as { data: { hasSeenTutorial: boolean } };
       setIsVisible(!response.data.hasSeenTutorial);
     } catch (error) {
-      console.error("Error checking tutorial status:", error.message);
     }
   };
 
@@ -113,7 +112,6 @@ const handleModalClose = async () => {
     const updateTutorialStatus = getCallableFunction("updateTutorialStatus");
     await updateTutorialStatus({});
   } catch (error) {
-    console.error("Error updating tutorial status:", error.message);
   }
 };
 

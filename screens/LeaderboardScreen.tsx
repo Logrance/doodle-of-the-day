@@ -32,7 +32,6 @@ const LeaderboardScreen = () => {
       setCurrentUserData(data.currentUserData);
       setCurrentUserId(auth.currentUser?.uid || null);
     } catch (error) {
-      console.error("Error fetching leaderboard:", error);
     } finally {
       setLoading(false);
     }

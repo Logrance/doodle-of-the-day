@@ -110,11 +110,11 @@ const handleVote = async (userId: string) => {
     ) => Promise<{ data: { message: string } }>;
 
     const response = await voteFunction({ userId });
-    alert(response.data.message);
+    Alert.alert("Success", response.data.message);
 
     fetchData();
   } catch (error) {
-    alert("Already voted");
+    Alert.alert("Already voted");
   }
 };
 
