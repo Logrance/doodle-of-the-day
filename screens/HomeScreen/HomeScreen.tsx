@@ -13,6 +13,7 @@ export default function HomeScreen() {
   return (
     <Tab.Navigator
     screenOptions={{
+      tabBarLabelPosition: 'below-icon',
       tabBarLabelStyle: {
         color: 'black', 
       },
@@ -27,9 +28,9 @@ export default function HomeScreen() {
            <Foundation
              name="home"
              size={24}
-             color={focused ? 'white' : 'black'} // Change icon color when focused
+             color={focused ? 'white' : 'black'} 
              style={{
-               backgroundColor: focused ? 'rgba(2,52,72, 0.3)' : 'transparent', // Add background when focused
+               backgroundColor: focused ? 'rgba(2,52,72, 0.3)' : 'transparent', 
                borderRadius: 12, 
                paddingVertical: 2,
               paddingHorizontal: 8,

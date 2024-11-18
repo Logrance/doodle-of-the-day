@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { View, Dimensions, TouchableOpacity, StyleSheet, Alert, Text, Modal } from 'react-native';
-import { collection, query, orderBy, limit, getDocs } from "firebase/firestore";
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { collection, query, orderBy, limit, onSnapshot } from "firebase/firestore";
 import { GestureHandlerRootView} from 'react-native-gesture-handler'
 import { Canvas, Path, useCanvasRef, SkPath, Skia, TouchInfo, useTouchHandler, Rect } from '@shopify/react-native-skia';
 import { StatusBar } from 'expo-status-bar';
@@ -18,6 +19,7 @@ export default function CanvasScreen() {
 
     //For word theme state
     const [word, setWord] = useState<string | null>(null);
+
 
   const ref = useCanvasRef();
 
@@ -115,32 +117,34 @@ const handleModalClose = async () => {
   }
 };
 
-
 useEffect(() => {
-  const fetchWord = async () => {
-    try { 
-      const themesTodaySnapshot = await getDocs(
-        query(collection(db, 'themes_today'), orderBy('timestamp', 'desc'), limit(1))
-      );
-
-      if (!themesTodaySnapshot.empty) {
-        const wordDoc = themesTodaySnapshot.docs[0];
+  const unsubscribe = onSnapshot(
+    query(
+      collection(db, 'themes_today'),
+      orderBy('timestamp', 'desc'),
+      limit(1)
+    ),
+    (snapshot) => {
+      if (!snapshot.empty) {
+        const wordDoc = snapshot.docs[0];
         setWord(wordDoc.data().word);
-      } 
-    } catch (error) {
+      }
+    },
+    (error) => {
     }
-  };
+  );
 
-  fetchWord();
+  return () => unsubscribe();
 }, []);
+
 
    
 return (
   <>
   <GestureHandlerRootView>
-    <View style={{ height, width }}>
+  <SafeAreaView style={{ flex: 1}}>
+    
       
-        
           <Canvas style={{ flex: 8 }} ref={ref} onTouch={touchHandler}>
           <Rect x={0} y={0} width={width} height={height} color="white" />
             {paths.map((path, index) => (
@@ -155,10 +159,7 @@ return (
           </Canvas>
           
         
-        <View style={{ padding: 10, flex: 1, backgroundColor: "#edede9" }}>
-          <View style={{ flex: 1, flexDirection: "row"}}>
           <View style={styles.swatchContainer}>
-              
               <TouchableOpacity onPress={clearCanvas} style={styles.buttonAnother}>
               <AntDesign name="delete" size={24} color="black" />
               </TouchableOpacity>
@@ -177,9 +178,6 @@ return (
               <MaterialIcons name="keyboard-return" size={24} color="black" />
              </TouchableOpacity>
             </View>
-          </View>
-        </View>
-      </View>
 
       <Modal visible={isVisible} transparent={true} animationType="fade">
           <View style={styles.modalOverlay}>
@@ -200,6 +198,7 @@ return (
             </View>
           </View>
         </Modal>
+      </SafeAreaView>
     </GestureHandlerRootView>
     <StatusBar style="auto" />
   </>
@@ -213,7 +212,7 @@ swatchContainer: {
   padding: 10,
   justifyContent: "space-between",
   alignItems: "center",
-  marginBottom: 35,
+  backgroundColor: "#edede9",
 },
 buttonOther: {
   backgroundColor: 'rgb(224,183,202)',
