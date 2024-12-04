@@ -4,7 +4,7 @@ const admin = require("firebase-admin");
 admin.initializeApp();
 const db = admin.firestore();
 
-exports.pickDailyWinner = functions.pubsub.schedule("00 18 * * *")
+exports.pickDailyWinner = functions.pubsub.schedule("00 20 * * *")
     .timeZone("Europe/London").onRun(async (context) => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -93,7 +93,7 @@ exports.pickDailyWinner = functions.pubsub.schedule("00 18 * * *")
 
 // select random word function
 
-exports.selectRandomWord = functions.pubsub.schedule("05 00 * * *")
+exports.selectRandomWord = functions.pubsub.schedule("00 00 * * *")
     .timeZone("Europe/London").onRun(async (context) => {
       const themesSnapshot = await db.collection("themes").get();
 
@@ -128,7 +128,7 @@ exports.selectRandomWord = functions.pubsub.schedule("05 00 * * *")
 
 // Fetch drawings & assign room IDs
 
-exports.assignRooms = functions.pubsub.schedule("00 12 * * *")
+exports.assignRooms = functions.pubsub.schedule("00 14 * * *")
     .timeZone("Europe/London").onRun(async (context) => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -579,6 +579,7 @@ exports.fetchUserDrawings = functions.https.onCall(async (data, context) => {
     const drawingsSnapshot = await admin.firestore()
         .collection("drawings")
         .where("userId", "==", userId)
+        .orderBy("date", "desc")
         .get();
 
     // If no drawings, return an empty array

@@ -2,12 +2,12 @@
   "expo": {
     "name": "Doodle-of-the-Day",
     "slug": "Doodle-of-the-Day",
-    "version": "1.0.7",
+    "version": "1.0.13",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/splash.png",
+      "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -16,9 +16,9 @@
     },
     "android": {
       "package": "com.doodleOfThe.day",
-      "versionCode": 8,
+      "versionCode": 14,
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/splash-icon.png",
         "backgroundColor": "#ffffff"
       }
     },

@@ -25,7 +25,7 @@ type GetRoomDrawingsResponse = {
 
 export default function VoteScreen() {
 
-  const [drawingInfo, setDrawingInfo] = useState<any | undefined>(null)
+  const [drawingInfo, setDrawingInfo] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   //For word theme state
@@ -67,10 +67,11 @@ export default function VoteScreen() {
 
         const drawings = response.data.drawings;
         setDrawingInfo(drawings);
-        setLoading(false);
 
     } catch (error) {
-    }
+    } finally {
+      setLoading(false);
+  }
 };
 
 // Function to handle flagging
@@ -205,7 +206,7 @@ useEffect(() => {
         showsVerticalScrollIndicator={false}
       />
     ) : (
-      <Text>Voting room open from 12:00 to 18:00 UK time</Text> 
+      <Text>Voting room open from 14:00 to 20:00 UK time</Text> 
   )}
 
       

@@ -16,12 +16,15 @@ export default function CanvasScreen() {
   const { width, height } = Dimensions.get("window");
   const [paths, setPaths] = useState<SkPath[]>([]);
   const [isVisible, setIsVisible] = useState(false); 
+  const [currentPage, setCurrentPage] = useState(1);
 
     //For word theme state
     const [word, setWord] = useState<string | null>(null);
 
 
   const ref = useCanvasRef();
+
+  const handleNextPage = () => setCurrentPage((prev) => prev + 1);
 
     //Canvas drawing logic
     const onDrawingStart = useCallback((touchInfo: TouchInfo) => {
@@ -182,22 +185,44 @@ return (
       <Modal visible={isVisible} transparent={true} animationType="fade">
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
+            {currentPage === 1 && (
+            <>
               <Text style={styles.titleText}>
-              Welcome to Doodle of the Day! Here's how the app works: 
+                Welcome to Doodle of the Day! Here's how the app works:
               </Text>
-                <Text style={styles.modalText}>
-                • Draw your picture based on the daily theme by 12pm UK time.
+              <Text style={styles.modalText}>
+                • Draw your picture based on the daily theme by 14:00 UK time.
                 {"\n"}
-                • At 12pm you are allocated a voting room. You have one vote, and once cast, it can't be taken back, so use it wisely.
+                • At 14:00 you are allocated a voting room. You have one vote, and once cast, it can't be taken back, so use it wisely.
                 {"\n"}
-                • Winners are picked at 6pm.
+                • Winners are picked at 20:00.
               </Text>
-              <TouchableOpacity onPress={handleModalClose} style={styles.modalButton}>
-                <Text style={styles.buttonText}>Got it!</Text>
+              <TouchableOpacity onPress={handleNextPage} style={styles.modalButton}>
+                <Text style={styles.buttonText}>Next</Text>
               </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
+            </>
+          )}
+
+          {currentPage === 2 && (
+            <>
+              <Text style={styles.titleText}>Our Doodle Philosophy</Text>
+              <Text style={styles.modalText}>
+                • In our app, there’s no eraser. Why? Because we want you to be bold! But don’t worry—there is a delete button if you’ve been a little too bold. 
+                {"\n"}
+                • We’ve also kept it simple with just one line thickness and no colour options. Why? Too many options can get in the way of creativity.
+                {"\n"}
+                • Happy doodling! 😊
+              </Text>
+              <View>
+                <TouchableOpacity onPress={handleModalClose} style={styles.modalButton}>
+                  <Text style={styles.buttonText}>Got it!</Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
+        </View>
+      </View>
+    </Modal>
       </SafeAreaView>
     </GestureHandlerRootView>
     <StatusBar style="auto" />
