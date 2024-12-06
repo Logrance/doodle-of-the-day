@@ -4,6 +4,7 @@ import { KeyboardAvoidingView, StyleSheet, Text, TextInput, TouchableOpacity, Vi
 import { auth, getCallableFunction } from '../firebaseConfig';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
 import { StackNavigationProp } from '@react-navigation/stack';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 type RootStackParamList = {
     HomeScreen: undefined;
@@ -14,6 +15,11 @@ const LoginScreen: React.FC = () => {
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [username, setUsername] = useState<string>('');
+  const [showPassword, setShowPassword] = useState(false);
+
+  const toggleShowPassword = () => {
+    setShowPassword(!showPassword);
+};
 
  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
  const createUserDocument = getCallableFunction("createUserDocument");
@@ -74,7 +80,7 @@ const handleSignUp = async () => {
       behavior="padding"
     >
       <ImageBackground 
-      source={require('../assets/loginbackground3.jpg')} 
+      source={require('../assets/loginbackground5.jpg')} 
       style={styles.backgroundImage}
     >
       <View style={styles.iconContainer}>
@@ -89,20 +95,32 @@ const handleSignUp = async () => {
             value={username}
             onChangeText={text => setUsername(text)}
             style={styles.input}
+            placeholderTextColor="black"
           />
         <TextInput
           placeholder="Email"
           value={email}
           onChangeText={text => setEmail(text)}
           style={styles.input}
+          placeholderTextColor="black"
         />
+        <View style={styles.passwordContainer}>
         <TextInput
           placeholder="Password"
           value={password}
           onChangeText={text => setPassword(text)}
-          style={styles.input}
-          secureTextEntry
+          style={styles.passwordInput}
+          secureTextEntry={!showPassword}
+          placeholderTextColor="black"
+        />    
+        <MaterialCommunityIcons
+          name={showPassword ? 'eye-off' : 'eye'}
+          size={24}
+          color="black"
+          style={styles.iconTwo}
+          onPress={toggleShowPassword}
         />
+        </View>
       </View>
 
       <View style={styles.buttonContainer}>
@@ -129,6 +147,17 @@ export default LoginScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  passwordContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(224,183,202,0.5)',
+    marginTop: 5,
+    paddingHorizontal: 15,
+  },
+  passwordInput: {
+    flex: 1, 
+    paddingVertical: 10,
   },
   inputContainer: {
     width: '80%',
@@ -171,6 +200,9 @@ const styles = StyleSheet.create({
   icon: {
     width: 150,  
     height: 150,  
+  },
+  iconTwo: {
+    marginLeft: 10,
   },
   iconContainer: {
     position: 'absolute',

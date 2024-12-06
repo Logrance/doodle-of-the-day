@@ -31,7 +31,7 @@ const ProfileScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       <ImageBackground 
-      source={require('../../../assets/profilebackground10.jpg')} 
+      source={require('../../../assets/profilebackground11.jpg')} 
       style={styles.backgroundImage}
     >
        <View style={styles.topTextContainer}>

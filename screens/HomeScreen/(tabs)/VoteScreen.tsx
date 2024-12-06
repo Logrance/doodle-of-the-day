@@ -171,7 +171,7 @@ useEffect(() => {
     <GestureHandlerRootView style={{ flex: 1 }}>
     <SafeAreaView style={styles.container}>
     <View style={styles.themeContainer}>
-          <Text style={{ fontFamily: 'PressStart2P_400Regular', textAlign: 'center', lineHeight: 22 }}>Today's theme: {"\n"}{word || "Loading..."}</Text>
+          <Text style={{ fontFamily: 'PressStart2P_400Regular', textAlign: 'center', lineHeight: 22, fontSize: 25 }}>{"\n"}{word || "Loading..."}</Text>
         </View>
         {loading ? ( 
                     <ActivityIndicator size="large" color="grey" />

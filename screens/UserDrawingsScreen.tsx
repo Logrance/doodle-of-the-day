@@ -1,19 +1,24 @@
 import { useEffect, useState } from "react";
 import { View, Text, FlatList, Image, StyleSheet, Modal, TouchableNativeFeedback, Platform, ActivityIndicator } from "react-native";
-import { getCallableFunction } from "../firebaseConfig";
+//import { getCallableFunction } from "../firebaseConfig";
+import { auth, db } from "../firebaseConfig";
 import { TouchableOpacity, GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
 import Entypo from '@expo/vector-icons/Entypo';
+import { collection, query, where, getDocs, orderBy, limit, startAfter } from "firebase/firestore";
+import { Timestamp } from "firebase/firestore";
 
 interface Drawing {
     id: string;
     image: string;
+    date: any;
 }
 
-type GetFetchUserDrawingsResponse = {
+/*type GetFetchUserDrawingsResponse = {
   drawings: Drawing[];
-};
+  lastDoc: string | null;
+}; */
 
 const UserDrawingsScreen = () => {
     const [drawings, setDrawings] = useState<Drawing[]>([]);
@@ -22,6 +27,8 @@ const UserDrawingsScreen = () => {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [lastVisible, setLastVisible] = useState(null);
+  const [loadingMore, setLoadingMore] = useState(false);
 
     // Function to handle share
 const handleShare = async (image: string) => {
@@ -52,25 +59,139 @@ const handleShare = async (image: string) => {
     setModalVisible(false);
   };
 
-  useEffect(() => {
-    const fetchDrawings = async () => {
+
+   /* const fetchData = async () => {
+      setLoading(true)
       try {
-        setLoading(true);
-        
         const fetchUserDrawings = getCallableFunction('fetchUserDrawings');
+        const response = await fetchUserDrawings();
         
-        const result = await fetchUserDrawings({});
-        const data = result.data as GetFetchUserDrawingsResponse;
-        
+
+        const data = response.data as GetFetchUserDrawingsResponse;
+
+    
         setDrawings(data.drawings);
+        //setLastVisible(data.lastDoc);
       } catch (error) {
       } finally {
         setLoading(false);
       }
     };
 
-    fetchDrawings();
-  }, []);
+    const fetchNextData = async () => {
+      if (!lastVisible || loadingMore) return;
+    
+      setLoadingMore(true);
+      try {
+        const fetchNextUserDrawings = getCallableFunction('fetchNextUserDrawings');
+        const response = await fetchNextUserDrawings({ lastDoc: lastVisible });
+    
+        const data = response.data as GetFetchUserDrawingsResponse;
+
+        if (data.drawings.length === 0) {
+          return; 
+        }
+    
+        setDrawings((prev) => [...prev, ...data.drawings]);
+        //setLastVisible(data.lastDoc);
+      } catch (error) {
+      } finally {
+        setLoadingMore(false);
+      }
+    };
+
+    useEffect(() => {
+    fetchData();
+  }, []); */
+
+  const fetchData = async () => {
+    setLoading(true)
+    try {
+      const user = auth.currentUser;
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
+      const first = query(
+        collection(db, "drawings"),
+        where("userId", "==", user.uid),
+        orderBy("date", "desc"),
+        limit(5)
+      );
+
+      const querySnapshot = await getDocs(first);
+
+      if (querySnapshot.empty) {
+        setDrawings([]);
+        setLoading(false);
+        return;
+      }
+
+      const lastDoc = querySnapshot.docs[querySnapshot.docs.length - 1];
+      setLastVisible(lastDoc);
+
+      const drawingsArray: Drawing[] = querySnapshot.docs.map((doc) => {
+        const data = doc.data();
+        const date = data.date instanceof Timestamp ? data.date.toDate() : ""; 
+  
+        return {
+          id: doc.id,
+          image: data.image,
+          date,
+        };
+      });
+
+      setDrawings(drawingsArray);
+      } catch (error) {
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchNextData = async () => {
+    if (!lastVisible || loadingMore) return;
+
+    setLoadingMore(true);
+    try {
+      const user = auth.currentUser;
+      if (!user) return;
+
+      const nextQuery = query(
+        collection(db, "drawings"),
+        where("userId", "==", user.uid),
+        orderBy("date", "desc"),
+        startAfter(lastVisible),
+        limit(5)
+      );
+
+      const querySnapshotNext = await getDocs(nextQuery);
+      if (!querySnapshotNext.empty) {
+        const lastDoc = querySnapshotNext.docs[querySnapshotNext.docs.length - 1];
+        setLastVisible(lastDoc);
+
+        const newDrawings: Drawing[] = [];
+        querySnapshotNext.forEach((doc) => {
+          const data = doc.data();
+          const date = data.date instanceof Timestamp ? data.date.toDate() : "";
+          newDrawings.push({ id: doc.id, image: data.image, date });
+        });
+
+        setDrawings((prev) => [...prev, ...newDrawings]);
+      }
+    } catch (error) {
+      console.error("Error fetching next data:", error);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
+
+useEffect(() => {
+  fetchData();
+}, []);
+
+
 
     return (
         <GestureHandlerRootView style={{ flex: 1 }}>
@@ -95,6 +216,9 @@ const handleShare = async (image: string) => {
                         </View>
                     )}
                     showsVerticalScrollIndicator={false}
+                    onEndReached={fetchNextData}
+                    onEndReachedThreshold={0.5}
+                    ListFooterComponent={loadingMore ? <ActivityIndicator size="small" color="grey" /> : null}
                 />
             ) : (
                 <Text>No drawings found</Text> 

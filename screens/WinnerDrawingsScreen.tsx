@@ -1,4 +1,4 @@
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { collection, query, where, getDocs, orderBy, limit, startAfter } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import { View, Text, FlatList, Image, StyleSheet, Modal, TouchableNativeFeedback, Platform, ActivityIndicator, Button } from "react-native";
 import { db, auth } from "../firebaseConfig";
@@ -26,9 +26,12 @@ const WinnerDrawingsScreen = () => {
   const [modalVisible, setModalVisible] = useState(false);
 
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   const [showConfetti, setShowConfetti] = useState(false);
   const [showWinnerModal, setShowWinnerModal] = useState(false); 
+
+  const [lastVisible, setLastVisible] = useState(null);
 
   const openModal = (imageUri: string) => {
     setSelectedImage(imageUri);
@@ -71,53 +74,91 @@ const handleShare = async (image: string) => {
  
     //Winner render logic
 
-  const fetchData = async () => {
-    try {
-      const user = auth.currentUser;
-      if (!user) {
-        console.log("You are not logged in")
-        setLoading(false);
-      }
-
-      const q = query (
-        collection(db, "winners"),
-        where("userId", "==", user.uid)
-      )
-
-      const querySnapshot = await getDocs(q);
-
-      if (querySnapshot.empty) {
-        console.log("Nothing to render")
-      } else {
+    const fetchData = async () => {
+      try {
+        const user = auth.currentUser;
+        if (!user) {
+          setLoading(false);
+          return;
+        }
+  
+        const first = query(
+          collection(db, "winners"),
+          where("userId", "==", user.uid),
+          orderBy("date", "desc"),
+          limit(5)
+        );
+  
+        const querySnapshot = await getDocs(first);
+        if (querySnapshot.empty) {
+          setLoading(false);
+          return;
+        }
+  
+        const lastDoc = querySnapshot.docs[querySnapshot.docs.length - 1];
+        setLastVisible(lastDoc);
+  
         const winnerArray: Winner[] = [];
         querySnapshot.forEach((doc) => {
           const data = doc.data();
-
-          let date: string | Date = "";
-        if (data.date instanceof Timestamp) {
-          date = data.date.toDate(); 
-        }
-
-          const winner = {
+          const date = data.date instanceof Timestamp ? data.date.toDate() : "";
+  
+          winnerArray.push({
             id: doc.id,
             image: data.image,
-            date: data, 
-          };
-          winnerArray.push(winner);
-
-          // Compare the drawing's date with today's date
-          if (moment(date).isSame(moment(), 'day')) {
-            setShowConfetti(true); 
+            date,
+          });
+  
+          if (moment(date).isSame(moment(), "day")) {
+            setShowConfetti(true);
             setShowWinnerModal(true);
           }
         });
+  
         setWinnerDrawing(winnerArray);
+      } catch (error) {
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+  
+    const fetchNextData = async () => {
+      if (!lastVisible || loadingMore) return;
+  
+      setLoadingMore(true);
+      try {
+        const user = auth.currentUser;
+        if (!user) return;
+  
+        const nextQuery = query(
+          collection(db, "winners"),
+          where("userId", "==", user.uid),
+          orderBy("date", "desc"),
+          startAfter(lastVisible),
+          limit(5)
+        );
+  
+        const querySnapshotNext = await getDocs(nextQuery);
+        if (!querySnapshotNext.empty) {
+          const lastDoc = querySnapshotNext.docs[querySnapshotNext.docs.length - 1];
+          setLastVisible(lastDoc);
+  
+          const newWinners: Winner[] = [];
+          querySnapshotNext.forEach((doc) => {
+            const data = doc.data();
+            const date = data.date instanceof Timestamp ? data.date.toDate() : "";
+            newWinners.push({ id: doc.id, image: data.image, date });
+          });
+  
+          setWinnerDrawing((prev) => [...prev, ...newWinners]);
+        }
+      } catch (error) {
+        console.error("Error fetching next data:", error);
+      } finally {
+        setLoadingMore(false);
+      }
+    };
+
 
   useEffect(() => {
     fetchData();
@@ -146,6 +187,9 @@ const handleShare = async (image: string) => {
                    </View>
                        )}
                     showsVerticalScrollIndicator={false}
+                    onEndReached={fetchNextData}
+                    onEndReachedThreshold={0.5}
+                    ListFooterComponent={loadingMore ? <ActivityIndicator size="small" color="grey" /> : null}
                 />
             ) : (
                 <Text>No drawings found</Text> 
@@ -163,7 +207,7 @@ const handleShare = async (image: string) => {
         >
           <View style={styles.modalBackgroundTwo}>
             <View style={styles.modalContainer}>
-              <Text style={styles.winnerText}>Congratulations! You're today's winner! 🎉</Text>
+              <Text style={styles.winnerText}>Congratulations! You're today's {"\n"} winner!🎉</Text>
               <Button title="Close" onPress={closeWinnerModal} />
             </View>
           </View>
@@ -252,14 +296,16 @@ const styles = StyleSheet.create({
         resizeMode: 'contain',
       },
       winnerText: {
-        fontSize: 24,
+        fontSize: 22,
         marginBottom: 20,
-        color: 'green',
+        color: 'white',
         textAlign: 'center',
+        fontFamily: 'PressStart2P_400Regular',
+        lineHeight: 34,
       },
       modalBackgroundTwo: {
         flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.2)',
+        backgroundColor: 'rgba(0, 0, 0, 0.6)',
         justifyContent: 'center',
         alignItems: 'center',
       },

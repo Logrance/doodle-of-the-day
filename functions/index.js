@@ -575,28 +575,79 @@ exports.fetchUserDrawings = functions.https.onCall(async (data, context) => {
   const userId = context.auth.uid;
 
   try {
-    // Query Firestore to fetch drawings by the authenticated user
-    const drawingsSnapshot = await admin.firestore()
+    const first = admin.firestore()
         .collection("drawings")
         .where("userId", "==", userId)
         .orderBy("date", "desc")
-        .get();
+        .limit(5);
 
-    // If no drawings, return an empty array
-    if (drawingsSnapshot.empty) {
+    const querySnapshot = await first.get();
+
+    if (querySnapshot.empty) {
       return {drawings: []};
     }
 
+    const lastDoc = querySnapshot.docs[querySnapshot.docs.length -1];
+
     // Map over the documents and return their data
-    const drawings = drawingsSnapshot.docs.map((doc) => ({
+    const drawings = querySnapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
     }));
 
-    return {drawings};
+    return {
+      drawings,
+      lastDoc: lastDoc ? lastDoc.id : null,
+    };
   } catch (error) {
     throw new functions.https.HttpsError(
         "unknown",
         "Failed to fetch user drawings", error);
   }
 });
+
+exports.fetchNextUserDrawings = functions.https.onCall(
+    async (data, context) => {
+      if (!context.auth) {
+        throw new functions.https.HttpsError(
+            "unauthenticated",
+            "User must be authenticated",
+        );
+      }
+
+      const userId = context.auth.uid;
+      const lastDocId = data.lastDoc;
+      const lastDocSnapshot = await admin.firestore()
+          .collection("drawings")
+          .doc(lastDocId)
+          .get();
+
+      try {
+        const nextQuery = admin.firestore()
+            .collection("drawings")
+            .where("userId", "==", userId)
+            .orderBy("date", "desc")
+            .startAfter(lastDocSnapshot)
+            .limit(5);
+
+        if (querySnapshotNext.empty) {
+          return {drawings: [], lastDoc: null};
+        }
+
+
+        const querySnapshotNext = await nextQuery.get();
+
+        const newDrawings = nextQuery.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+
+        return {
+          drawings: newDrawings,
+          lastDoc: querySnapshotNext.docs[querySnapshotNext.docs.length -1]};
+      } catch (error) {
+        throw new functions.https.HttpsError(
+            "unknown",
+            "Failed to fetch user drawings", error);
+      }
+    });

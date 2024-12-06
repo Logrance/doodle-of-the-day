@@ -90,7 +90,7 @@ export default function Deets() {
   return (
     <View style={styles.container}>
        <ImageBackground 
-      source={require('../assets/deetsbackground3.jpg')} 
+      source={require('../assets/deetsbackground4.jpg')} 
       style={styles.backgroundImage}
     >
       <Text style={{ fontFamily: 'Poppins_700Bold' }}>Email: {auth.currentUser?.email}</Text>
