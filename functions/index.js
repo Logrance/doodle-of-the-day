@@ -368,6 +368,28 @@ exports.addImageToDB = functions.https.onCall(async (data, context) => {
       );
     }
 
+
+    const startOfDayTwo = admin.firestore.Timestamp.fromDate(
+        new Date(new Date().setUTCHours(0, 0, 0, 0)));
+
+    const endOfDayTwo = admin.firestore.Timestamp.fromDate(
+        new Date(new Date().setUTCHours(23, 59, 59, 999)));
+
+
+    // Fetch the theme of the day
+    const themeQuery = await db
+        .collection("themes_today")
+        .where("timestamp", ">=", startOfDayTwo)
+        .where("timestamp", "<", endOfDayTwo)
+        .limit(1)
+        .get();
+
+    let theme = "No theme available"; // Default theme if none is found
+    if (!themeQuery.empty) {
+      const themeDoc = themeQuery.docs[0].data();
+      theme = themeDoc.word; // Assuming 'word' is the field storing the theme
+    }
+
     await db.collection("drawings").add({
       title: "Captured Image",
       done: false,
@@ -375,6 +397,7 @@ exports.addImageToDB = functions.https.onCall(async (data, context) => {
       userId,
       votes: 0,
       date: Date.now(),
+      theme,
     });
 
     return {success: true, message: "Drawing submitted successfully!"};

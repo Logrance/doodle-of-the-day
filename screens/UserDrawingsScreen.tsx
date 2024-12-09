@@ -13,6 +13,7 @@ interface Drawing {
     id: string;
     image: string;
     date: any;
+    theme: string;
 }
 
 /*type GetFetchUserDrawingsResponse = {
@@ -139,6 +140,7 @@ const handleShare = async (image: string) => {
           id: doc.id,
           image: data.image,
           date,
+          theme: data.theme,
         };
       });
 
@@ -174,7 +176,7 @@ const handleShare = async (image: string) => {
         querySnapshotNext.forEach((doc) => {
           const data = doc.data();
           const date = data.date instanceof Timestamp ? data.date.toDate() : "";
-          newDrawings.push({ id: doc.id, image: data.image, date });
+          newDrawings.push({ id: doc.id, image: data.image, date, theme: data.theme });
         });
 
         setDrawings((prev) => [...prev, ...newDrawings]);
@@ -210,6 +212,7 @@ useEffect(() => {
                                     style={styles.image}
                                 />
                             </TouchableOpacity>
+                            <Text>{item.theme}</Text>
                             <TouchableOpacity onPress={() => handleShare(item.image)} style={styles.buttonOther}>
                             <Entypo name="share" size={24} color="black" />
                           </TouchableOpacity>
