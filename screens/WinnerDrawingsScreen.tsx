@@ -123,7 +123,7 @@ const handleShare = async (image: string) => {
     };
   
     const fetchNextData = async () => {
-      if (!lastVisible || loadingMore) return;
+      if (!lastVisible || loadingMore || winnerDrawing.length < 5) return;
   
       setLoadingMore(true);
       try {

@@ -8,6 +8,7 @@ import * as FileSystem from 'expo-file-system';
 import Entypo from '@expo/vector-icons/Entypo';
 import { collection, query, where, getDocs, orderBy, limit, startAfter } from "firebase/firestore";
 import { Timestamp } from "firebase/firestore";
+import { QuerySnapshot } from "@google-cloud/firestore";
 
 interface Drawing {
     id: string;
@@ -129,6 +130,7 @@ const handleShare = async (image: string) => {
         return;
       }
 
+
       const lastDoc = querySnapshot.docs[querySnapshot.docs.length - 1];
       setLastVisible(lastDoc);
 
@@ -152,7 +154,7 @@ const handleShare = async (image: string) => {
   };
 
   const fetchNextData = async () => {
-    if (!lastVisible || loadingMore) return;
+    if (!lastVisible || loadingMore || drawings.length < 5) return;
 
     setLoadingMore(true);
     try {

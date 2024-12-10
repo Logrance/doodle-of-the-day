@@ -16,6 +16,12 @@
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "appleId": "maxmechlin@gmail.com",
+        "ascAppId": "6739217458",
+        "appleTeamId": "7956ABT9F3"
+      }
+    }
   }
 }
