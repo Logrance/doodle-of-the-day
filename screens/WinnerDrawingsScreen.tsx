@@ -1,6 +1,6 @@
 import { collection, query, where, getDocs, orderBy, limit, startAfter } from "firebase/firestore";
 import { useEffect, useState } from "react";
-import { View, Text, FlatList, Image, StyleSheet, Modal, TouchableNativeFeedback, Platform, ActivityIndicator, Button } from "react-native";
+import { View, Text, FlatList, Image, StyleSheet, Modal, ActivityIndicator, Button, TouchableWithoutFeedback } from "react-native";
 import { db, auth } from "../firebaseConfig";
 import { TouchableOpacity, GestureHandlerRootView } from 'react-native-gesture-handler';
 import ConfettiCannon from 'react-native-confetti-cannon';
@@ -221,38 +221,18 @@ const handleShare = async (image: string) => {
             onRequestClose={closeModal} 
             >
 
-            {Platform.OS === 'android' ? (
-            <TouchableNativeFeedback onPress={closeModal}>
-            <View style={styles.modalBackground}>
-            <View style={styles.modalContainer}>
-            {selectedImage && (
-                <TouchableNativeFeedback onPress={closeModal}>
-                <Image 
-                    source={{ uri: selectedImage }} 
-                    style={styles.enlargedImage} 
-                    resizeMode="contain"
-                />
-                </TouchableNativeFeedback>
-            )}
-            </View>
-            </View>
-            </TouchableNativeFeedback>
-            ) : (
-            <TouchableOpacity style={styles.modalBackground} onPress={closeModal}>
-            <View style={styles.modalContainer}>
-            {selectedImage && (
-            <TouchableOpacity onPress={closeModal}>
-                <Image 
-                source={{ uri: selectedImage }} 
-                style={styles.enlargedImage} 
-                resizeMode="contain"
-                />
-            </TouchableOpacity>
-            )}
-            </View>
-            </TouchableOpacity>
-            )}
-            </Modal>
+            <TouchableWithoutFeedback onPress={closeModal}>
+                              <View style={styles.modalBackground}>
+                                {selectedImage && (
+                                  <Image
+                                    source={{ uri: selectedImage }}
+                                    style={styles.enlargedImage}
+                                    resizeMode="contain"
+                                  />
+                                )}
+                              </View>
+                            </TouchableWithoutFeedback>
+                          </Modal>
             </View>
             </GestureHandlerRootView>
     );

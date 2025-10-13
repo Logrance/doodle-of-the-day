@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { View, Text, FlatList, Image, StyleSheet, Modal, TouchableNativeFeedback, Platform, ActivityIndicator } from "react-native";
+import { View, Text, FlatList, Image, StyleSheet, Modal, ActivityIndicator, TouchableWithoutFeedback } from "react-native";
 //import { getCallableFunction } from "../firebaseConfig";
 import { auth, db } from "../firebaseConfig";
 import { TouchableOpacity, GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -8,7 +8,6 @@ import * as FileSystem from 'expo-file-system';
 import Entypo from '@expo/vector-icons/Entypo';
 import { collection, query, where, getDocs, orderBy, limit, startAfter } from "firebase/firestore";
 import { Timestamp } from "firebase/firestore";
-import { QuerySnapshot } from "@google-cloud/firestore";
 
 interface Drawing {
     id: string;
@@ -237,38 +236,18 @@ useEffect(() => {
             onRequestClose={closeModal} 
             >
 
-            {Platform.OS === 'android' ? (
-            <TouchableNativeFeedback onPress={closeModal}>
-            <View style={styles.modalBackground}>
-            <View style={styles.modalContainer}>
-            {selectedImage && (
-                <TouchableNativeFeedback onPress={closeModal}>
-                <Image 
-                    source={{ uri: selectedImage }} 
-                    style={styles.enlargedImage} 
-                    resizeMode="contain"
-                />
-                </TouchableNativeFeedback>
-            )}
-            </View>
-            </View>
-            </TouchableNativeFeedback>
-            ) : (
-            <TouchableOpacity style={styles.modalBackground} onPress={closeModal}>
-            <View style={styles.modalContainer}>
-            {selectedImage && (
-            <TouchableOpacity onPress={closeModal}>
-                <Image 
-                source={{ uri: selectedImage }} 
-                style={styles.enlargedImage} 
-                resizeMode="contain"
-                />
-            </TouchableOpacity>
-            )}
-            </View>
-            </TouchableOpacity>
-            )}
-            </Modal>
+              <TouchableWithoutFeedback onPress={closeModal}>
+                  <View style={styles.modalBackground}>
+                    {selectedImage && (
+                      <Image
+                        source={{ uri: selectedImage }}
+                        style={styles.enlargedImage}
+                        resizeMode="contain"
+                      />
+                    )}
+                  </View>
+                </TouchableWithoutFeedback>
+              </Modal>
             </View>
             </GestureHandlerRootView>
     );

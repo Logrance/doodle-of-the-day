@@ -1,20 +1,24 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useRef,useCallback, useEffect, Children } from 'react';
 import { View, Dimensions, TouchableOpacity, StyleSheet, Alert, Text, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { collection, query, orderBy, limit, onSnapshot } from "firebase/firestore";
 import { GestureHandlerRootView} from 'react-native-gesture-handler'
-import { Canvas, Path, useCanvasRef, SkPath, Skia, TouchInfo, useTouchHandler, Rect } from '@shopify/react-native-skia';
+import { Canvas, Path, useCanvasRef, SkPath, Skia, Rect } from '@shopify/react-native-skia';
 import { StatusBar } from 'expo-status-bar';
 import { db, getCallableFunction } from '../../../firebaseConfig';
 import AntDesign from '@expo/vector-icons/AntDesign';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { runOnJS } from 'react-native-reanimated';
+import { CurrentRenderContext } from '@react-navigation/native';
 
 type AddImageResponse = { data: { message: string } };
 
 
 export default function CanvasScreen() {
   const { width, height } = Dimensions.get("window");
-  const [paths, setPaths] = useState<SkPath[]>([]);
+  //const [paths, setPaths] = useState<SkPath[]>([]);
   const [isVisible, setIsVisible] = useState(false); 
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -26,15 +30,42 @@ export default function CanvasScreen() {
 
   const handleNextPage = () => setCurrentPage((prev) => prev + 1);
 
+  //New code
+  const currentPath = useRef<SkPath | null>(null);
+  const [paths, setPaths] = useState<SkPath[]>([]);
+
+  const updatePaths = useCallback((newPath: SkPath) => {
+    setPaths((prevState) => [...prevState, newPath]);
+  }, []);
+
+  const drawGesture = Gesture.Pan()
+    .runOnJS(true)
+    .onBegin(({x, y}) => {
+      currentPath.current = Skia.Path.Make();
+      currentPath.current.moveTo(x, y);
+      runOnJS(updatePaths)(currentPath.current);
+    })
+    .onUpdate(({x, y}) => {
+      if (currentPath.current) {
+        currentPath.current.lineTo(x, y);
+        setPaths((prev) => [...prev]);
+      }
+    });
+
+
+
+
+
     //Canvas drawing logic
-    const onDrawingStart = useCallback((touchInfo: TouchInfo) => {
+    /*const onDrawingStart = useCallback((touchInfo: TouchInfo) => {
       setPaths((old) => {
         const { x, y } = touchInfo;
         const newPath = Skia.Path.Make();
         newPath.moveTo(x, y);
         return [...old, newPath];
       });
-    }, []);
+    }, []); 
+
   
     const onDrawingActive = useCallback((touchInfo: TouchInfo) => {
       setPaths((currentPaths) => {
@@ -55,7 +86,9 @@ export default function CanvasScreen() {
         onStart: onDrawingStart,
       },
       [onDrawingActive, onDrawingStart]
-    );
+    ); */
+
+
 
   const clearCanvas = () => {
     setPaths([]);
@@ -145,12 +178,12 @@ useEffect(() => {
 return (
   <>
   <GestureHandlerRootView>
-  <SafeAreaView style={{ flex: 1}}>
+  <SafeAreaView style={{ flex: 1}} edges={['top', 'left', 'right']}>
     
-      
-          <Canvas style={{ flex: 8 }} ref={ref} onTouch={touchHandler}>
+      <GestureDetector gesture={drawGesture}>
+          <Canvas style={{ flex: 8 }} ref={ref}>
           <Rect x={0} y={0} width={width} height={height} color="white" />
-            {paths.map((path, index) => (
+            {Children.toArray(paths.map((path, index) => (
               <Path
                 key={index}
                 path={path}
@@ -158,8 +191,9 @@ return (
                 style="stroke"
                 color={"black"}
               />
-            ))}
+            )))}
           </Canvas>
+        </GestureDetector>
           
         
           <View style={styles.swatchContainer}>
@@ -223,7 +257,7 @@ return (
         </View>
       </View>
     </Modal>
-      </SafeAreaView>
+    </SafeAreaView>
     </GestureHandlerRootView>
     <StatusBar style="auto" />
   </>

@@ -1,6 +1,6 @@
 import { useNavigation } from '@react-navigation/core';
 import React, { useEffect, useState } from 'react';
-import { KeyboardAvoidingView, StyleSheet, Text, TextInput, TouchableOpacity, View , Image, ImageBackground, Alert} from 'react-native';
+import { KeyboardAvoidingView, StyleSheet, Text, TextInput, TouchableOpacity, View , Image, ImageBackground, Alert, Dimensions} from 'react-native';
 import { auth, getCallableFunction } from '../firebaseConfig';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -20,6 +20,10 @@ const LoginScreen: React.FC = () => {
   const toggleShowPassword = () => {
     setShowPassword(!showPassword);
 };
+
+ const { height: screenHeight } = Dimensions.get('window');
+
+  const isSmallScreen = screenHeight < 667;
 
  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
  const createUserDocument = getCallableFunction("createUserDocument");
@@ -86,7 +90,10 @@ const handleSignUp = async () => {
       <View style={styles.iconContainer}>
       <Image 
         source={require('../assets/icon.png')}  
-        style={styles.icon}
+        style={{
+          width: isSmallScreen ? 110 : 150,
+          height: isSmallScreen ? 110 : 150,
+        }}
       />
       </View>
       <View style={styles.inputContainer}>
@@ -196,10 +203,6 @@ const styles = StyleSheet.create({
     color: 'black',
     fontSize: 16,
     fontFamily: 'Poppins_700Bold',
-  },
-  icon: {
-    width: 150,  
-    height: 150,  
   },
   iconTwo: {
     marginLeft: 10,

@@ -17,6 +17,7 @@ export default function HomeScreen() {
       tabBarLabelStyle: {
         color: 'black', 
       },
+      //tabBarStyle: { marginTop: 60 },
     }}
     >
       <Tab.Screen 

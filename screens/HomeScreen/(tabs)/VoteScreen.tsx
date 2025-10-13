@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, Image, FlatList, Text, Modal, TouchableNativeFeedback, Platform, Alert, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, Image, FlatList, Text, Modal, Alert, ActivityIndicator, TouchableWithoutFeedback } from 'react-native';
 import { auth, db, getCallableFunction } from '../../../firebaseConfig';
 import { collection, query, orderBy, limit, onSnapshot } from "firebase/firestore";
 import { TouchableOpacity, GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -217,38 +217,18 @@ useEffect(() => {
         onRequestClose={closeModal} 
       >
 
-  {Platform.OS === 'android' ? (
-    <TouchableNativeFeedback onPress={closeModal}>
-      <View style={styles.modalBackground}>
-        <View style={styles.modalContainer}>
-          {selectedImage && (
-            <TouchableNativeFeedback onPress={closeModal}>
-              <Image 
-                source={{ uri: selectedImage }} 
-                style={styles.enlargedImage} 
-                resizeMode="contain"
-              />
-            </TouchableNativeFeedback>
-          )}
-        </View>
-      </View>
-    </TouchableNativeFeedback>
-  ) : (
-    <TouchableOpacity style={styles.modalBackground} onPress={closeModal}>
-      <View style={styles.modalContainer}>
-        {selectedImage && (
-          <TouchableOpacity onPress={closeModal}>
-            <Image 
-              source={{ uri: selectedImage }} 
-              style={styles.enlargedImage} 
-              resizeMode="contain"
-            />
-          </TouchableOpacity>
-        )}
-      </View>
-    </TouchableOpacity>
-  )}
-  </Modal>
+<TouchableWithoutFeedback onPress={closeModal}>
+                  <View style={styles.modalBackground}>
+                    {selectedImage && (
+                      <Image
+                        source={{ uri: selectedImage }}
+                        style={styles.enlargedImage}
+                        resizeMode="contain"
+                      />
+                    )}
+                  </View>
+                </TouchableWithoutFeedback>
+              </Modal>
 </SafeAreaView>
     </GestureHandlerRootView>
   );

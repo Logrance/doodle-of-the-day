@@ -2,7 +2,7 @@
   "expo": {
     "name": "Doodle of the Day",
     "slug": "Doodle-of-the-Day",
-    "version": "1.0.17",
+    "version": "1.0.21",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -17,7 +17,7 @@
     },
     "android": {
       "package": "com.doodleOfThe.day",
-      "versionCode": 18,
+      "versionCode": 21,
       "adaptiveIcon": {
         "foregroundImage": "./assets/splash-icon.png",
         "backgroundColor": "#ffffff"
@@ -33,6 +33,12 @@
       "eas": {
         "projectId": "5fb41f88-6606-4dad-961b-303575a2afb3"
       }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/5fb41f88-6606-4dad-961b-303575a2afb3"
     }
   }
 }

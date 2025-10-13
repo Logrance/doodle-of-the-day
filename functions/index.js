@@ -370,11 +370,10 @@ exports.addImageToDB = functions.https.onCall(async (data, context) => {
 
 
     const startOfDayTwo = admin.firestore.Timestamp.fromDate(
-        new Date(new Date().setUTCHours(0, 0, 0, 0)));
+        new Date(new Date().setUTCHours(-1, 0, 0, 0)));
 
     const endOfDayTwo = admin.firestore.Timestamp.fromDate(
         new Date(new Date().setUTCHours(23, 59, 59, 999)));
-
 
     // Fetch the theme of the day
     const themeQuery = await db
@@ -384,7 +383,7 @@ exports.addImageToDB = functions.https.onCall(async (data, context) => {
         .limit(1)
         .get();
 
-    let theme = "No theme available"; // Default theme if none is found
+    let theme = "No theme available";
     if (!themeQuery.empty) {
       const themeDoc = themeQuery.docs[0].data();
       theme = themeDoc.word; // Assuming 'word' is the field storing the theme

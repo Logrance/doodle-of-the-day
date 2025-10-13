@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, Image, ImageBackground } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, Image, ImageBackground, Dimensions } from 'react-native';
 import { auth } from '../../../firebaseConfig';
 import { useNavigation } from '@react-navigation/core';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -26,6 +26,11 @@ const ProfileScreen: React.FC = () => {
       alert(error.message);
     }
   };
+
+  const { height: screenHeight } = Dimensions.get('window');
+
+
+  const isSmallScreen = screenHeight < 667;
 
 
   return (
@@ -72,7 +77,11 @@ const ProfileScreen: React.FC = () => {
       </TouchableOpacity>
       <Image 
         source={require('../../../assets/cow.png')}  
-        style={styles.cow}
+        style={{
+          width: isSmallScreen ? 80 : 100,
+          height: isSmallScreen ? 80 : 100,
+          marginRight: 10,
+        }}
       />
       </View>
       </ImageBackground>
@@ -173,10 +182,5 @@ const styles = StyleSheet.create({
   backgroundImage: {
     flex: 1,  
     resizeMode: 'cover',  
-  },
-  cow: {
-    width: 100,   
-    height: 100,  
-    marginRight: 10,  
   },
 });
