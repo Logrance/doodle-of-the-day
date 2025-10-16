@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { View, Text, FlatList, Image, StyleSheet, Modal, ActivityIndicator, TouchableWithoutFeedback } from "react-native";
+import { View, Text, FlatList, Image, StyleSheet, Modal, TouchableWithoutFeedback } from "react-native";
+import CowLoader from '../components/CowLoader';
 //import { getCallableFunction } from "../firebaseConfig";
 import { auth, db } from "../firebaseConfig";
 import { TouchableOpacity, GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -199,9 +200,9 @@ useEffect(() => {
     return (
         <GestureHandlerRootView style={{ flex: 1 }}>
         <View style={styles.container}>
-            {loading ? ( 
-                    <ActivityIndicator size="large" color="grey" />
-                ) : drawings.length > 0 ? (
+      {loading ? ( 
+          <CowLoader size={48} />
+        ) : drawings.length > 0 ? (
                 <FlatList
                     data={drawings}
                     keyExtractor={(item) => item.id}
@@ -222,7 +223,7 @@ useEffect(() => {
                     showsVerticalScrollIndicator={false}
                     onEndReached={fetchNextData}
                     onEndReachedThreshold={0.5}
-                    ListFooterComponent={loadingMore ? <ActivityIndicator size="small" color="grey" /> : null}
+                    ListFooterComponent={loadingMore ? <CowLoader size={20} /> : null}
                 />
             ) : (
                 <Text>No drawings found</Text> 

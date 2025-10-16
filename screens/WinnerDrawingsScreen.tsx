@@ -1,6 +1,7 @@
 import { collection, query, where, getDocs, orderBy, limit, startAfter } from "firebase/firestore";
 import { useEffect, useState } from "react";
-import { View, Text, FlatList, Image, StyleSheet, Modal, ActivityIndicator, Button, TouchableWithoutFeedback } from "react-native";
+import { View, Text, FlatList, Image, StyleSheet, Modal, Button, TouchableWithoutFeedback } from "react-native";
+import CowLoader from '../components/CowLoader';
 import { db, auth } from "../firebaseConfig";
 import { TouchableOpacity, GestureHandlerRootView } from 'react-native-gesture-handler';
 import ConfettiCannon from 'react-native-confetti-cannon';
@@ -168,7 +169,7 @@ const handleShare = async (image: string) => {
         <GestureHandlerRootView style={{ flex: 1 }}>
         <View style={styles.container}>
         {loading ? (
-        <ActivityIndicator size="large" color="grey" /> 
+        <CowLoader size={48} /> 
       ) : winnerDrawing.length > 0 ? (
                  <FlatList
                  data={winnerDrawing}
@@ -189,7 +190,7 @@ const handleShare = async (image: string) => {
                     showsVerticalScrollIndicator={false}
                     onEndReached={fetchNextData}
                     onEndReachedThreshold={0.5}
-                    ListFooterComponent={loadingMore ? <ActivityIndicator size="small" color="grey" /> : null}
+                    ListFooterComponent={loadingMore ? <CowLoader size={20} /> : null}
                 />
             ) : (
                 <Text>No drawings found</Text> 

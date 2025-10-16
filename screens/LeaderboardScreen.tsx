@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { View, Text, FlatList, StyleSheet, ActivityIndicator } from "react-native";
+import { View, Text, FlatList, StyleSheet, Dimensions } from "react-native";
+import CowLoader from '../components/CowLoader';
 import { auth, getCallableFunction } from "../firebaseConfig";
 
 interface User {
@@ -40,11 +41,15 @@ const LeaderboardScreen = () => {
   useEffect(() => {
     fetchLeaderboard();
   }, []);
+  const { height: screenHeight } = Dimensions.get('window');
+  const loaderSize = screenHeight < 667 ? 80 : 100;
   
   return (
     <View style={styles.container}>
       {loading ? (
-        <ActivityIndicator size="large" color="grey" />
+        <View style={styles.loadingContainer}>
+          <CowLoader size={loaderSize} />
+        </View>
       ) : (
         <>
           <FlatList
@@ -83,6 +88,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 5,
     backgroundColor: 'white',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   leaderboardItem: {
     flexDirection: 'row',

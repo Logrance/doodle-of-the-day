@@ -168,15 +168,9 @@ return (
               <AntDesign name="delete" size={24} color="black" />
               </TouchableOpacity>
 
-               <Text style={{ 
-                fontFamily: 'PressStart2P_400Regular',
-                textAlign: 'center',
-                lineHeight: 22,
-                fontSize: 14,
-              }}
-            >
+               <Text style={styles.themeText}>
                 Today's theme:{"\n"}{word || "Loading..."}
-            </Text>
+               </Text>
             
               <TouchableOpacity onPress={captureCanvas} style={styles.buttonOther}>
               <MaterialIcons name="keyboard-return" size={24} color="black" />
@@ -268,19 +262,30 @@ modalContent: {
   borderRadius: 10,
   alignItems: 'center',
 },
-modalText: {
-  fontSize: 16,
-  marginBottom: 20,
-  fontFamily: 'Poppins_700Bold',
-  lineHeight: 26,
-},
-titleText: {
-  fontSize: 18,
-  marginBottom: 20,
-  textAlign: 'center',
-  fontFamily: 'PressStart2P_400Regular',
-  lineHeight: 26,
-},
+  modalText: {
+    fontSize: 16,
+    marginBottom: 20,
+    fontFamily: 'Poppins_400Regular',
+    lineHeight: 26,
+    color: '#111',
+    textAlign: 'left',
+  },
+  titleText: {
+    fontSize: 18,
+    marginBottom: 20,
+    textAlign: 'center',
+    fontFamily: 'Poppins_700Bold',
+    lineHeight: 26,
+    color: '#111',
+  },
+  themeText: {
+    fontFamily: 'Poppins_700Bold',
+    textAlign: 'center',
+    lineHeight: 22,
+    fontSize: 16,
+    color: '#111',
+    paddingHorizontal: 8,
+  },
 modalButton: {
   backgroundColor: 'rgba(2,52,72,0.7)',
   padding: 10,

@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, Image, ImageBackground, Dimensions } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, Image, ImageBackground, Dimensions, SafeAreaView, ScrollView } from 'react-native';
 import { auth } from '../../../firebaseConfig';
 import { useNavigation } from '@react-navigation/core';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -34,59 +34,56 @@ const ProfileScreen: React.FC = () => {
 
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <ImageBackground 
-      source={require('../../../assets/profilebackground11.jpg')} 
-      style={styles.backgroundImage}
-    >
-       <View style={styles.topTextContainer}>
-      <Text style={{ fontFamily: 'PressStart2P_400Regular', fontSize: 25 }}>Doodle 
-            {"\n"}
-            of the
-            {"\n"}
-            Day
-      </Text>
-      <Image 
-        source={require('../../../assets/icon.png')}  
-        style={styles.icon}
-      />
-      </View>
+        source={require('../../../assets/profilebackground11.jpg')} 
+        style={styles.backgroundImage}
+      >
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          <View style={styles.topTextContainer}>
+            <Text style={{ fontFamily: 'PressStart2P_400Regular', fontSize: 25, marginRight: 48 }}>Doodle 
+              {"\n"}
+              of the
+              {"\n"}
+              Day
+            </Text>
+            <View style={[styles.logoCircle, { width: isSmallScreen ? 120 : 160, height: isSmallScreen ? 120 : 160, borderRadius: (isSmallScreen ? 120 : 160) / 2 }]}
+            >
+              <Image
+                source={require('../../../assets/cow.png')}
+                style={[
+                  styles.logoImage,
+                  { transform: [{ translateX: isSmallScreen ? -6 : -12 }] },
+                ]}
+                resizeMode="cover"
+              />
+            </View>
+          </View>
 
-  
-      <View style={styles.buttonContainer}>
-      
-    
-      <TouchableOpacity onPress={() => navigation.navigate('Deets')} style={styles.buttonDeets}>
-        <Text style={styles.buttonText}>My deets</Text>
-      </TouchableOpacity>
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity onPress={() => navigation.navigate('Deets')} style={styles.buttonDeets}>
+              <Text style={styles.buttonText}>My deets</Text>
+            </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => navigation.navigate('WinnerDrawingsScreen')} style={styles.buttonOther}>
-        <Text style={styles.buttonText}>My winners</Text>
-      </TouchableOpacity>
+            <TouchableOpacity onPress={() => navigation.navigate('WinnerDrawingsScreen')} style={styles.buttonOther}>
+              <Text style={styles.buttonText}>My winners</Text>
+            </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => navigation.navigate('UserDrawingsScreen')} style={styles.buttonOther}>
-        <Text style={styles.buttonText}>My drawings</Text>
-      </TouchableOpacity>
+            <TouchableOpacity onPress={() => navigation.navigate('UserDrawingsScreen')} style={styles.buttonOther}>
+              <Text style={styles.buttonText}>My drawings</Text>
+            </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => navigation.navigate('LeaderboardScreen')} style={styles.buttonOtherTwo}>
-        <Text style={styles.buttonText}>Leaderboard</Text>
-      </TouchableOpacity>
+            <TouchableOpacity onPress={() => navigation.navigate('LeaderboardScreen')} style={styles.buttonOtherTwo}>
+              <Text style={styles.buttonText}>Leaderboard</Text>
+            </TouchableOpacity>
 
-      <TouchableOpacity onPress={handleSignOut} style={styles.button}>
-        <Text style={styles.buttonText}>Sign out</Text>
-      </TouchableOpacity>
-      <Image 
-        source={require('../../../assets/cow.png')}  
-        style={{
-          width: isSmallScreen ? 80 : 100,
-          height: isSmallScreen ? 80 : 100,
-          marginRight: 10,
-        }}
-      />
-      </View>
+            <TouchableOpacity onPress={handleSignOut} style={styles.button}>
+              <Text style={styles.buttonText}>Sign out</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
       </ImageBackground>
-
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -164,21 +161,48 @@ const styles = StyleSheet.create({
   topTextContainer: {
     alignItems: 'center',
     flexDirection: 'row',
-    justifyContent: 'space-between', 
-    marginTop: 50, 
-    marginLeft: 15,
-    marginBottom: 15,
+    justifyContent: 'center', 
+    marginTop: 40,
+    marginBottom: 18,
   },
   buttonContainer: {
     flex: 1,
     justifyContent: 'center', 
     alignItems: 'center',
   },
+  scrollContent: {
+    paddingBottom: 40,
+    flexGrow: 1,
+    justifyContent: 'center',
+  },
   icon: {
     width: 100,   
     height: 100,
     marginRight: 10,  
   },
+  logoCircle: {
+    backgroundColor: 'white',
+    justifyContent: 'center',
+    alignItems: 'center',
+  marginLeft: 0,
+    borderWidth: 2,
+    borderColor: '#eee',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 6,
+    overflow: 'hidden',
+  },
+  logoImage: {
+    // image fills the circle and will be clipped by the container
+    width: '100%',
+    height: '100%',
+    alignSelf: 'center',
+    // ensure the image covers the area without distortion
+    // actual cropping is handled by resizeMode="cover"
+  },
+ 
   backgroundImage: {
     flex: 1,  
     resizeMode: 'cover',  

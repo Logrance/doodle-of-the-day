@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, Image, FlatList, Text, Modal, Alert, ActivityIndicator, TouchableWithoutFeedback } from 'react-native';
+import { View, StyleSheet, Image, FlatList, Text, Modal, Alert, TouchableWithoutFeedback, Dimensions } from 'react-native';
+import CowLoader from '../../../components/CowLoader';
 import { auth, db, getCallableFunction } from '../../../firebaseConfig';
 import { collection, query, orderBy, limit, onSnapshot } from "firebase/firestore";
 import { TouchableOpacity, GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -24,6 +25,8 @@ type GetRoomDrawingsResponse = {
 
 
 export default function VoteScreen() {
+  const { height: screenHeight } = Dimensions.get('window');
+  const loaderSize = screenHeight < 667 ? 80 : 100;
 
   const [drawingInfo, setDrawingInfo] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -171,11 +174,11 @@ useEffect(() => {
     <GestureHandlerRootView style={{ flex: 1 }}>
     <SafeAreaView style={styles.container}>
     <View style={styles.themeContainer}>
-          <Text style={{ fontFamily: 'PressStart2P_400Regular', textAlign: 'center', lineHeight: 22, fontSize: 25 }}>{"\n"}{word || "Loading..."}</Text>
+          <Text style={styles.themeHeading}>{"\n"}{word || "Loading..."}</Text>
         </View>
-        {loading ? ( 
-                    <ActivityIndicator size="large" color="grey" />
-                ) : drawingInfo.length > 0 ? (
+    {loading ? ( 
+          <CowLoader size={loaderSize} />
+        ) : drawingInfo.length > 0 ? (
         <FlatList
           data={drawingInfo}
           keyExtractor={(item) => item.id}
@@ -287,7 +290,7 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: 'white',
-    fontWeight: '700',
+    fontFamily: 'Poppins_700Bold',
     fontSize: 16,
     
   },
@@ -295,6 +298,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 20,
     marginBottom: 50,
+  },
+  themeHeading: {
+    fontFamily: 'Poppins_700Bold',
+    fontSize: 22,
+    textAlign: 'center',
+    color: '#111',
+    paddingHorizontal: 8,
   },
   buttonRow: {
     flexDirection: 'row',

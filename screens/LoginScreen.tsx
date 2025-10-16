@@ -1,8 +1,9 @@
 import { useNavigation } from '@react-navigation/core';
 import React, { useEffect, useState } from 'react';
-import { KeyboardAvoidingView, StyleSheet, Text, TextInput, TouchableOpacity, View , Image, ImageBackground, Alert, Dimensions} from 'react-native';
+import { KeyboardAvoidingView, StyleSheet, Text, TextInput, TouchableOpacity, View , Image, ImageBackground, Alert, Dimensions, SafeAreaView, Platform } from 'react-native';
+import CowLoader from '../components/CowLoader';
 import { auth, getCallableFunction } from '../firebaseConfig';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendEmailVerification, sendPasswordResetEmail } from 'firebase/auth';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
@@ -16,17 +17,15 @@ const LoginScreen: React.FC = () => {
   const [password, setPassword] = useState<string>('');
   const [username, setUsername] = useState<string>('');
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const toggleShowPassword = () => {
-    setShowPassword(!showPassword);
-};
+  const toggleShowPassword = () => setShowPassword(prev => !prev);
 
- const { height: screenHeight } = Dimensions.get('window');
-
+  const { height: screenHeight } = Dimensions.get('window');
   const isSmallScreen = screenHeight < 667;
 
- const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
- const createUserDocument = getCallableFunction("createUserDocument");
+  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
+  const createUserDocument = getCallableFunction("createUserDocument");
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(user => {
@@ -38,114 +37,191 @@ const LoginScreen: React.FC = () => {
     return unsubscribe
   }, [])
 
-    // Validation function
-    const validateFields = (): boolean => {
-      if (!email || !password || !username) {
-        Alert.alert("Error", "All fields are required.");
-        return false;
+  // Validation helpers
+  const isValidEmail = (value: string) => /\S+@\S+\.\S+/.test(value);
+
+  const validateForRegister = (): boolean => {
+    if (!email || !password || !username) {
+      Alert.alert('Missing fields', 'Please provide username, email and password.');
+      return false;
+    }
+    if (!isValidEmail(email)) {
+      Alert.alert('Invalid email', 'Please enter a valid email address.');
+      return false;
+    }
+    if (password.length < 6) {
+      Alert.alert('Weak password', 'Password should be at least 6 characters long.');
+      return false;
+    }
+    return true;
+  };
+
+  const validateForLogin = (): boolean => {
+    if (!email || !password) {
+      Alert.alert('Missing fields', 'Please enter your email and password.');
+      return false;
+    }
+    if (!isValidEmail(email)) {
+      Alert.alert('Invalid email', 'Please enter a valid email address.');
+      return false;
+    }
+    return true;
+  };
+
+  const handleSignUp = async () => {
+    if (!validateForRegister()) return;
+    setLoading(true);
+    try {
+      const userCredentials = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredentials.user;
+
+      await sendEmailVerification(user);
+      Alert.alert('Verification Sent', 'A verification email has been sent. Please verify before logging in.');
+
+      if (createUserDocument) {
+        await createUserDocument({
+          username,
+          email: user.email,
+          userId: user.uid,
+        });
       }
-      return true;
-    };
-
-
-const handleSignUp = async () => {
-  if (!validateFields()) return;
-
-  try {
-    const userCredentials = await createUserWithEmailAndPassword(auth, email, password);
-    const user = userCredentials.user;
-
-    await sendEmailVerification(user);
-    Alert.alert("Verification Sent", "A verification email has been sent.");
-
-    await createUserDocument({
-      username,
-      email: user.email,
-      userId: user.uid,
-    });
-
-  } catch (error: any) {
-    alert(error.message);
-  }
-};
-
+    } catch (error: any) {
+      Alert.alert('Registration failed', error?.message || 'Unknown error');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleLogin = async () => {
+    if (!validateForLogin()) return;
+    setLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
     } catch (error: any) {
-      alert(error.message);
+      Alert.alert('Login failed', error?.message || 'Unknown error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!email) {
+      Alert.alert('Email required', 'Enter your email above to receive a password reset link.');
+      return;
+    }
+    if (!isValidEmail(email)) {
+      Alert.alert('Invalid email', 'Please enter a valid email address.');
+      return;
+    }
+    setLoading(true);
+    try {
+      await sendPasswordResetEmail(auth, email);
+      Alert.alert('Reset Sent', 'Password reset email sent. Check your inbox.');
+    } catch (error: any) {
+      Alert.alert('Reset failed', error?.message || 'Could not send reset email.');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior="padding"
-    >
-      <ImageBackground 
-      source={require('../assets/loginbackground5.jpg')} 
-      style={styles.backgroundImage}
-    >
-      <View style={styles.iconContainer}>
-      <Image 
-        source={require('../assets/icon.png')}  
-        style={{
-          width: isSmallScreen ? 110 : 150,
-          height: isSmallScreen ? 110 : 150,
-        }}
-      />
-      </View>
-      <View style={styles.inputContainer}>
-      <TextInput
-            placeholder="Username (only required for registration)"
-            value={username}
-            onChangeText={text => setUsername(text)}
-            style={styles.input}
-            placeholderTextColor="black"
-          />
-        <TextInput
-          placeholder="Email"
-          value={email}
-          onChangeText={text => setEmail(text)}
-          style={styles.input}
-          placeholderTextColor="black"
-        />
-        <View style={styles.passwordContainer}>
-        <TextInput
-          placeholder="Password"
-          value={password}
-          onChangeText={text => setPassword(text)}
-          style={styles.passwordInput}
-          secureTextEntry={!showPassword}
-          placeholderTextColor="black"
-        />    
-        <MaterialCommunityIcons
-          name={showPassword ? 'eye-off' : 'eye'}
-          size={24}
-          color="black"
-          style={styles.iconTwo}
-          onPress={toggleShowPassword}
-        />
-        </View>
-      </View>
+    <SafeAreaView style={styles.container}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <ImageBackground 
+          source={require('../assets/loginbackground5.jpg')} 
+          style={styles.backgroundImage}
+        >
+          <View style={styles.iconContainer}>
+            <View style={[styles.logoCircle, { width: isSmallScreen ? 120 : 160, height: isSmallScreen ? 120 : 160, borderRadius: (isSmallScreen ? 120 : 160) / 2 }]}>
+              <Image
+                source={require('../assets/cow.png')}
+                style={[styles.logoImage, {
+                  width: isSmallScreen ? 130 : 170,
+                  height: isSmallScreen ? 130 : 170,
+                  marginTop: isSmallScreen ? -10 : -14,
+                  transform: [{ translateX: isSmallScreen ? -4 : -14 }],
+                }]}
+                resizeMode="cover"
+              />
+            </View>
+          </View>
 
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          onPress={handleLogin}
-          style={styles.button}
-        >
-          <Text style={styles.buttonText}>Login</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={handleSignUp}
-          style={[styles.button, styles.buttonOutline]}
-        >
-          <Text style={styles.buttonOutlineText}>Register</Text>
-        </TouchableOpacity>
-      </View>
-      </ImageBackground>
-    </KeyboardAvoidingView>
+          <View style={styles.inputContainer}>
+            <TextInput
+              placeholder="Username (for registration)"
+              value={username}
+              onChangeText={text => setUsername(text)}
+              style={styles.input}
+              placeholderTextColor="#333"
+              accessible
+              accessibilityLabel="username"
+            />
+
+            <View style={styles.inputRow}>
+              <TextInput
+                placeholder="Email"
+                value={email}
+                onChangeText={text => setEmail(text)}
+                style={[styles.input, styles.flexInput]}
+                placeholderTextColor="#333"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                accessible
+                accessibilityLabel="email"
+              />
+            </View>
+
+            <View style={styles.passwordContainer}>
+              <TextInput
+                placeholder="Password"
+                value={password}
+                onChangeText={text => setPassword(text)}
+                style={styles.passwordInput}
+                secureTextEntry={!showPassword}
+                placeholderTextColor="#333"
+                accessible
+                accessibilityLabel="password"
+              />    
+              <MaterialCommunityIcons
+                name={showPassword ? 'eye-off' : 'eye'}
+                size={22}
+                color="#111"
+                style={styles.iconTwo}
+                onPress={toggleShowPassword}
+                accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+              />
+            </View>
+          </View>
+
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity
+              onPress={handleLogin}
+              style={[styles.button, loading && styles.buttonDisabled]}
+              disabled={loading}
+              accessibilityRole="button"
+            >
+              {loading ? <CowLoader size={20} /> : <Text style={styles.buttonText}>Login</Text>}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={handleSignUp}
+              style={[styles.button, styles.buttonOutline, loading && styles.buttonDisabledOutline]}
+              disabled={loading}
+              accessibilityRole="button"
+            >
+              <Text style={styles.buttonOutlineText}>Register</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={handleResetPassword} style={styles.forgotButton} disabled={loading}>
+              <Text style={styles.forgotText}>Forgot password?</Text>
+            </TouchableOpacity>
+          </View>
+        </ImageBackground>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
@@ -153,6 +229,13 @@ export default LoginScreen;
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+  },
+  inputRow: {
+    flexDirection: 'row',
+    width: '100%',
+  },
+  flexInput: {
     flex: 1,
   },
   passwordContainer: {
@@ -188,11 +271,17 @@ const styles = StyleSheet.create({
     padding: 15,
     alignItems: 'center',
   },
+  buttonDisabled: {
+    opacity: 0.7,
+  },
   buttonOutline: {
     backgroundColor: 'transparent',
     marginTop: 5,
     borderColor: 'black',
     borderWidth: 2,
+  },
+  buttonDisabledOutline: {
+    opacity: 0.6,
   },
   buttonText: {
     color: 'white',
@@ -212,6 +301,29 @@ const styles = StyleSheet.create({
     top:50,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  logoCircle: {
+    backgroundColor: 'white',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#eee',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 6,
+    overflow: 'hidden',
+  },
+  logoImage: {
+    alignSelf: 'center',
+  },
+  forgotButton: {
+    marginTop: 8,
+  },
+  forgotText: {
+    color: '#111',
+    textDecorationLine: 'underline',
   },
   backgroundImage: {
     flex: 1,  
