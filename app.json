@@ -4,10 +4,10 @@
     "slug": "Doodle-of-the-Day",
     "version": "1.0.21",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/cow2.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/cow2.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -19,7 +19,7 @@
       "package": "com.doodleOfThe.day",
       "versionCode": 21,
       "adaptiveIcon": {
-        "foregroundImage": "./assets/splash-icon.png",
+        "foregroundImage": "./assets/cow2.png",
         "backgroundColor": "#ffffff"
       }
     },
