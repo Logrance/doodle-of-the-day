@@ -40,53 +40,21 @@ export default function CanvasScreen() {
 
   const drawGesture = Gesture.Pan()
     .runOnJS(true)
-    .onBegin(({x, y}) => {
+    .minDistance(0)
+    .onStart(({x, y}) => {
       currentPath.current = Skia.Path.Make();
       currentPath.current.moveTo(x, y);
       runOnJS(updatePaths)(currentPath.current);
     })
     .onUpdate(({x, y}) => {
       if (currentPath.current) {
-        currentPath.current.lineTo(x, y);
+        const lastP = currentPath.current.getLastPt()
+        const xMid = (lastP.x + x) /2
+        const yMid = (lastP.y + y) /2
+        currentPath.current.quadTo(lastP.x, lastP.y, xMid, yMid);
         setPaths((prev) => [...prev]);
       }
     });
-
-
-
-
-
-    //Canvas drawing logic
-    /*const onDrawingStart = useCallback((touchInfo: TouchInfo) => {
-      setPaths((old) => {
-        const { x, y } = touchInfo;
-        const newPath = Skia.Path.Make();
-        newPath.moveTo(x, y);
-        return [...old, newPath];
-      });
-    }, []); 
-
-  
-    const onDrawingActive = useCallback((touchInfo: TouchInfo) => {
-      setPaths((currentPaths) => {
-        const { x, y } = touchInfo;
-        const currentPath = currentPaths[currentPaths.length - 1];
-        const lastPoint = currentPath.getLastPt();
-        const xMid = (lastPoint.x + x) / 2;
-        const yMid = (lastPoint.y + y) / 2;
-  
-        currentPath.quadTo(lastPoint.x, lastPoint.y, xMid, yMid);
-        return [...currentPaths.slice(0, currentPaths.length - 1), currentPath];
-      });
-    }, []);
-  
-    const touchHandler = useTouchHandler(
-      {
-        onActive: onDrawingActive,
-        onStart: onDrawingStart,
-      },
-      [onDrawingActive, onDrawingStart]
-    ); */
 
 
 
@@ -179,8 +147,7 @@ return (
   <>
   <GestureHandlerRootView>
   <SafeAreaView style={{ flex: 1}} edges={['top', 'left', 'right']}>
-    
-      <GestureDetector gesture={drawGesture}>
+    <GestureDetector gesture={drawGesture}>
           <Canvas style={{ flex: 8 }} ref={ref}>
           <Rect x={0} y={0} width={width} height={height} color="white" />
             {Children.toArray(paths.map((path, index) => (
@@ -193,7 +160,7 @@ return (
               />
             )))}
           </Canvas>
-        </GestureDetector>
+       </GestureDetector> 
           
         
           <View style={styles.swatchContainer}>
