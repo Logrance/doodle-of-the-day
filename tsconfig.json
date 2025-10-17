@@ -2,7 +2,11 @@
   "compilerOptions": {
     "paths": {
       "@firebase/auth": ["./node_modules/@firebase/auth/dist/index.rn.d.ts"]
-    }
+    },
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "skipLibCheck": true,
+    "jsx": "react-native"
   },
   "extends": "expo/tsconfig.base"
 }
