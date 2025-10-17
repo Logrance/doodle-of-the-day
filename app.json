@@ -2,7 +2,7 @@
   "expo": {
     "name": "Doodle of the Day",
     "slug": "Doodle-of-the-Day",
-    "version": "1.0.21",
+    "version": "1.0.22",
     "orientation": "portrait",
     "icon": "./assets/cow2.png",
     "userInterfaceStyle": "light",
@@ -17,7 +17,7 @@
     },
     "android": {
       "package": "com.doodleOfThe.day",
-      "versionCode": 21,
+      "versionCode": 22,
       "adaptiveIcon": {
         "foregroundImage": "./assets/cow2.png",
         "backgroundColor": "#ffffff"

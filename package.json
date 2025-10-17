@@ -17,7 +17,7 @@
     "@react-navigation/native": "^6.1.18",
     "@react-navigation/native-stack": "^6.11.0",
     "@react-navigation/stack": "^6.4.1",
-    "@shopify/react-native-skia": "^2.0.0-next.4",
+    "@shopify/react-native-skia": "v2.0.0-next.4",
     "@types/react-dom": "19.1.7",
     "expo": "~53.0.23",
     "expo-font": "~13.3.2",
@@ -28,7 +28,7 @@
     "expo-updates": "~0.28.17",
     "firebase": "^12.1.0",
     "moment": "^2.30.1",
-    "react": "^19.0.0",
+    "react": "19.0.0",
     "react-native": "0.79.5",
     "react-native-confetti-cannon": "^1.5.2",
     "react-native-gesture-handler": "~2.24.0",
@@ -38,7 +38,7 @@
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
-    "@types/react": "^19.0.10",
+    "@types/react": "~19.0.10",
     "typescript": "~5.8.3"
   },
   "private": true
