@@ -6,18 +6,31 @@ public final class DrawingCanvasView: ExpoView {
   private var currentPath: UIBezierPath?
   private var lastPoint: CGPoint = .zero
 
+  // GPU-accelerated layer for the in-progress stroke — avoids setNeedsDisplay on every event
+  private let strokeLayer = CAShapeLayer()
+
   private let strokeWidth: CGFloat = 5.0
   private let strokeColor: UIColor = .black
   private let bgColor: UIColor = .white
 
   required public init(appContext: AppContext? = nil) {
     super.init(appContext: appContext)
-    self.backgroundColor = bgColor
-    self.isMultipleTouchEnabled = false
+    backgroundColor = bgColor
+    isMultipleTouchEnabled = false
+
+    strokeLayer.strokeColor = strokeColor.cgColor
+    strokeLayer.fillColor = UIColor.clear.cgColor
+    strokeLayer.lineWidth = strokeWidth
+    strokeLayer.lineCap = .round
+    strokeLayer.lineJoin = .round
+    // Disable implicit path animation so updates are instant
+    strokeLayer.actions = ["path": NSNull()]
+    layer.addSublayer(strokeLayer)
   }
 
   public override func layoutSubviews() {
     super.layoutSubviews()
+    strokeLayer.frame = bounds
     if backingImage == nil { createFreshBackingImage() }
   }
 
@@ -25,56 +38,55 @@ public final class DrawingCanvasView: ExpoView {
     guard let touch = touches.first else { return }
     let point = touch.location(in: self)
     lastPoint = point
+
     let path = UIBezierPath()
     path.lineWidth = strokeWidth
     path.lineCapStyle = .round
     path.lineJoinStyle = .round
     path.move(to: point)
+    // Tiny stub so round caps render a dot the instant the finger lands
+    path.addLine(to: CGPoint(x: point.x + 0.001, y: point.y))
     currentPath = path
+    strokeLayer.path = path.cgPath
   }
 
   public override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
     guard let touch = touches.first, let path = currentPath else { return }
-    let current = touch.location(in: self)
-    let mid = CGPoint(x: (lastPoint.x + current.x) / 2, y: (lastPoint.y + current.y) / 2)
-    path.addQuadCurve(to: mid, controlPoint: lastPoint)
-    lastPoint = current
-    setNeedsDisplay()
+    // Coalesced touches give all intermediate positions between display frames
+    let allTouches = event?.coalescedTouches(for: touch) ?? [touch]
+    for t in allTouches {
+      let current = t.location(in: self)
+      // Draw directly to the touch point — tracks the finger exactly
+      path.addLine(to: current)
+      lastPoint = current
+    }
+    strokeLayer.path = path.cgPath
   }
 
   public override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
     guard let path = currentPath else { return }
     if let touch = touches.first { path.addLine(to: touch.location(in: self)) }
-    // Tap detection: if path has essentially no movement, add a tiny line segment
-    // so the stroke renderer produces a visible dot (round caps, same strokeWidth).
-    if path.bounds.width < 2.0 && path.bounds.height < 2.0 {
-      path.addLine(to: CGPoint(x: lastPoint.x + 0.001, y: lastPoint.y))
-    }
-    commitPath(path)
+    commitStroke(path)
     currentPath = nil
+    strokeLayer.path = nil
     setNeedsDisplay()
   }
 
   public override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
     currentPath = nil
+    strokeLayer.path = nil
     setNeedsDisplay()
   }
 
   public override func draw(_ rect: CGRect) {
+    // The live stroke is handled by strokeLayer; just paint the committed image here.
     backingImage?.draw(in: bounds)
-    guard let path = currentPath, let ctx = UIGraphicsGetCurrentContext() else { return }
-    ctx.saveGState()
-    strokeColor.setStroke()
-    ctx.setLineWidth(strokeWidth)
-    ctx.setLineCap(.round)
-    ctx.setLineJoin(.round)
-    path.stroke()
-    ctx.restoreGState()
   }
 
   func clear() {
     createFreshBackingImage()
     currentPath = nil
+    strokeLayer.path = nil
     setNeedsDisplay()
   }
 
@@ -95,7 +107,7 @@ public final class DrawingCanvasView: ExpoView {
     return (image.pngData() ?? Data()).base64EncodedString()
   }
 
-  private func commitPath(_ path: UIBezierPath) {
+  private func commitStroke(_ path: UIBezierPath) {
     let renderer = UIGraphicsImageRenderer(bounds: bounds)
     backingImage = renderer.image { ctx in
       bgColor.setFill()
