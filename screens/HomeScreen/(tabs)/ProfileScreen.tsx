@@ -6,7 +6,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 
 type RootStackParamList = {
   Home: undefined;
-  Login: undefined;
+  Welcome: undefined;
   UserDrawingsScreen: undefined;
   WinnerDrawingsScreen: undefined;
   Deets: undefined;
@@ -21,7 +21,7 @@ const ProfileScreen: React.FC = () => {
   const handleSignOut = async () => {
     try {
       await auth.signOut();
-      navigation.replace('Login');
+      navigation.replace('Welcome');
     } catch (error: any) {
       alert(error.message);
     }
@@ -41,43 +41,37 @@ const ProfileScreen: React.FC = () => {
       >
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           <View style={styles.topTextContainer}>
-            <Text style={{ fontFamily: 'PressStart2P_400Regular', fontSize: 25, marginRight: 48 }}>Doodle 
-              {"\n"}
-              of the
-              {"\n"}
-              Day
-            </Text>
-            <View style={[styles.logoCircle, { width: isSmallScreen ? 120 : 160, height: isSmallScreen ? 120 : 160, borderRadius: (isSmallScreen ? 120 : 160) / 2 }]}
-            >
+            <View style={[styles.logoCircle, { width: isSmallScreen ? 100 : 130, height: isSmallScreen ? 100 : 130, borderRadius: (isSmallScreen ? 100 : 130) / 2 }]}>
               <Image
                 source={require('../../../assets/cow.png')}
-                style={[
-                  styles.logoImage,
-                  { transform: [{ translateX: isSmallScreen ? -6 : -12 }] },
-                ]}
+                style={[styles.logoImage, { transform: [{ translateX: isSmallScreen ? -6 : -12 }] }]}
                 resizeMode="cover"
               />
+            </View>
+            <View style={styles.titleBlock}>
+              <Text style={styles.titleText}>Doodle</Text>
+              <Text style={styles.titleText}>of the Day</Text>
             </View>
           </View>
 
           <View style={styles.buttonContainer}>
-            <TouchableOpacity onPress={() => navigation.navigate('Deets')} style={styles.buttonDeets}>
-              <Text style={styles.buttonText}>My deets</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Deets')} style={styles.buttonSecondary}>
+              <Text style={styles.buttonText}>Account</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity onPress={() => navigation.navigate('WinnerDrawingsScreen')} style={styles.buttonOther}>
+            <TouchableOpacity onPress={() => navigation.navigate('WinnerDrawingsScreen')} style={styles.buttonSecondary}>
               <Text style={styles.buttonText}>My winners</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity onPress={() => navigation.navigate('UserDrawingsScreen')} style={styles.buttonOther}>
+            <TouchableOpacity onPress={() => navigation.navigate('UserDrawingsScreen')} style={styles.buttonSecondary}>
               <Text style={styles.buttonText}>My drawings</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity onPress={() => navigation.navigate('LeaderboardScreen')} style={styles.buttonOtherTwo}>
-              <Text style={styles.buttonText}>Leaderboard</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('LeaderboardScreen')} style={styles.buttonPrimary}>
+              <Text style={[styles.buttonText, { color: 'white' }]}>Leaderboard</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity onPress={handleSignOut} style={styles.button}>
+            <TouchableOpacity onPress={handleSignOut} style={styles.buttonGhost}>
               <Text style={styles.buttonText}>Sign out</Text>
             </TouchableOpacity>
           </View>
@@ -89,102 +83,40 @@ const ProfileScreen: React.FC = () => {
 
 export default ProfileScreen;
 
+const buttonBase = {
+  width: '92%' as const,
+  height: 56,
+  justifyContent: 'center' as const,
+  alignItems: 'center' as const,
+  borderRadius: 12,
+  marginTop: 12,
+};
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  button: {
-    backgroundColor: 'transparent',  
-    width: '95%', 
-    height: 60,  
-    justifyContent: 'center',  
-    alignItems: 'center',
-    borderColor: '#000',  
-    borderWidth: 2,  
-    marginTop: 20,  
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,  
-    shadowRadius: 4,
-  },
-  buttonOther: {
-    backgroundColor: 'rgba(224,183,202, 0.8)',
-    width: '95%',  
-    height: 60,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-  },
-  buttonOtherTwo: {
-    backgroundColor: 'rgba(2,52,72, 0.5)',
-    width: '95%', 
-    height: 60,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-  },
-  buttonText: {
-    color: 'black',
-    fontWeight: 'bold',  
-    fontSize: 18,  
-    textTransform: 'uppercase',
-  },
-  drawingContainer: {
-    marginBottom: 20,
-    alignItems: 'center',
-  },
-  image: {
-    width: 200,
-    height: 200,
-    resizeMode: 'contain',
-  },
-    buttonDeets: {
-      backgroundColor: 'rgba(170,170,170, 0.5)',
-      width: '95%', 
-      height: 60,
-      justifyContent: 'center',
-      alignItems: "center",
-      marginTop: 20,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.2,
-      shadowRadius: 4,
-    },
+  container: { flex: 1 },
+  backgroundImage: { flex: 1, resizeMode: 'cover' },
+  scrollContent: { paddingBottom: 40, flexGrow: 1, justifyContent: 'center' },
   topTextContainer: {
-    alignItems: 'center',
     flexDirection: 'row',
-    justifyContent: 'center', 
-    marginTop: 40,
-    marginBottom: 18,
-  },
-  buttonContainer: {
-    flex: 1,
-    justifyContent: 'center', 
     alignItems: 'center',
-  },
-  scrollContent: {
-    paddingBottom: 40,
-    flexGrow: 1,
     justifyContent: 'center',
+    marginTop: 40,
+    marginBottom: 24,
+    gap: 20,
   },
-  icon: {
-    width: 100,   
-    height: 100,
-    marginRight: 10,  
+  titleBlock: {
+    alignItems: 'flex-start',
+  },
+  titleText: {
+    fontFamily: 'Poppins_700Bold',
+    fontSize: 22,
+    color: '#111',
+    lineHeight: 30,
   },
   logoCircle: {
     backgroundColor: 'white',
     justifyContent: 'center',
     alignItems: 'center',
-  marginLeft: 0,
     borderWidth: 2,
     borderColor: '#eee',
     shadowColor: '#000',
@@ -194,17 +126,35 @@ const styles = StyleSheet.create({
     elevation: 6,
     overflow: 'hidden',
   },
-  logoImage: {
-    // image fills the circle and will be clipped by the container
-    width: '100%',
-    height: '100%',
-    alignSelf: 'center',
-    // ensure the image covers the area without distortion
-    // actual cropping is handled by resizeMode="cover"
+  logoImage: { width: '100%', height: '100%', alignSelf: 'center' },
+  buttonContainer: { flex: 1, alignItems: 'center' },
+  buttonSecondary: {
+    ...buttonBase,
+    backgroundColor: 'rgba(224,183,202,0.85)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
- 
-  backgroundImage: {
-    flex: 1,  
-    resizeMode: 'cover',  
+  buttonPrimary: {
+    ...buttonBase,
+    backgroundColor: 'rgba(2,52,72,0.85)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  buttonGhost: {
+    ...buttonBase,
+    backgroundColor: 'transparent',
+    borderWidth: 2,
+    borderColor: '#333',
+  },
+  buttonText: {
+    fontFamily: 'Poppins_700Bold',
+    fontSize: 16,
+    color: '#111',
   },
 });

@@ -196,15 +196,16 @@ export default function CanvasScreen() {
 
           <View style={styles.swatchContainer}>
             <TouchableOpacity onPress={clearCanvas} style={styles.buttonAnother}>
-              <AntDesign name="delete" size={24} color="black" />
+              <AntDesign name="delete" size={22} color="white" />
             </TouchableOpacity>
 
-            <Text style={styles.themeText}>
-              Today's theme:{"\n"}{word || "Loading..."}
-            </Text>
+            <View style={styles.themeWrapper}>
+              <Text style={styles.themeLabel}>Today's theme</Text>
+              <Text style={styles.themeText}>{word || "Loading..."}</Text>
+            </View>
 
             <TouchableOpacity onPress={captureCanvas} style={styles.buttonOther}>
-              <MaterialIcons name="keyboard-return" size={24} color="black" />
+              <MaterialIcons name="check-circle" size={22} color="white" />
             </TouchableOpacity>
           </View>
 
@@ -260,20 +261,34 @@ const styles = StyleSheet.create({
   swatchContainer: {
     flexDirection: "row",
     flex: 1,
-    padding: 10,
+    paddingHorizontal: 16,
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "#edede9",
+    backgroundColor: "white",
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
   },
   buttonOther: {
-    backgroundColor: 'rgb(224,183,202)',
-    padding: 7,
+    backgroundColor: '#023448',
+    padding: 10,
     borderRadius: 10,
   },
   buttonAnother: {
-    backgroundColor: 'rgba(2,52,72, 0.5)',
-    padding: 7,
+    backgroundColor: 'rgba(2,52,72,0.7)',
+    padding: 10,
     borderRadius: 10,
+  },
+  themeWrapper: {
+    alignItems: 'center',
+    flex: 1,
+    paddingHorizontal: 8,
+  },
+  themeLabel: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 11,
+    color: '#888',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   buttonText: {
     color: 'white',
@@ -312,10 +327,8 @@ const styles = StyleSheet.create({
   themeText: {
     fontFamily: 'Poppins_700Bold',
     textAlign: 'center',
-    lineHeight: 22,
-    fontSize: 16,
+    fontSize: 15,
     color: '#111',
-    paddingHorizontal: 8,
   },
   modalButton: {
     backgroundColor: 'rgba(2,52,72,0.7)',

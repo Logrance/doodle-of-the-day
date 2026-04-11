@@ -1,14 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert, ImageBackground } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert, ImageBackground, SafeAreaView } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { auth, getCallableFunction } from "../firebaseConfig";
 import { useNavigation } from '@react-navigation/core';
 import { StackNavigationProp } from '@react-navigation/stack';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import AntDesign from '@expo/vector-icons/AntDesign';
 
 type RootStackParamList = {
-  Login: undefined;
+  Welcome: undefined;
 };
 
 type DeleteUserResponse = { message: string };
@@ -60,7 +59,7 @@ export default function Deets() {
                 Alert.alert("Account Deleted", data.message);
   
                 await auth.signOut();
-                navigation.replace('Login');
+                navigation.replace('Welcome');
               } catch (error: any) {
                 Alert.alert("Error", error.message || "Error deleting account");
               }
@@ -88,68 +87,107 @@ export default function Deets() {
     }, []);
 
   return (
-    <View style={styles.container}>
-       <ImageBackground 
-      source={require('../assets/deetsbackground4.jpg')} 
-      style={styles.backgroundImage}
-    >
-      <Text style={{ fontFamily: 'Poppins_700Bold' }}>Email: {auth.currentUser?.email}</Text>
-      <Text style={{ fontFamily: 'Poppins_700Bold', marginTop: 5 }}>Verified: {isVerified ? 
-      (<MaterialIcons name="verified-user" size={24} color="black" />)
-      : (<AntDesign name="exclamationcircleo" size={24} color="black" />
-
-      )}</Text>
-      
-      <TouchableOpacity
-        onPress={handlePasswordReset}
-        style={styles.resetButton}
-        disabled={isResettingPassword}
+    <SafeAreaView style={styles.container}>
+      <ImageBackground
+        source={require('../assets/deetsbackground4.jpg')}
+        style={styles.backgroundImage}
       >
-        <Text style={{ fontFamily: 'Poppins_700Bold' }}>
-          Forgotten password? {isResettingPassword ? "Sending reset email..." : "Click here to reset"}
-        </Text>
-      </TouchableOpacity>
+        <View style={styles.card}>
+          <Text style={styles.heading}>Account</Text>
 
-      <TouchableOpacity
-                onPress={handleDeleteAccount}
-                style={styles.deleteButton}
-                disabled={isDeletingAccount}
-            >
-                <Text style={styles.buttonText}>
-                    {isDeletingAccount ? "Deleting Account..." : "Delete Account"}
-                </Text>
-            </TouchableOpacity>
-            </ImageBackground>
-    </View>
+          <View style={styles.row}>
+            <MaterialCommunityIcons name="email-outline" size={20} color="#555" style={styles.rowIcon} />
+            <Text style={styles.rowText}>{auth.currentUser?.email}</Text>
+          </View>
+
+          <View style={styles.row}>
+            <MaterialCommunityIcons
+              name={isVerified ? 'check-circle-outline' : 'alert-circle-outline'}
+              size={20}
+              color={isVerified ? '#2e7d32' : '#c0392b'}
+              style={styles.rowIcon}
+            />
+            <Text style={[styles.rowText, { color: isVerified ? '#2e7d32' : '#c0392b' }]}>
+              {isVerified ? 'Email verified' : 'Email not verified'}
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            onPress={handlePasswordReset}
+            style={styles.resetButton}
+            disabled={isResettingPassword}
+          >
+            <Text style={styles.resetText}>
+              {isResettingPassword ? 'Sending reset email...' : 'Reset password'}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={handleDeleteAccount}
+            style={styles.deleteButton}
+            disabled={isDeletingAccount}
+          >
+            <Text style={styles.deleteText}>
+              {isDeletingAccount ? 'Deleting account...' : 'Delete account'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </ImageBackground>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  container: { flex: 1 },
+  backgroundImage: { flex: 1, resizeMode: 'cover', justifyContent: 'center', alignItems: 'center' },
+  card: {
+    width: '88%',
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    borderRadius: 20,
+    padding: 28,
+  },
+  heading: {
+    fontFamily: 'Poppins_700Bold',
+    fontSize: 22,
+    color: '#111',
+    marginBottom: 20,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  rowIcon: { marginRight: 10 },
+  rowText: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 14,
+    color: '#333',
     flex: 1,
   },
   resetButton: {
     marginTop: 20,
-    padding: 10,
-    borderRadius: 5,
-    borderWidth: 2,   
-    borderColor: 'grey',  
-    borderStyle: 'dashed',
+    padding: 14,
+    borderRadius: 10,
+    backgroundColor: 'rgba(2,52,72,0.08)',
+    alignItems: 'center',
+  },
+  resetText: {
+    fontFamily: 'Poppins_700Bold',
+    fontSize: 15,
+    color: '#023448',
   },
   deleteButton: {
-    marginTop: 20,
-    padding: 10,
-    backgroundColor: 'rgba(2,52,72,0.7)',
-},
-  buttonText: {
-    fontSize: 16,
-    fontFamily: 'Poppins_700Bold',
-    color: 'white',
+    marginTop: 12,
+    padding: 14,
+    borderRadius: 10,
+    backgroundColor: 'rgba(192,57,43,0.1)',
+    alignItems: 'center',
   },
-  backgroundImage: {
-    flex: 1,  
-    resizeMode: 'cover',
-    justifyContent: 'center',  
-    alignItems: 'center',  
+  deleteText: {
+    fontFamily: 'Poppins_700Bold',
+    fontSize: 15,
+    color: '#c0392b',
   },
 });

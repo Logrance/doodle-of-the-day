@@ -1,6 +1,6 @@
 import { collection, query, where, getDocs, orderBy, limit, startAfter } from "firebase/firestore";
 import { useEffect, useState } from "react";
-import { View, Text, FlatList, Image, StyleSheet, Modal, Button, TouchableWithoutFeedback } from "react-native";
+import { View, Text, FlatList, Image, StyleSheet, Modal, TouchableWithoutFeedback, Dimensions } from "react-native";
 import CowLoader from '../components/CowLoader';
 import { db, auth } from "../firebaseConfig";
 import { TouchableOpacity, GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -165,35 +165,44 @@ const handleShare = async (image: string) => {
     fetchData();
   }, []);
 
+    const cardWidth = Dimensions.get('window').width - 32;
+
     return (
         <GestureHandlerRootView style={{ flex: 1 }}>
         <View style={styles.container}>
         {loading ? (
-        <CowLoader size={48} /> 
+        <CowLoader size={48} />
       ) : winnerDrawing.length > 0 ? (
                  <FlatList
                  data={winnerDrawing}
                  keyExtractor={(item) => item.id}
+                 contentContainerStyle={styles.listContent}
                  renderItem={({ item }) => (
-                   <View style={styles.drawingContainer}>
-                   <TouchableOpacity onPress={() => openModal(`data:image/png;base64,${item.image}`)}>
-                                <Image 
-                                    source={{ uri: `data:image/png;base64,${item.image}` }} 
-                                    style={styles.image}
-                                />
-                            </TouchableOpacity>
-                            <TouchableOpacity onPress={() => handleShare(item.image)} style={styles.buttonOther}>
-                            <Entypo name="share" size={24} color="black" />
-                          </TouchableOpacity>
+                   <View style={[styles.drawingContainer, { width: cardWidth }]}>
+                     <TouchableOpacity onPress={() => openModal(`data:image/png;base64,${item.image}`)}>
+                       <Image
+                         source={{ uri: `data:image/png;base64,${item.image}` }}
+                         style={[styles.image, { width: cardWidth, height: cardWidth }]}
+                       />
+                     </TouchableOpacity>
+                     <View style={styles.cardFooter}>
+                       <Text style={styles.trophyText}>🏆 Winner</Text>
+                       <TouchableOpacity onPress={() => handleShare(item.image)} style={styles.buttonOther}>
+                         <Entypo name="share" size={18} color="#666" />
+                       </TouchableOpacity>
+                     </View>
                    </View>
-                       )}
-                    showsVerticalScrollIndicator={false}
-                    onEndReached={fetchNextData}
-                    onEndReachedThreshold={0.5}
-                    ListFooterComponent={loadingMore ? <CowLoader size={20} /> : null}
-                />
+                 )}
+                 showsVerticalScrollIndicator={false}
+                 onEndReached={fetchNextData}
+                 onEndReachedThreshold={0.5}
+                 ListFooterComponent={loadingMore ? <CowLoader size={20} /> : null}
+               />
             ) : (
-                <Text>No drawings found</Text> 
+                <View style={styles.emptyContainer}>
+                  <Text style={styles.emptyTitle}>No wins yet</Text>
+                  <Text style={styles.emptySubtitle}>Keep doodling — your first win could be today!</Text>
+                </View>
             )}
 
             {showConfetti && (
@@ -208,8 +217,10 @@ const handleShare = async (image: string) => {
         >
           <View style={styles.modalBackgroundTwo}>
             <View style={styles.modalContainer}>
-              <Text style={styles.winnerText}>Congratulations! You're today's {"\n"} winner!🎉</Text>
-              <Button title="Close" onPress={closeWinnerModal} />
+              <Text style={styles.winnerText}>🎉 You're today's winner!</Text>
+              <TouchableOpacity style={styles.closeButton} onPress={closeWinnerModal}>
+                <Text style={styles.closeButtonText}>Amazing!</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </Modal>
@@ -240,82 +251,100 @@ const handleShare = async (image: string) => {
 };
 
 const styles = StyleSheet.create({
-    container: {
+    container: { flex: 1, backgroundColor: '#faf8f9' },
+    listContent: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24 },
+    drawingContainer: {
+        marginBottom: 20,
+        backgroundColor: 'white',
+        borderRadius: 16,
+        overflow: 'hidden',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+        elevation: 3,
+    },
+    image: { resizeMode: 'contain' },
+    cardFooter: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+    },
+    trophyText: {
+        fontFamily: 'Poppins_700Bold',
+        fontSize: 14,
+        color: '#333',
+    },
+    buttonOther: {
+        padding: 8,
+        borderRadius: 8,
+        backgroundColor: '#f5f5f5',
+    },
+    emptyContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        padding: 20,
-        backgroundColor: 'rgba(247, 244, 246, 0.8)',
+        paddingHorizontal: 32,
     },
-    header: {
-        fontSize: 24,
-        marginBottom: 20,
+    emptyTitle: {
+        fontFamily: 'Poppins_700Bold',
+        fontSize: 18,
+        color: '#111',
+        marginBottom: 8,
     },
-    drawingContainer: {
-        marginBottom: 20,
-        alignItems: 'center',
-        backgroundColor: 'white',
-    },
-    image: {
-        width: 200,
-        height: 200,
-        resizeMode: 'contain',
+    emptySubtitle: {
+        fontFamily: 'Poppins_400Regular',
+        fontSize: 14,
+        color: '#888',
+        textAlign: 'center',
+        lineHeight: 22,
     },
     modalBackground: {
         flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        backgroundColor: 'rgba(0, 0, 0, 0.85)',
         justifyContent: 'center',
         alignItems: 'center',
-      },
-      modalContainer: {
-        padding: 10,
-      },
-      enlargedImage: {
-        width: 400,
-        height: 400,
+    },
+    enlargedImage: {
+        width: Dimensions.get('window').width * 0.92,
+        height: Dimensions.get('window').width * 0.92,
         backgroundColor: 'white',
-        resizeMode: 'contain',
-      },
-      winnerText: {
+        borderRadius: 12,
+    },
+    winnerText: {
+        fontFamily: 'Poppins_700Bold',
         fontSize: 22,
-        marginBottom: 20,
         color: 'white',
         textAlign: 'center',
-        fontFamily: 'PressStart2P_400Regular',
-        lineHeight: 34,
-      },
-      modalBackgroundTwo: {
+        marginBottom: 24,
+    },
+    modalBackgroundTwo: {
         flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.6)',
+        backgroundColor: 'rgba(0, 0, 0, 0.7)',
         justifyContent: 'center',
         alignItems: 'center',
-      },
-      shareButton: {
-        marginTop: 15,
-        paddingVertical: 10,
-        paddingHorizontal: 20,
-        backgroundColor: '#1E90FF',
-        borderRadius: 5,
-      },
-      shareButtonText: {
-        color: 'white',
-        fontSize: 16,
-        fontWeight: 'bold',
-      },
-      buttonOther: {
-        backgroundColor: 'white',
-        padding:7,
-        borderRadius: 10,
+        padding: 32,
+    },
+    modalContainer: {
+        backgroundColor: 'rgba(2,52,72,0.95)',
+        borderRadius: 20,
+        padding: 32,
         alignItems: 'center',
-        marginBottom: 5,
-        marginTop: 7,
-        elevation: 5,
-      },
-      buttonText: {
-        color: 'white',
-        fontWeight: '700',
+        width: '100%',
+    },
+    closeButton: {
+        backgroundColor: 'white',
+        paddingVertical: 12,
+        paddingHorizontal: 32,
+        borderRadius: 10,
+    },
+    closeButtonText: {
+        fontFamily: 'Poppins_700Bold',
         fontSize: 16,
-      },
+        color: '#023448',
+    },
 });
 
 export default WinnerDrawingsScreen;

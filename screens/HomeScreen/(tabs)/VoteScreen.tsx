@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, Image, FlatList, Text, Modal, Alert, TouchableWithoutFeedback, Dimensions } from 'react-native';
+import { View, StyleSheet, Image, FlatList, Text, Modal, Alert, TouchableWithoutFeedback, Dimensions, Platform } from 'react-native';
 import CowLoader from '../../../components/CowLoader';
 import { auth, db, getCallableFunction } from '../../../firebaseConfig';
 import { collection, query, orderBy, limit, onSnapshot } from "firebase/firestore";
@@ -25,8 +25,9 @@ type GetRoomDrawingsResponse = {
 
 
 export default function VoteScreen() {
-  const { height: screenHeight } = Dimensions.get('window');
+  const { height: screenHeight, width: screenWidth } = Dimensions.get('window');
   const loaderSize = screenHeight < 667 ? 80 : 100;
+  const cardWidth = screenWidth - 32;
 
   const [drawingInfo, setDrawingInfo] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -173,66 +174,69 @@ useEffect(() => {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
     <SafeAreaView style={styles.container}>
-    <View style={styles.themeContainer}>
-          <Text style={styles.themeHeading}>{"\n"}{word || "Loading..."}</Text>
-        </View>
-    {loading ? ( 
+      <View style={styles.themeContainer}>
+        <Text style={styles.themeLabel}>Today's theme</Text>
+        <Text style={styles.themeHeading}>{word || "Loading..."}</Text>
+      </View>
+    {loading ? (
           <CowLoader size={loaderSize} />
         ) : drawingInfo.length > 0 ? (
         <FlatList
           data={drawingInfo}
           keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContent}
           renderItem={({ item }) => (
-            <View style={styles.drawingContainer}>
+            <View style={[styles.drawingContainer, { width: cardWidth }]}>
               <TouchableOpacity onPress={() => openModal(`data:image/png;base64,${item.image}`)}>
-              <Image 
-                source={{ uri: `data:image/png;base64,${item.image}` }} 
-                style={styles.image}
-              />
-             
-            </TouchableOpacity>
-            <Text>{item.votes || 0}</Text>
-
-            <View style={styles.buttonRow}>
-          <TouchableOpacity onPress={() => handleFlag(item.id, item.image)} style={styles.buttonOther}>
-          <Ionicons name="flag" size={24} color="black" />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => handleVote(item.id)} style={styles.buttonVote}>
-           <Text style={styles.buttonText}>Vote</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => handleShare(item.image)} style={styles.buttonOther}>
-          <Entypo name="share" size={24} color="black" />
-        </TouchableOpacity>
-        </View>
-      </View>
-        )}
-        showsVerticalScrollIndicator={false}
-      />
+                <Image
+                  source={{ uri: `data:image/png;base64,${item.image}` }}
+                  style={[styles.image, { width: cardWidth, height: cardWidth }]}
+                />
+              </TouchableOpacity>
+              <View style={styles.cardFooter}>
+                <Text style={styles.voteCount}>{item.votes || 0} {item.votes === 1 ? 'vote' : 'votes'}</Text>
+                <View style={styles.buttonRow}>
+                  <TouchableOpacity onPress={() => handleFlag(item.id, item.image)} style={styles.buttonIcon}>
+                    <Ionicons name="flag-outline" size={20} color="#666" />
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => handleVote(item.id)} style={styles.buttonVote}>
+                    <Text style={styles.buttonText}>Vote</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => handleShare(item.image)} style={styles.buttonIcon}>
+                    <Entypo name="share" size={20} color="#666" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          )}
+          showsVerticalScrollIndicator={false}
+        />
     ) : (
-      <Text>Voting room open from 14:00 to 20:00 UK time</Text> 
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyTitle}>Voting opens at 14:00</Text>
+        <Text style={styles.emptySubtitle}>Come back then to vote on today's doodles.</Text>
+      </View>
   )}
 
-      
       <Modal
         visible={modalVisible}
         transparent={true}
         animationType="fade"
-        onRequestClose={closeModal} 
+        onRequestClose={closeModal}
       >
-
-<TouchableWithoutFeedback onPress={closeModal}>
-                  <View style={styles.modalBackground}>
-                    {selectedImage && (
-                      <Image
-                        source={{ uri: selectedImage }}
-                        style={styles.enlargedImage}
-                        resizeMode="contain"
-                      />
-                    )}
-                  </View>
-                </TouchableWithoutFeedback>
-              </Modal>
-</SafeAreaView>
+        <TouchableWithoutFeedback onPress={closeModal}>
+          <View style={styles.modalBackground}>
+            {selectedImage && (
+              <Image
+                source={{ uri: selectedImage }}
+                style={styles.enlargedImage}
+                resizeMode="contain"
+              />
+            )}
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+    </SafeAreaView>
     </GestureHandlerRootView>
   );
 };
@@ -240,75 +244,108 @@ useEffect(() => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgb(224,183,202)',
-    paddingHorizontal: 10,
+    backgroundColor: '#faf8f9',
+  },
+  listContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 24,
   },
   drawingContainer: {
     marginBottom: 20,
-    alignItems: 'center',
     backgroundColor: 'white',
-    elevation: 5,
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   image: {
-    width: 200,
-    height: 200,
     resizeMode: 'contain',
   },
-  modalBackground: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-    justifyContent: 'center',
+  cardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
   },
-  modalContainer: {
-    padding: 10,
+  voteCount: {
+    fontFamily: 'Poppins_700Bold',
+    fontSize: 14,
+    color: '#555',
   },
-  enlargedImage: {
-    width: 400,
-    height: 400,
-    backgroundColor: 'white',
-    resizeMode: 'contain',
-  },
-  buttonOther: {
-    backgroundColor: 'white',
-    padding:7,
-    borderRadius: 10,
+  buttonRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 5,
-    elevation: 5,
+    gap: 8,
+  },
+  buttonIcon: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#f5f5f5',
   },
   buttonVote: {
-    backgroundColor: 'rgb(125,22,27)',
-    padding:7,
-    borderRadius: 10,
-    alignContent: 'center',
-    marginBottom: 5,
-    marginHorizontal: 10,
-    elevation: 5,
+    backgroundColor: '#023448',
+    paddingVertical: 8,
+    paddingHorizontal: 20,
+    borderRadius: 8,
   },
   buttonText: {
     color: 'white',
     fontFamily: 'Poppins_700Bold',
-    fontSize: 16,
-    
+    fontSize: 14,
   },
   themeContainer: {
     alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 50,
+    paddingTop: 20,
+    paddingBottom: 16,
+    paddingHorizontal: 16,
+  },
+  themeLabel: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 11,
+    color: '#888',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 2,
   },
   themeHeading: {
     fontFamily: 'Poppins_700Bold',
     fontSize: 22,
     textAlign: 'center',
     color: '#111',
-    paddingHorizontal: 8,
   },
-  buttonRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between', 
-    marginTop: 8,
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  emptyTitle: {
+    fontFamily: 'Poppins_700Bold',
+    fontSize: 18,
+    color: '#111',
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 14,
+    color: '#888',
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  modalBackground: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  enlargedImage: {
+    width: Dimensions.get('window').width * 0.92,
+    height: Dimensions.get('window').width * 0.92,
+    backgroundColor: 'white',
+    borderRadius: 12,
   },
 });

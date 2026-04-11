@@ -4,53 +4,61 @@ import {
   TouchableOpacity, View, Image, ImageBackground, SafeAreaView, Platform
 } from 'react-native';
 import CowLoader from '../components/CowLoader';
-import { auth } from '../firebaseConfig';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { auth, getCallableFunction } from '../firebaseConfig';
+import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
 import { useNavigation } from '@react-navigation/core';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 type RootStackParamList = {
-  HomeScreen: undefined;
-  ForgotPassword: undefined;
+  CheckEmail: { email: string };
 };
 
 const friendlyError = (code: string): string => {
   switch (code) {
-    case 'auth/user-not-found':
-    case 'auth/invalid-credential': return 'No account found with that email or password.';
-    case 'auth/wrong-password': return 'Incorrect password.';
+    case 'auth/email-already-in-use': return 'An account with this email already exists.';
     case 'auth/invalid-email': return 'Please enter a valid email address.';
-    case 'auth/too-many-requests': return 'Too many attempts. Please try again later.';
+    case 'auth/weak-password': return 'Password should be at least 6 characters.';
     case 'auth/network-request-failed': return 'Network error. Check your connection.';
     default: return 'Something went wrong. Please try again.';
   }
 };
 
-const LoginScreen: React.FC = () => {
+const SignUpScreen: React.FC = () => {
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<{ email?: string; password?: string; form?: string }>({});
+  const [errors, setErrors] = useState<{ username?: string; email?: string; password?: string; form?: string }>({});
 
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
+  const createUserDocument = getCallableFunction('createUserDocument');
 
   const validate = (): boolean => {
     const next: typeof errors = {};
+    if (!username.trim()) next.username = 'Username is required.';
+    else if (username.trim().length < 2) next.username = 'Username must be at least 2 characters.';
     if (!email) next.email = 'Email is required.';
     else if (!/\S+@\S+\.\S+/.test(email)) next.email = 'Please enter a valid email.';
     if (!password) next.password = 'Password is required.';
+    else if (password.length < 6) next.password = 'Password must be at least 6 characters.';
     setErrors(next);
     return Object.keys(next).length === 0;
   };
 
-  const handleLogin = async () => {
+  const handleSignUp = async () => {
     if (!validate()) return;
     setLoading(true);
     setErrors({});
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const userCredentials = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredentials.user;
+      await sendEmailVerification(user);
+      if (createUserDocument) {
+        await createUserDocument({ username: username.trim(), email: user.email, userId: user.uid });
+      }
+      navigation.navigate('CheckEmail', { email });
     } catch (error: any) {
       const code = error?.code ?? '';
       setErrors({ form: friendlyError(code) });
@@ -73,9 +81,21 @@ const LoginScreen: React.FC = () => {
             </View>
 
             <View style={styles.form}>
-              <Text style={styles.heading}>Welcome back</Text>
+              <Text style={styles.heading}>Create account</Text>
 
               {errors.form ? <Text style={styles.formError}>{errors.form}</Text> : null}
+
+              <Text style={styles.label}>Username</Text>
+              <TextInput
+                value={username}
+                onChangeText={text => { setUsername(text); setErrors(e => ({ ...e, username: undefined })); }}
+                style={[styles.input, errors.username && styles.inputError]}
+                placeholder="Choose a username"
+                placeholderTextColor="#888"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              {errors.username ? <Text style={styles.errorText}>{errors.username}</Text> : null}
 
               <Text style={styles.label}>Email</Text>
               <TextInput
@@ -94,9 +114,9 @@ const LoginScreen: React.FC = () => {
               <View style={[styles.passwordRow, errors.password && styles.inputError]}>
                 <TextInput
                   value={password}
-                  onChangeText={text => { setPassword(text); setErrors(e => ({ ...e, password: undefined, form: undefined })); }}
+                  onChangeText={text => { setPassword(text); setErrors(e => ({ ...e, password: undefined })); }}
                   style={styles.passwordInput}
-                  placeholder="Password"
+                  placeholder="At least 6 characters"
                   placeholderTextColor="#888"
                   secureTextEntry={!showPassword}
                 />
@@ -110,18 +130,11 @@ const LoginScreen: React.FC = () => {
               {errors.password ? <Text style={styles.errorText}>{errors.password}</Text> : null}
 
               <TouchableOpacity
-                onPress={() => navigation.navigate('ForgotPassword')}
-                style={styles.forgotButton}
-              >
-                <Text style={styles.forgotText}>Forgot password?</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
                 style={[styles.button, loading && { opacity: 0.7 }]}
-                onPress={handleLogin}
+                onPress={handleSignUp}
                 disabled={loading}
               >
-                {loading ? <CowLoader size={20} /> : <Text style={styles.buttonText}>Log In</Text>}
+                {loading ? <CowLoader size={20} /> : <Text style={styles.buttonText}>Create Account</Text>}
               </TouchableOpacity>
             </View>
           </ScrollView>
@@ -131,7 +144,7 @@ const LoginScreen: React.FC = () => {
   );
 };
 
-export default LoginScreen;
+export default SignUpScreen;
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
@@ -188,13 +201,12 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   passwordInput: { flex: 1, paddingVertical: 12, fontFamily: 'Poppins_400Regular' },
-  forgotButton: { alignSelf: 'flex-end', marginTop: 8, marginBottom: 24 },
-  forgotText: { color: '#333', fontFamily: 'Poppins_400Regular', fontSize: 13, textDecorationLine: 'underline' },
   button: {
     backgroundColor: 'rgba(2,52,72,0.8)',
     padding: 15,
     borderRadius: 8,
     alignItems: 'center',
+    marginTop: 28,
   },
   buttonText: { fontFamily: 'Poppins_700Bold', fontSize: 16, color: 'white' },
 });
