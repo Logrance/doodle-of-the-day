@@ -1,8 +1,47 @@
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
+const https = require("https");
 
 admin.initializeApp();
 const db = admin.firestore();
+
+/**
+ * Send push notifications via Expo's push API.
+ * @param {Array<{to: string, title: string, body: string}>} messages
+ */
+async function sendExpoPushNotifications(messages) {
+  if (!messages.length) return;
+
+  // Expo accepts up to 100 messages per request
+  const chunks = [];
+  for (let i = 0; i < messages.length; i += 100) {
+    chunks.push(messages.slice(i, i + 100));
+  }
+
+  for (const chunk of chunks) {
+    const payload = JSON.stringify(chunk);
+    await new Promise((resolve, reject) => {
+      const req = https.request(
+          {
+            hostname: "exp.host",
+            path: "/--/api/v2/push/send",
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Accept": "application/json",
+            },
+          },
+          (res) => {
+            res.resume();
+            res.on("end", resolve);
+          },
+      );
+      req.on("error", reject);
+      req.write(payload);
+      req.end();
+    });
+  }
+}
 
 exports.pickDailyWinner = functions.pubsub.schedule("00 20 * * *")
     .timeZone("Europe/London").onRun(async (context) => {
@@ -31,6 +70,9 @@ exports.pickDailyWinner = functions.pubsub.schedule("00 20 * * *")
         roomSnapshot.forEach((doc) => {
           roomIds.add(doc.data().roomId);
         });
+
+        // Collect winner userIds for push notifications
+        const winnerUserIds = new Set();
 
         // Iterate through each roomId and select the winner
         for (const roomId of roomIds) {
@@ -79,12 +121,39 @@ exports.pickDailyWinner = functions.pubsub.schedule("00 20 * * *")
                   winCount: admin.firestore.FieldValue.increment(1),
                 });
 
+                winnerUserIds.add(winnerData.userId);
                 console.log(`Winner for room ${roomId} is: ${drawing.id}`);
               }
             }
           } else {
             console.log(`No drawings found for room ${roomId}.`);
           }
+        }
+
+        // Send personalised push notifications to everyone who drew today
+        const allUserIds = [
+          ...new Set(
+              roomSnapshot.docs.map((d) => d.data().userId).filter(Boolean),
+          ),
+        ];
+        if (allUserIds.length > 0) {
+          const userDocs = await Promise.all(
+              allUserIds.map((uid) => db.collection("users").doc(uid).get()),
+          );
+          const messages = userDocs
+              .filter((doc) => doc.exists && doc.data().expoPushToken)
+              .map((doc) => {
+                const isWinner = winnerUserIds.has(doc.id);
+                return {
+                  to: doc.data().expoPushToken,
+                  title: isWinner ? "🏆 You won today!" : "Results are in!",
+                  body: isWinner ?
+                    "Congratulations — your doodle won today's vote!" :
+                    "Did you win? Check the results now.",
+                  sound: "default",
+                };
+              });
+          await sendExpoPushNotifications(messages);
         }
       } catch (error) {
         console.error("Error picking daily winners:", error);
@@ -147,6 +216,23 @@ exports.assignRooms = functions.pubsub.schedule("00 14 * * *")
         await db.collection("drawings").doc(drawings.docs[i].id).update({
           roomId: `room-${roomId}`,
         });
+      }
+
+      // Send "Time to vote!" push notifications to users who submitted today
+      const userIds = [...new Set(drawings.docs.map((d) => d.data().userId))];
+      if (userIds.length > 0) {
+        const userDocs = await Promise.all(
+            userIds.map((uid) => db.collection("users").doc(uid).get()),
+        );
+        const messages = userDocs
+            .filter((doc) => doc.exists && doc.data().expoPushToken)
+            .map((doc) => ({
+              to: doc.data().expoPushToken,
+              title: "Time to vote! 🗳️",
+              body: "Voting is open — go pick your favourite doodle.",
+              sound: "default",
+            }));
+        await sendExpoPushNotifications(messages);
       }
 
       return {message: "Room IDs assigned to drawings successfully"};
@@ -407,7 +493,9 @@ exports.addImageToDB = functions.https.onCall(async (data, context) => {
       const todayStr = new Date().toISOString().split("T")[0];
       const lastSubmission = userData.lastSubmissionDate;
 
+      const paletteWasAvailable = userData.paletteAvailable || false;
       let newStreak = 1;
+      let consecutive = false;
       if (lastSubmission) {
         const diffDays = Math.round(
             (new Date(todayStr) - new Date(lastSubmission)) /
@@ -415,6 +503,19 @@ exports.addImageToDB = functions.https.onCall(async (data, context) => {
         );
         if (diffDays === 1) {
           newStreak = (userData.currentStreak || 0) + 1;
+          consecutive = true;
+        }
+      }
+
+      // Palette unlocks the day after hitting a streak multiple of 3.
+      // Using it (submitting while it was available) consumes it.
+      // Breaking the streak forfeits any pending unlock.
+      let newPaletteAvailable = false;
+      if (consecutive) {
+        if (newStreak % 3 === 0) {
+          newPaletteAvailable = true; // Unlocked for tomorrow
+        } else if (paletteWasAvailable) {
+          newPaletteAvailable = false; // Consumed today
         }
       }
 
@@ -422,6 +523,7 @@ exports.addImageToDB = functions.https.onCall(async (data, context) => {
         currentStreak: newStreak,
         longestStreak: Math.max(newStreak, userData.longestStreak || 0),
         lastSubmissionDate: todayStr,
+        paletteAvailable: newPaletteAvailable,
       });
     }
 
@@ -720,6 +822,7 @@ exports.getUserStats = functions.https.onCall(async (data, context) => {
       currentStreak: userData.currentStreak || 0,
       longestStreak: userData.longestStreak || 0,
       winCount: userData.winCount || 0,
+      paletteAvailable: userData.paletteAvailable || false,
     };
   } catch (error) {
     throw new functions.https.HttpsError(

@@ -1,4 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect, Children } from 'react';
+import { usePhaseTimer } from '../../../hooks/usePhaseTimer';
 import { View, Dimensions, TouchableOpacity, StyleSheet, Alert, Text, Modal, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { collection, query, orderBy, limit, onSnapshot } from "firebase/firestore";
@@ -30,10 +31,15 @@ type AddImageResponse = { data: { message: string } };
 
 export default function CanvasScreen() {
   const { width, height } = Dimensions.get("window");
+  const { phase, countdown } = usePhaseTimer();
   const [isVisible, setIsVisible] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [word, setWord] = useState<string | null>(null);
   const [currentStreak, setCurrentStreak] = useState(0);
+  const [paletteAvailable, setPaletteAvailable] = useState(false);
+  const [selectedColor, setSelectedColor] = useState('#000000');
+
+  const PALETTE = ['#000000', '#E53935', '#1E88E5', '#43A047', '#FB8C00', '#8E24AA'];
 
   // iOS native canvas ref
   const nativeCanvasRef = useRef<DrawingCanvasRef>(null);
@@ -137,8 +143,11 @@ export default function CanvasScreen() {
     const fetchStreak = async () => {
       try {
         const getUserStats = getCallableFunction("getUserStats");
-        const response = await getUserStats({}) as { data: { currentStreak: number } };
+        const response = await getUserStats({}) as {
+          data: { currentStreak: number; paletteAvailable: boolean }
+        };
         setCurrentStreak(response.data.currentStreak);
+        setPaletteAvailable(response.data.paletteAvailable);
       } catch (error) {}
     };
     fetchStreak();
@@ -179,6 +188,7 @@ export default function CanvasScreen() {
         <DrawingCanvas
           ref={nativeCanvasRef}
           style={{ flex: 8 }}
+          strokeColor={selectedColor}
         />
       );
     }
@@ -192,7 +202,7 @@ export default function CanvasScreen() {
               path={path}
               strokeWidth={5}
               style="stroke"
-              color={"black"}
+              color={selectedColor}
             />
           )))}
         </Canvas>
@@ -206,6 +216,22 @@ export default function CanvasScreen() {
         <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
           {renderCanvas()}
 
+          {paletteAvailable && (
+            <View style={styles.paletteRow}>
+              {PALETTE.map((color) => (
+                <TouchableOpacity
+                  key={color}
+                  onPress={() => setSelectedColor(color)}
+                  style={[
+                    styles.swatch,
+                    { backgroundColor: color },
+                    selectedColor === color && styles.swatchSelected,
+                  ]}
+                />
+              ))}
+            </View>
+          )}
+
           <View style={styles.swatchContainer}>
             <TouchableOpacity onPress={clearCanvas} style={styles.buttonAnother}>
               <AntDesign name="delete" size={22} color="white" />
@@ -214,13 +240,12 @@ export default function CanvasScreen() {
             <View style={styles.themeWrapper}>
               <Text style={styles.themeLabel}>Today's theme</Text>
               <Text style={styles.themeText}>{word || "Loading..."}</Text>
+              <Text style={styles.countdownText}>
+                {phase === 'drawing' && `Drawing closes in ${countdown}`}
+                {phase === 'voting' && `Voting open · Results in ${countdown}`}
+                {phase === 'results' && 'Results are in!'}
+              </Text>
             </View>
-
-            {currentStreak > 0 && (
-              <View style={styles.streakBadge}>
-                <Text style={styles.streakText}>🔥 {currentStreak}</Text>
-              </View>
-            )}
 
             <TouchableOpacity onPress={captureCanvas} style={styles.buttonOther}>
               <MaterialIcons name="check-circle" size={22} color="white" />
@@ -347,6 +372,34 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 15,
     color: '#111',
+  },
+  countdownText: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 10,
+    color: '#888',
+    textAlign: 'center',
+    marginTop: 1,
+  },
+  paletteRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 8,
+    backgroundColor: 'white',
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+  },
+  swatch: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  swatchSelected: {
+    borderColor: '#023448',
+    transform: [{ scale: 1.2 }],
   },
   streakBadge: {
     backgroundColor: 'rgba(2,52,72,0.08)',

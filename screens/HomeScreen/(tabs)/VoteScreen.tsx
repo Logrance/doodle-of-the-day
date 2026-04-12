@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { usePhaseTimer } from '../../../hooks/usePhaseTimer';
 import { View, StyleSheet, Image, FlatList, Text, Modal, Alert, TouchableWithoutFeedback, Dimensions, Platform } from 'react-native';
 import CowLoader from '../../../components/CowLoader';
 import { auth, db, getCallableFunction } from '../../../firebaseConfig';
@@ -29,6 +30,7 @@ export default function VoteScreen() {
   const loaderSize = screenHeight < 667 ? 80 : 100;
   const cardWidth = screenWidth - 32;
 
+  const { phase, countdown } = usePhaseTimer();
   const [drawingInfo, setDrawingInfo] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -177,6 +179,11 @@ useEffect(() => {
       <View style={styles.themeContainer}>
         <Text style={styles.themeLabel}>Today's theme</Text>
         <Text style={styles.themeHeading}>{word || "Loading..."}</Text>
+        <Text style={styles.countdownText}>
+          {phase === 'drawing' && `Voting opens in ${countdown}`}
+          {phase === 'voting' && `Voting closes in ${countdown}`}
+          {phase === 'results' && 'Results announced!'}
+        </Text>
       </View>
     {loading ? (
           <View style={styles.loaderContainer}>
@@ -215,8 +222,16 @@ useEffect(() => {
         />
     ) : (
       <View style={styles.emptyContainer}>
-        <Text style={styles.emptyTitle}>Voting opens at 14:00</Text>
-        <Text style={styles.emptySubtitle}>Come back then to vote on today's doodles.</Text>
+        <Text style={styles.emptyTitle}>
+          {phase === 'drawing' && `Voting opens in ${countdown}`}
+          {phase === 'voting' && 'No drawings to vote on yet'}
+          {phase === 'results' && 'Voting has closed'}
+        </Text>
+        <Text style={styles.emptySubtitle}>
+          {phase === 'drawing' && 'Submit your drawing before 14:00 UK time.'}
+          {phase === 'voting' && 'Check back in a moment.'}
+          {phase === 'results' && 'Results have been announced!'}
+        </Text>
       </View>
   )}
 
@@ -323,6 +338,13 @@ const styles = StyleSheet.create({
     fontSize: 22,
     textAlign: 'center',
     color: '#111',
+  },
+  countdownText: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 12,
+    color: '#888',
+    textAlign: 'center',
+    marginTop: 4,
   },
   emptyContainer: {
     flex: 1,

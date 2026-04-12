@@ -9,6 +9,7 @@ export interface DrawingCanvasRef {
 
 export interface DrawingCanvasProps {
   style?: ViewStyle;
+  strokeColor?: string;
 }
 
 const NativeDrawingCanvas = Platform.OS === 'ios'
@@ -16,7 +17,7 @@ const NativeDrawingCanvas = Platform.OS === 'ios'
   : null;
 
 export const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
-  function DrawingCanvas({ style }, ref) {
+  function DrawingCanvas({ style, strokeColor }, ref) {
     const nativeRef = useRef<any>(null);
 
     useImperativeHandle(ref, () => ({
@@ -25,6 +26,10 @@ export const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
     }));
 
     if (!NativeDrawingCanvas) return null;
-    return React.createElement(NativeDrawingCanvas, { style, ref: nativeRef });
+    return React.createElement(NativeDrawingCanvas, {
+      style,
+      strokeColor: strokeColor ?? '#000000',
+      ref: nativeRef,
+    });
   }
 );

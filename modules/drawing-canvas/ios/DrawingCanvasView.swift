@@ -10,7 +10,7 @@ public final class DrawingCanvasView: ExpoView {
   private let strokeLayer = CAShapeLayer()
 
   private let strokeWidth: CGFloat = 5.0
-  private let strokeColor: UIColor = .black
+  private var strokeColor: UIColor = .black
   private let bgColor: UIColor = .white
 
   required public init(appContext: AppContext? = nil) {
@@ -83,6 +83,11 @@ public final class DrawingCanvasView: ExpoView {
     backingImage?.draw(in: bounds)
   }
 
+  func setStrokeColor(_ hex: String) {
+    strokeColor = UIColor(hex: hex) ?? .black
+    strokeLayer.strokeColor = strokeColor.cgColor
+  }
+
   func clear() {
     createFreshBackingImage()
     currentPath = nil
@@ -128,5 +133,20 @@ public final class DrawingCanvasView: ExpoView {
       bgColor.setFill()
       ctx.fill(bounds)
     }
+  }
+}
+
+private extension UIColor {
+  convenience init?(hex: String) {
+    let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+    guard hex.count == 6 else { return nil }
+    var int: UInt64 = 0
+    Scanner(string: hex).scanHexInt64(&int)
+    self.init(
+      red: CGFloat((int >> 16) & 0xFF) / 255,
+      green: CGFloat((int >> 8) & 0xFF) / 255,
+      blue: CGFloat(int & 0xFF) / 255,
+      alpha: 1
+    )
   }
 }

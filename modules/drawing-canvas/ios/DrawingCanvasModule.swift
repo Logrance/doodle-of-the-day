@@ -5,6 +5,10 @@ public class DrawingCanvasModule: Module {
     Name("DrawingCanvas")
 
     View(DrawingCanvasView.self) {
+      Prop("strokeColor") { (view: DrawingCanvasView, hex: String) in
+        view.setStrokeColor(hex)
+      }
+
       AsyncFunction("clear") { (view: DrawingCanvasView) in
         view.clear()
       }

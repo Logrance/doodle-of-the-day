@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { usePushToken } from '../../hooks/usePushToken';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import CanvasScreen from './(tabs)/CanvasScreen';
 import VoteScreen from './(tabs)/VoteScreen';
@@ -10,6 +11,8 @@ import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 const Tab = createBottomTabNavigator();
 
 export default function HomeScreen() {
+  usePushToken();
+
   return (
     <Tab.Navigator
       screenOptions={{
