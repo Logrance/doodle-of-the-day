@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image, ImageBackground, SafeAreaView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image, SafeAreaView } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/core';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { auth } from '../firebaseConfig';
@@ -22,10 +23,10 @@ const WelcomeScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ImageBackground source={require('../assets/loginbackground5.jpg')} style={styles.background}>
+      <LinearGradient colors={['#012232', '#023448', '#056a8a']} style={styles.background}>
         <View style={styles.top}>
           <View style={styles.logoCircle}>
-            <Image source={require('../assets/cow.png')} style={styles.logoImage} resizeMode="cover" />
+            <Image source={require('../assets/icon_bacon.png')} style={styles.logoImage} resizeMode="cover" />
           </View>
           <Text style={styles.title}>Doodle of the Day</Text>
           <Text style={styles.subtitle}>Draw. Share. Compete.</Text>
@@ -39,7 +40,7 @@ const WelcomeScreen: React.FC = () => {
             <Text style={styles.buttonOutlineText}>Sign Up</Text>
           </TouchableOpacity>
         </View>
-      </ImageBackground>
+      </LinearGradient>
     </SafeAreaView>
   );
 };
@@ -47,43 +48,40 @@ const WelcomeScreen: React.FC = () => {
 export default WelcomeScreen;
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { flex: 1, backgroundColor: '#012232' },
   background: { flex: 1, justifyContent: 'space-between', alignItems: 'center', paddingVertical: 60 },
   top: { alignItems: 'center', marginTop: 40 },
   logoCircle: {
     width: 160,
     height: 160,
-    borderRadius: 80,
-    backgroundColor: 'white',
+    borderRadius: 32,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#eee',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 10,
     overflow: 'hidden',
   },
-  logoImage: { width: 170, height: 170, marginTop: -14, transform: [{ translateX: -14 }] },
-  title: { fontFamily: 'Poppins_700Bold', fontSize: 24, marginTop: 20, color: '#111' },
-  subtitle: { fontFamily: 'Poppins_400Regular', fontSize: 14, color: '#333', marginTop: 4 },
-  buttonContainer: { width: '80%', gap: 10 },
+  logoImage: { width: 160, height: 160 },
+  title: { fontFamily: 'Poppins_700Bold', fontSize: 26, marginTop: 24, color: 'white' },
+  subtitle: { fontFamily: 'Poppins_400Regular', fontSize: 14, color: 'rgba(255,255,255,0.65)', marginTop: 6 },
+  buttonContainer: { width: '80%', gap: 12 },
   button: {
-    backgroundColor: 'rgba(2,52,72,0.8)',
+    backgroundColor: 'white',
     padding: 15,
-    borderRadius: 8,
+    borderRadius: 10,
     alignItems: 'center',
   },
   buttonOutline: {
     backgroundColor: 'transparent',
     padding: 15,
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: '#111',
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.5)',
     alignItems: 'center',
   },
-  buttonText: { fontFamily: 'Poppins_700Bold', fontSize: 16, color: 'white' },
-  buttonOutlineText: { fontFamily: 'Poppins_700Bold', fontSize: 16, color: '#111' },
+  buttonText: { fontFamily: 'Poppins_700Bold', fontSize: 16, color: '#023448' },
+  buttonOutlineText: { fontFamily: 'Poppins_700Bold', fontSize: 16, color: 'white' },
 });

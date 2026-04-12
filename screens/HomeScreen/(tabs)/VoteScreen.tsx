@@ -179,7 +179,9 @@ useEffect(() => {
         <Text style={styles.themeHeading}>{word || "Loading..."}</Text>
       </View>
     {loading ? (
-          <CowLoader size={loaderSize} />
+          <View style={styles.loaderContainer}>
+            <CowLoader size={loaderSize} />
+          </View>
         ) : drawingInfo.length > 0 ? (
         <FlatList
           data={drawingInfo}
@@ -245,6 +247,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#faf8f9',
+  },
+  loaderContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   listContent: {
     paddingHorizontal: 16,

@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import {
   KeyboardAvoidingView, ScrollView, StyleSheet, Text, TextInput,
-  TouchableOpacity, View, Image, ImageBackground, SafeAreaView, Platform
+  TouchableOpacity, View, Image, SafeAreaView, Platform
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import CowLoader from '../components/CowLoader';
 import { auth } from '../firebaseConfig';
 import { signInWithEmailAndPassword } from 'firebase/auth';
@@ -62,14 +63,14 @@ const LoginScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-        <ImageBackground source={require('../assets/loginbackground5.jpg')} style={styles.background}>
+        <LinearGradient colors={['#faf7fb', '#f2e4ef', '#e8d8e8']} style={styles.background}>
           <ScrollView
             contentContainerStyle={styles.scroll}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.logoCircle}>
-              <Image source={require('../assets/cow.png')} style={styles.logoImage} resizeMode="cover" />
+              <Image source={require('../assets/icon_bacon.png')} style={styles.logoImage} resizeMode="cover" />
             </View>
 
             <View style={styles.form}>
@@ -125,7 +126,7 @@ const LoginScreen: React.FC = () => {
               </TouchableOpacity>
             </View>
           </ScrollView>
-        </ImageBackground>
+        </LinearGradient>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -134,18 +135,15 @@ const LoginScreen: React.FC = () => {
 export default LoginScreen;
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { flex: 1, backgroundColor: '#faf7fb' },
   background: { flex: 1 },
   scroll: { flexGrow: 1, alignItems: 'center', paddingVertical: 60 },
   logoCircle: {
     width: 120,
     height: 120,
-    borderRadius: 60,
-    backgroundColor: 'white',
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#eee',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
@@ -154,7 +152,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     marginBottom: 32,
   },
-  logoImage: { width: 130, height: 130, marginTop: -10, transform: [{ translateX: -4 }] },
+  logoImage: { width: 120, height: 120 },
   form: { width: '80%' },
   heading: { fontFamily: 'Poppins_700Bold', fontSize: 22, color: '#111', marginBottom: 16 },
   label: { fontFamily: 'Poppins_700Bold', fontSize: 13, color: '#222', marginBottom: 4, marginTop: 12 },

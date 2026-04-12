@@ -399,6 +399,32 @@ exports.addImageToDB = functions.https.onCall(async (data, context) => {
       theme,
     });
 
+    // Update streak
+    const userRef = db.collection("users").doc(userId);
+    const userDoc = await userRef.get();
+    if (userDoc.exists) {
+      const userData = userDoc.data();
+      const todayStr = new Date().toISOString().split("T")[0];
+      const lastSubmission = userData.lastSubmissionDate;
+
+      let newStreak = 1;
+      if (lastSubmission) {
+        const diffDays = Math.round(
+            (new Date(todayStr) - new Date(lastSubmission)) /
+            (1000 * 60 * 60 * 24),
+        );
+        if (diffDays === 1) {
+          newStreak = (userData.currentStreak || 0) + 1;
+        }
+      }
+
+      await userRef.update({
+        currentStreak: newStreak,
+        longestStreak: Math.max(newStreak, userData.longestStreak || 0),
+        lastSubmissionDate: todayStr,
+      });
+    }
+
     return {success: true, message: "Drawing submitted successfully!"};
   } catch (error) {
     throw new functions.https.HttpsError(
@@ -673,3 +699,31 @@ exports.fetchNextUserDrawings = functions.https.onCall(
             "Failed to fetch user drawings", error);
       }
     });
+
+exports.getUserStats = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError(
+        "unauthenticated",
+        "User must be authenticated.",
+    );
+  }
+
+  const userId = context.auth.uid;
+
+  try {
+    const userDoc = await db.collection("users").doc(userId).get();
+    if (!userDoc.exists) {
+      throw new functions.https.HttpsError("not-found", "User not found.");
+    }
+    const userData = userDoc.data();
+    return {
+      currentStreak: userData.currentStreak || 0,
+      longestStreak: userData.longestStreak || 0,
+      winCount: userData.winCount || 0,
+    };
+  } catch (error) {
+    throw new functions.https.HttpsError(
+        "internal",
+        "Failed to fetch user stats.", error);
+  }
+});

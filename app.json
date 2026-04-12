@@ -2,22 +2,25 @@
   "expo": {
     "name": "Doodle of the Day",
     "slug": "Doodle-of-the-Day",
-    "version": "1.0.22",
+    "version": "1.0.23",
     "orientation": "portrait",
-    "icon": "./assets/cow2.png",
+    "icon": "./assets/icon_bacon.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/cow2.png",
+      "image": "./assets/icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#023448"
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.doodleOfThe.day"
+      "bundleIdentifier": "com.doodleOfThe.day",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.doodleOfThe.day",
-      "versionCode": 22,
+      "versionCode": 23,
       "adaptiveIcon": {
         "foregroundImage": "./assets/cow2.png",
         "backgroundColor": "#ffffff"

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert, ImageBackground, SafeAreaView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert, SafeAreaView } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { auth, getCallableFunction } from "../firebaseConfig";
@@ -88,10 +89,7 @@ export default function Deets() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ImageBackground
-        source={require('../assets/deetsbackground4.jpg')}
-        style={styles.backgroundImage}
-      >
+      <LinearGradient colors={['#faf7fb', '#f2e4ef', '#e8d8e8']} style={styles.backgroundImage}>
         <View style={styles.card}>
           <Text style={styles.heading}>Account</Text>
 
@@ -132,14 +130,14 @@ export default function Deets() {
             </Text>
           </TouchableOpacity>
         </View>
-      </ImageBackground>
+      </LinearGradient>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  backgroundImage: { flex: 1, resizeMode: 'cover', justifyContent: 'center', alignItems: 'center' },
+  backgroundImage: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   card: {
     width: '88%',
     backgroundColor: 'rgba(255,255,255,0.92)',

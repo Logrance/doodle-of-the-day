@@ -1,6 +1,7 @@
-import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, Image, ImageBackground, Dimensions, SafeAreaView, ScrollView } from 'react-native';
-import { auth } from '../../../firebaseConfig';
+import React, { useEffect, useState } from 'react';
+import { StyleSheet, Text, TouchableOpacity, View, Image, Dimensions, SafeAreaView, ScrollView } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { auth, getCallableFunction } from '../../../firebaseConfig';
 import { useNavigation } from '@react-navigation/core';
 import { StackNavigationProp } from '@react-navigation/stack';
 
@@ -16,7 +17,22 @@ type RootStackParamList = {
 
 const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
+  const [currentStreak, setCurrentStreak] = useState(0);
+  const [longestStreak, setLongestStreak] = useState(0);
+  const [winCount, setWinCount] = useState(0);
 
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const getUserStats = getCallableFunction('getUserStats');
+        const response = await getUserStats({}) as { data: { currentStreak: number; longestStreak: number; winCount: number } };
+        setCurrentStreak(response.data.currentStreak);
+        setLongestStreak(response.data.longestStreak);
+        setWinCount(response.data.winCount);
+      } catch (error) {}
+    };
+    fetchStats();
+  }, []);
 
   const handleSignOut = async () => {
     try {
@@ -35,22 +51,39 @@ const ProfileScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ImageBackground 
-        source={require('../../../assets/profilebackground11.jpg')} 
-        style={styles.backgroundImage}
-      >
+      <LinearGradient colors={['#faf7fb', '#f2e4ef', '#e8d8e8']} style={styles.backgroundImage}>
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           <View style={styles.topTextContainer}>
-            <View style={[styles.logoCircle, { width: isSmallScreen ? 100 : 130, height: isSmallScreen ? 100 : 130, borderRadius: (isSmallScreen ? 100 : 130) / 2 }]}>
+            <View style={[styles.logoCircle, { width: isSmallScreen ? 100 : 130, height: isSmallScreen ? 100 : 130, borderRadius: 24 }]}>
               <Image
-                source={require('../../../assets/cow.png')}
-                style={[styles.logoImage, { transform: [{ translateX: isSmallScreen ? -6 : -12 }] }]}
+                source={require('../../../assets/icon_bacon.png')}
+                style={styles.logoImage}
                 resizeMode="cover"
               />
             </View>
             <View style={styles.titleBlock}>
               <Text style={styles.titleText}>Doodle</Text>
               <Text style={styles.titleText}>of the Day</Text>
+            </View>
+          </View>
+
+          <View style={styles.statsRow}>
+            <View style={styles.statCard}>
+              <Text style={styles.statEmoji}>🔥</Text>
+              <Text style={styles.statValue}>{currentStreak}</Text>
+              <Text style={styles.statLabel}>day streak</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statCard}>
+              <Text style={styles.statEmoji}>🏆</Text>
+              <Text style={styles.statValue}>{winCount}</Text>
+              <Text style={styles.statLabel}>{winCount === 1 ? 'win' : 'wins'}</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statCard}>
+              <Text style={styles.statEmoji}>⚡</Text>
+              <Text style={styles.statValue}>{longestStreak}</Text>
+              <Text style={styles.statLabel}>best streak</Text>
             </View>
           </View>
 
@@ -76,7 +109,7 @@ const ProfileScreen: React.FC = () => {
             </TouchableOpacity>
           </View>
         </ScrollView>
-      </ImageBackground>
+      </LinearGradient>
     </SafeAreaView>
   );
 };
@@ -94,7 +127,7 @@ const buttonBase = {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  backgroundImage: { flex: 1, resizeMode: 'cover' },
+  backgroundImage: { flex: 1 },
   scrollContent: { paddingBottom: 40, flexGrow: 1, justifyContent: 'center' },
   topTextContainer: {
     flexDirection: 'row',
@@ -114,11 +147,8 @@ const styles = StyleSheet.create({
     lineHeight: 30,
   },
   logoCircle: {
-    backgroundColor: 'white',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#eee',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
@@ -126,7 +156,43 @@ const styles = StyleSheet.create({
     elevation: 6,
     overflow: 'hidden',
   },
-  logoImage: { width: '100%', height: '100%', alignSelf: 'center' },
+  logoImage: { width: '100%', height: '100%' },
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.75)',
+    borderRadius: 16,
+    marginHorizontal: 20,
+    marginBottom: 24,
+    paddingVertical: 16,
+    paddingHorizontal: 8,
+  },
+  statCard: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statEmoji: {
+    fontSize: 22,
+    marginBottom: 2,
+  },
+  statValue: {
+    fontFamily: 'Poppins_700Bold',
+    fontSize: 20,
+    color: '#023448',
+  },
+  statLabel: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 11,
+    color: '#666',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  statDivider: {
+    width: 1,
+    height: 40,
+    backgroundColor: '#ddd',
+  },
   buttonContainer: { flex: 1, alignItems: 'center' },
   buttonSecondary: {
     ...buttonBase,

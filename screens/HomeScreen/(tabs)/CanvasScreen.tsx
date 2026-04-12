@@ -33,6 +33,7 @@ export default function CanvasScreen() {
   const [isVisible, setIsVisible] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [word, setWord] = useState<string | null>(null);
+  const [currentStreak, setCurrentStreak] = useState(0);
 
   // iOS native canvas ref
   const nativeCanvasRef = useRef<DrawingCanvasRef>(null);
@@ -132,6 +133,17 @@ export default function CanvasScreen() {
     checkTutorialStatus();
   }, []);
 
+  useEffect(() => {
+    const fetchStreak = async () => {
+      try {
+        const getUserStats = getCallableFunction("getUserStats");
+        const response = await getUserStats({}) as { data: { currentStreak: number } };
+        setCurrentStreak(response.data.currentStreak);
+      } catch (error) {}
+    };
+    fetchStreak();
+  }, []);
+
   const handleModalClose = async () => {
     setIsVisible(false);
     try {
@@ -203,6 +215,12 @@ export default function CanvasScreen() {
               <Text style={styles.themeLabel}>Today's theme</Text>
               <Text style={styles.themeText}>{word || "Loading..."}</Text>
             </View>
+
+            {currentStreak > 0 && (
+              <View style={styles.streakBadge}>
+                <Text style={styles.streakText}>🔥 {currentStreak}</Text>
+              </View>
+            )}
 
             <TouchableOpacity onPress={captureCanvas} style={styles.buttonOther}>
               <MaterialIcons name="check-circle" size={22} color="white" />
@@ -329,6 +347,18 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 15,
     color: '#111',
+  },
+  streakBadge: {
+    backgroundColor: 'rgba(2,52,72,0.08)',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginLeft: 8,
+  },
+  streakText: {
+    fontFamily: 'Poppins_700Bold',
+    fontSize: 13,
+    color: '#023448',
   },
   modalButton: {
     backgroundColor: 'rgba(2,52,72,0.7)',

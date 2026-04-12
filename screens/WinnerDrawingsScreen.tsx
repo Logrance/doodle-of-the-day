@@ -171,7 +171,9 @@ const handleShare = async (image: string) => {
         <GestureHandlerRootView style={{ flex: 1 }}>
         <View style={styles.container}>
         {loading ? (
-        <CowLoader size={48} />
+        <View style={styles.loaderContainer}>
+          <CowLoader size={48} />
+        </View>
       ) : winnerDrawing.length > 0 ? (
                  <FlatList
                  data={winnerDrawing}
@@ -252,6 +254,7 @@ const handleShare = async (image: string) => {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#faf8f9' },
+    loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     listContent: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24 },
     drawingContainer: {
         marginBottom: 20,

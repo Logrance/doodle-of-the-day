@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import {
   KeyboardAvoidingView, StyleSheet, Text, TextInput, TouchableOpacity,
-  View, ImageBackground, SafeAreaView, Platform
+  View, SafeAreaView, Platform
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { auth } from '../firebaseConfig';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { useNavigation } from '@react-navigation/core';
@@ -35,7 +36,7 @@ const ForgotPasswordScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-        <ImageBackground source={require('../assets/loginbackground5.jpg')} style={styles.background}>
+        <LinearGradient colors={['#faf7fb', '#f2e4ef', '#e8d8e8']} style={styles.background}>
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
             <MaterialCommunityIcons name="arrow-left" size={24} color="#111" />
           </TouchableOpacity>
@@ -80,7 +81,7 @@ const ForgotPasswordScreen: React.FC = () => {
               </View>
             )}
           </View>
-        </ImageBackground>
+        </LinearGradient>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -89,7 +90,7 @@ const ForgotPasswordScreen: React.FC = () => {
 export default ForgotPasswordScreen;
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { flex: 1, backgroundColor: '#faf7fb' },
   background: { flex: 1 },
   backButton: { position: 'absolute', top: 16, left: 16, padding: 8, zIndex: 10 },
   content: { flex: 1, justifyContent: 'center', alignItems: 'center' },

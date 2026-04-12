@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ImageBackground, SafeAreaView, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, Alert } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/core';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { auth } from '../firebaseConfig';
@@ -34,7 +35,7 @@ const CheckEmailScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ImageBackground source={require('../assets/loginbackground5.jpg')} style={styles.background}>
+      <LinearGradient colors={['#faf7fb', '#f2e4ef', '#e8d8e8']} style={styles.background}>
         <View style={styles.card}>
           <MaterialCommunityIcons name="email-check-outline" size={64} color="rgba(2,52,72,0.8)" />
           <Text style={styles.heading}>Check your email</Text>
@@ -64,7 +65,7 @@ const CheckEmailScreen: React.FC = () => {
             <Text style={styles.buttonText}>Go to Log In</Text>
           </TouchableOpacity>
         </View>
-      </ImageBackground>
+      </LinearGradient>
     </SafeAreaView>
   );
 };
