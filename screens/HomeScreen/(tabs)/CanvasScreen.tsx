@@ -38,8 +38,10 @@ export default function CanvasScreen() {
   const [currentStreak, setCurrentStreak] = useState(0);
   const [paletteAvailable, setPaletteAvailable] = useState(false);
   const [selectedColor, setSelectedColor] = useState('#000000');
+  const [showLockHint, setShowLockHint] = useState(false);
+  const lockHintTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const PALETTE = ['#000000', '#E53935', '#1E88E5', '#43A047', '#FB8C00', '#8E24AA'];
+  const PALETTE = ['#000000', '#800000', '#0047AB', '#50C878', '#FF7800', '#6B2FA0'];
 
   // iOS native canvas ref
   const nativeCanvasRef = useRef<DrawingCanvasRef>(null);
@@ -47,10 +49,11 @@ export default function CanvasScreen() {
   // Android Skia ref (useRef<any> is equivalent to useCanvasRef — just a typed ref)
   const skiaRef = useRef<any>(null);
   const currentPath = useRef<any>(null);
-  const [paths, setPaths] = useState<any[]>([]);
+  const currentColor = useRef<string>('#000000');
+  const [paths, setPaths] = useState<{ path: any; color: string }[]>([]);
 
-  const updatePaths = useCallback((newPath: any) => {
-    setPaths((prevState) => [...prevState, newPath]);
+  const updatePaths = useCallback((newPath: any, color: string) => {
+    setPaths((prevState) => [...prevState, { path: newPath, color }]);
   }, []);
 
   // Android gesture setup
@@ -61,7 +64,7 @@ export default function CanvasScreen() {
         .onStart(({ x, y }: { x: number; y: number }) => {
           currentPath.current = Skia.Path.Make();
           currentPath.current.moveTo(x, y);
-          runOnJS(updatePaths)(currentPath.current);
+          runOnJS(updatePaths)(currentPath.current, currentColor.current);
         })
         .onUpdate(({ x, y }: { x: number; y: number }) => {
           if (currentPath.current) {
@@ -196,13 +199,13 @@ export default function CanvasScreen() {
       <GestureDetector gesture={drawGesture}>
         <Canvas style={{ flex: 8 }} ref={skiaRef}>
           <Rect x={0} y={0} width={width} height={height} color="white" />
-          {Children.toArray(paths.map((path, index) => (
+          {Children.toArray(paths.map((entry, index) => (
             <Path
               key={index}
-              path={path}
+              path={entry.path}
               strokeWidth={5}
               style="stroke"
-              color={selectedColor}
+              color={entry.color}
             />
           )))}
         </Canvas>
@@ -216,19 +219,41 @@ export default function CanvasScreen() {
         <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
           {renderCanvas()}
 
-          {paletteAvailable && (
-            <View style={styles.paletteRow}>
-              {PALETTE.map((color) => (
+          <View style={styles.paletteRow}>
+            {PALETTE.map((color, index) => {
+              const isBlack = index === 0;
+              const locked = !paletteAvailable && !isBlack;
+              return (
                 <TouchableOpacity
                   key={color}
-                  onPress={() => setSelectedColor(color)}
+                  onPress={() => {
+                    if (locked) {
+                      if (lockHintTimer.current) clearTimeout(lockHintTimer.current);
+                      setShowLockHint(true);
+                      lockHintTimer.current = setTimeout(() => setShowLockHint(false), 2500);
+                    } else {
+                      setSelectedColor(color);
+                      currentColor.current = color;
+                    }
+                  }}
                   style={[
                     styles.swatch,
-                    { backgroundColor: color },
-                    selectedColor === color && styles.swatchSelected,
+                    { backgroundColor: locked ? '#ccc' : color },
+                    !locked && selectedColor === color && styles.swatchSelected,
                   ]}
-                />
-              ))}
+                >
+                  {locked && (
+                    <AntDesign name="lock" size={12} color="white" style={styles.lockIcon} />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+          {showLockHint && (
+            <View style={styles.lockHint}>
+              <Text style={styles.lockHintText}>
+                🔥 Draw 3 days in a row to unlock colours
+              </Text>
             </View>
           )}
 
@@ -400,6 +425,19 @@ const styles = StyleSheet.create({
   swatchSelected: {
     borderColor: '#023448',
     transform: [{ scale: 1.2 }],
+  },
+  lockIcon: {
+    position: 'absolute',
+  },
+  lockHint: {
+    alignItems: 'center',
+    paddingBottom: 6,
+    backgroundColor: 'white',
+  },
+  lockHintText: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 11,
+    color: '#888',
   },
   streakBadge: {
     backgroundColor: 'rgba(2,52,72,0.08)',
