@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect, Children } from 'react';
 import { usePhaseTimer } from '../../../hooks/usePhaseTimer';
+import { usePresence } from '../../../hooks/usePresence';
 import { View, Dimensions, TouchableOpacity, StyleSheet, Alert, Text, Modal, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { collection, query, orderBy, limit, onSnapshot } from "firebase/firestore";
@@ -32,6 +33,7 @@ type AddImageResponse = { data: { message: string } };
 export default function CanvasScreen() {
   const { width, height } = Dimensions.get("window");
   const { phase, countdown } = usePhaseTimer();
+  const { presence, refresh: refreshPresence } = usePresence();
   const [isVisible, setIsVisible] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [word, setWord] = useState<string | null>(null);
@@ -120,6 +122,7 @@ export default function CanvasScreen() {
       Alert.alert("Success", response.data.message);
       clearCanvas();
       fetchStreakStats();
+      refreshPresence();
     } catch (error) {
       Alert.alert("Submission Failed", error.message || "Error submitting drawing");
       clearCanvas();
@@ -228,6 +231,14 @@ export default function CanvasScreen() {
       <GestureHandlerRootView>
         <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
           {renderCanvas()}
+
+          {presence.doodlersToday > 0 && (
+            <View pointerEvents="none" style={styles.presencePill}>
+              <Text style={styles.presenceText}>
+                🎨 {presence.doodlersToday} doodling today
+              </Text>
+            </View>
+          )}
 
           <View style={styles.cornerBadges}>
             {currentStreak > 0 && (
@@ -465,6 +476,20 @@ const styles = StyleSheet.create({
     right: 16,
     alignItems: 'flex-end',
     gap: 6,
+  },
+  presencePill: {
+    position: 'absolute',
+    top: 12,
+    left: 16,
+    backgroundColor: 'rgba(2,52,72,0.06)',
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  presenceText: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 12,
+    color: '#444',
   },
   streakBadge: {
     backgroundColor: 'rgba(2,52,72,0.08)',

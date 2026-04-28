@@ -1106,6 +1106,40 @@ exports.fetchNextUserDrawings = functions.https.onCall(
       }
     });
 
+exports.getPresence = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError(
+        "unauthenticated",
+        "User must be authenticated.",
+    );
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const startOfDay = today.getTime();
+  const endOfDay = startOfDay + 24 * 60 * 60 * 1000;
+
+  try {
+    const drawCount = await db.collection("drawings")
+        .where("date", ">=", startOfDay)
+        .where("date", "<", endOfDay)
+        .count().get();
+
+    const voteCount = await db.collection("user_votes")
+        .where("voteDate", "==", admin.firestore.Timestamp.fromDate(today))
+        .count().get();
+
+    return {
+      doodlersToday: drawCount.data().count,
+      votesToday: voteCount.data().count,
+    };
+  } catch (error) {
+    console.error("Error fetching presence:", error);
+    throw new functions.https.HttpsError(
+        "internal", "Failed to fetch presence.");
+  }
+});
+
 exports.getUserStats = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError(

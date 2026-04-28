@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { usePhaseTimer } from '../../../hooks/usePhaseTimer';
+import { usePresence } from '../../../hooks/usePresence';
 import { View, StyleSheet, Image, FlatList, Text, Modal, Alert, TouchableWithoutFeedback, Dimensions, Platform, ScrollView } from 'react-native';
 import CowLoader from '../../../components/CowLoader';
 import { auth, db, getCallableFunction } from '../../../firebaseConfig';
@@ -63,6 +64,7 @@ export default function VoteScreen() {
   const cardWidth = screenWidth - 32;
 
   const { phase, countdown } = usePhaseTimer();
+  const { presence, refresh: refreshPresence } = usePresence();
   const [drawingInfo, setDrawingInfo] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [results, setResults] = useState<RoomResults | null>(null);
@@ -200,6 +202,7 @@ const handleVote = async (userId: string) => {
     Alert.alert("Success", response.data.message);
 
     fetchData();
+    refreshPresence();
   } catch (error) {
     Alert.alert("Already voted");
   }
@@ -266,6 +269,12 @@ useEffect(() => {
           {phase === 'voting' && `Voting closes in ${countdown}`}
           {phase === 'results' && 'Results announced!'}
         </Text>
+        {phase === 'drawing' && presence.doodlersToday > 0 && (
+          <Text style={styles.presenceLine}>🎨 {presence.doodlersToday} doodling today</Text>
+        )}
+        {phase === 'voting' && presence.votesToday > 0 && (
+          <Text style={styles.presenceLine}>🗳️ {presence.votesToday} {presence.votesToday === 1 ? 'vote' : 'votes'} cast today</Text>
+        )}
       </View>
     {loading ? (
           <View style={styles.loaderContainer}>
@@ -591,6 +600,13 @@ const styles = StyleSheet.create({
     color: '#023448',
     textAlign: 'center',
     marginTop: 6,
+  },
+  presenceLine: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 12,
+    color: '#666',
+    textAlign: 'center',
+    marginTop: 4,
   },
   roomNameBannerText: {
     fontFamily: 'Poppins_400Regular',
