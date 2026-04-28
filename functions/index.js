@@ -272,6 +272,36 @@ exports.selectRandomWord = functions.pubsub.schedule("00 00 * * *")
 
 // Fetch drawings & assign room IDs
 
+const ROOM_ADJECTIVES = [
+  "Smudgy", "Inky", "Charcoal", "Pastel", "Watercolour",
+  "Glossy", "Glittery", "Splattered", "Sketchy", "Doodling",
+  "Whimsical", "Daydreaming", "Crayoned", "Stippled", "Hatched",
+  "Smeared", "Drippy", "Velvet", "Vibrant", "Surreal",
+  "Cubist", "Abstract", "Minimal", "Gilded", "Lacquered",
+  "Dappled", "Marbled", "Textured", "Painterly", "Neon",
+];
+
+const ROOM_NOUNS = [
+  "Doodlers", "Sketchers", "Scribblers", "Painters", "Illustrators",
+  "Etchers", "Muralists", "Engravers", "Caricaturists", "Designers",
+  "Animators", "Inkers", "Cartoonists", "Daubers", "Stencillers",
+  "Tracers", "Easels", "Palettes", "Brushes", "Canvases",
+  "Sketchbooks", "Crayons", "Markers", "Splatters", "Smudges",
+  "Doodles", "Strokes", "Squiggles", "Pencils", "Pens",
+];
+
+/**
+ * Pick a random "The {adjective} {noun}" room name.
+ * @return {string}
+ */
+function generateRoomName() {
+  const adj = ROOM_ADJECTIVES[
+      Math.floor(Math.random() * ROOM_ADJECTIVES.length)];
+  const noun = ROOM_NOUNS[
+      Math.floor(Math.random() * ROOM_NOUNS.length)];
+  return `The ${adj} ${noun}`;
+}
+
 exports.assignRooms = functions.pubsub.schedule("00 14 * * *")
     .timeZone("Europe/London").onRun(async (context) => {
       const today = new Date();
@@ -286,10 +316,16 @@ exports.assignRooms = functions.pubsub.schedule("00 14 * * *")
       const maxRoomSize = 10;
       const numRooms = Math.ceil(totalDrawings / maxRoomSize);
 
+      const roomNames = {};
+      for (let i = 0; i < numRooms; i++) {
+        roomNames[`room-${i}`] = generateRoomName();
+      }
+
       for (let i = 0; i < totalDrawings; i++) {
-        const roomId = i % numRooms;
+        const roomId = `room-${i % numRooms}`;
         await db.collection("drawings").doc(drawings.docs[i].id).update({
-          roomId: `room-${roomId}`,
+          roomId,
+          roomName: roomNames[roomId],
         });
       }
 
@@ -369,6 +405,8 @@ exports.getRoomDrawings = functions.https.onCall(async (data, context) => {
   }
 });
 
+const VALID_REACTIONS = ["laugh", "love", "wow", "spark"];
+
 exports.getRoomResults = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError(
@@ -412,31 +450,43 @@ exports.getRoomResults = functions.https.onCall(async (data, context) => {
       return {hasDrawing: true, roomAssigned: false};
     }
 
-    const sortedDocs = roomSnap.docs;
-    const userIndex = sortedDocs.findIndex(
-        (d) => d.data().userId === userId,
+    const drawingIds = roomSnap.docs.map((d) => d.id);
+    const userReactionDocs = await Promise.all(
+        drawingIds.map((id) =>
+          db.collection("user_reactions").doc(`${userId}_${id}`).get(),
+        ),
     );
-    const winnerDoc = sortedDocs[0];
-    const winnerData = winnerDoc.data();
+    const userReactionsMap = {};
+    userReactionDocs.forEach((doc, i) => {
+      userReactionsMap[drawingIds[i]] = doc.exists ?
+          (doc.data().types || []) : [];
+    });
 
+    const drawings = roomSnap.docs.map((d) => {
+      const dData = d.data();
+      return {
+        id: d.id,
+        image: dData.image,
+        votes: dData.votes || 0,
+        isYou: dData.userId === userId,
+        reactions: dData.reactions || {},
+        userReactions: userReactionsMap[d.id] || [],
+      };
+    });
+
+    const winnerUserId = roomSnap.docs[0].data().userId;
     const winnerUserDoc = await db.collection("users")
-        .doc(winnerData.userId).get();
+        .doc(winnerUserId).get();
     const winnerUsername = winnerUserDoc.exists ?
         winnerUserDoc.data().username : "Anonymous";
 
     return {
       hasDrawing: true,
       roomAssigned: true,
-      userRank: userIndex + 1,
-      userVotes: sortedDocs[userIndex].data().votes || 0,
-      userImage: sortedDocs[userIndex].data().image,
-      totalInRoom: sortedDocs.length,
-      winner: {
-        username: winnerUsername,
-        votes: winnerData.votes || 0,
-        image: winnerData.image,
-        isYou: winnerData.userId === userId,
-      },
+      totalInRoom: drawings.length,
+      drawings,
+      winnerUsername,
+      roomName: roomSnap.docs[0].data().roomName || null,
     };
   } catch (error) {
     console.error("Error fetching room results:", error);
@@ -444,6 +494,77 @@ exports.getRoomResults = functions.https.onCall(async (data, context) => {
         "internal",
         "Unable to fetch room results.",
     );
+  }
+});
+
+exports.toggleReaction = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError(
+        "unauthenticated",
+        "User must be signed in.",
+    );
+  }
+
+  const userId = context.auth.uid;
+  const {drawingId, type} = data;
+  if (!drawingId || !VALID_REACTIONS.includes(type)) {
+    throw new functions.https.HttpsError(
+        "invalid-argument",
+        "Invalid reaction.",
+    );
+  }
+
+  const drawingRef = db.collection("drawings").doc(drawingId);
+  const userReactionRef = db.collection("user_reactions")
+      .doc(`${userId}_${drawingId}`);
+
+  try {
+    return await db.runTransaction(async (tx) => {
+      const drawingDoc = await tx.get(drawingRef);
+      if (!drawingDoc.exists) {
+        throw new functions.https.HttpsError(
+            "not-found", "Drawing not found.");
+      }
+      if (drawingDoc.data().userId === userId) {
+        throw new functions.https.HttpsError(
+            "permission-denied",
+            "You can't react to your own drawing.",
+        );
+      }
+      const userReactionDoc = await tx.get(userReactionRef);
+
+      const reactions = drawingDoc.data().reactions || {};
+      const userTypes = userReactionDoc.exists ?
+          (userReactionDoc.data().types || []) : [];
+      const hasReacted = userTypes.includes(type);
+
+      let newUserTypes;
+      if (hasReacted) {
+        reactions[type] = Math.max(0, (reactions[type] || 0) - 1);
+        newUserTypes = userTypes.filter((t) => t !== type);
+      } else {
+        reactions[type] = (reactions[type] || 0) + 1;
+        newUserTypes = [...userTypes, type];
+      }
+
+      tx.update(drawingRef, {reactions});
+      if (newUserTypes.length === 0) {
+        tx.delete(userReactionRef);
+      } else {
+        tx.set(userReactionRef, {
+          userId,
+          drawingId,
+          types: newUserTypes,
+        });
+      }
+
+      return {reactions, userReactions: newUserTypes};
+    });
+  } catch (error) {
+    console.error("Error toggling reaction:", error);
+    if (error instanceof functions.https.HttpsError) throw error;
+    throw new functions.https.HttpsError(
+        "internal", "Failed to toggle reaction.");
   }
 });
 

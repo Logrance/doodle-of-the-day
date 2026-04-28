@@ -25,20 +25,30 @@ type GetRoomDrawingsResponse = {
   drawings: Drawing[];
 };
 
+type ResultDrawing = {
+  id: string;
+  image: string;
+  votes: number;
+  isYou: boolean;
+  reactions: Record<string, number>;
+  userReactions: string[];
+};
+
 type RoomResults = {
   hasDrawing: boolean;
   roomAssigned?: boolean;
-  userRank?: number;
-  userVotes?: number;
-  userImage?: string;
   totalInRoom?: number;
-  winner?: {
-    username: string;
-    votes: number;
-    image: string;
-    isYou: boolean;
-  };
+  drawings?: ResultDrawing[];
+  winnerUsername?: string;
+  roomName?: string | null;
 };
+
+const REACTION_TYPES: Array<{ key: string; emoji: string }> = [
+  { key: 'laugh', emoji: '😂' },
+  { key: 'love', emoji: '❤️' },
+  { key: 'wow', emoji: '🤯' },
+  { key: 'spark', emoji: '✨' },
+];
 
 const ord = (n: number): string => {
   const s = ['th', 'st', 'nd', 'rd'];
@@ -115,6 +125,34 @@ const fetchResults = async () => {
     setResults(null);
   } finally {
     setLoading(false);
+  }
+};
+
+const handleReact = async (drawingId: string, type: string) => {
+  setResults(prev => {
+    if (!prev?.drawings) return prev;
+    return {
+      ...prev,
+      drawings: prev.drawings.map(d => {
+        if (d.id !== drawingId) return d;
+        const has = d.userReactions.includes(type);
+        const newReactions = { ...d.reactions };
+        newReactions[type] = Math.max(0, (newReactions[type] || 0) + (has ? -1 : 1));
+        return {
+          ...d,
+          reactions: newReactions,
+          userReactions: has ? d.userReactions.filter(t => t !== type) : [...d.userReactions, type],
+        };
+      }),
+    };
+  });
+  try {
+    const toggleReaction = getCallableFunction("toggleReaction") as (
+      data: { drawingId: string; type: string }
+    ) => Promise<{ data: { reactions: Record<string, number>; userReactions: string[] } }>;
+    await toggleReaction({ drawingId, type });
+  } catch (error) {
+    fetchResults();
   }
 };
 
@@ -220,6 +258,9 @@ useEffect(() => {
       <View style={styles.themeContainer}>
         <Text style={styles.themeLabel}>Today's theme</Text>
         <Text style={styles.themeHeading}>{word || "Loading..."}</Text>
+        {phase === 'voting' && drawingInfo[0]?.roomName && (
+          <Text style={styles.roomNameText}>You're in {drawingInfo[0].roomName}</Text>
+        )}
         <Text style={styles.countdownText}>
           {phase === 'drawing' && `Voting opens in ${countdown}`}
           {phase === 'voting' && `Voting closes in ${countdown}`}
@@ -231,46 +272,74 @@ useEffect(() => {
             <CowLoader size={loaderSize} />
           </View>
         ) : phase === 'results' ? (
-          results?.hasDrawing && results.roomAssigned && results.winner ? (
-            <ScrollView contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
-              <View style={[styles.drawingContainer, { width: cardWidth }]}>
-                <View style={styles.resultsHeader}>
-                  <Text style={styles.resultsHeaderText}>
-                    {results.winner.isYou ? '🏆 You won today!' : "🏆 Today's winner"}
-                  </Text>
-                </View>
-                <TouchableOpacity onPress={() => openModal(`data:image/png;base64,${results.winner!.image}`)}>
-                  <Image
-                    source={{ uri: `data:image/png;base64,${results.winner.image}` }}
-                    style={[styles.image, { width: cardWidth, height: cardWidth }]}
-                  />
-                </TouchableOpacity>
-                <View style={styles.cardFooter}>
-                  <Text style={styles.voteCount}>
-                    @{results.winner.username} · {results.winner.votes} {results.winner.votes === 1 ? 'vote' : 'votes'}
-                  </Text>
-                  <TouchableOpacity onPress={() => handleShare(results.winner!.image)} style={styles.buttonIcon}>
-                    <Entypo name="share" size={20} color="#666" />
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              {!results.winner.isYou && results.userImage && (
-                <View style={[styles.drawingContainer, { width: cardWidth }]}>
-                  <View style={styles.resultsHeader}>
-                    <Text style={styles.resultsSubHeaderText}>
-                      You placed {ord(results.userRank!)} of {results.totalInRoom} · {results.userVotes} {results.userVotes === 1 ? 'vote' : 'votes'}
+          results?.hasDrawing && results.roomAssigned && results.drawings ? (
+            (() => {
+              const userIndex = results.drawings.findIndex(d => d.isYou);
+              const userDrawing = userIndex >= 0 ? results.drawings[userIndex] : null;
+              const winnerIsYou = results.drawings[0].isYou;
+              return (
+                <ScrollView contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
+                  <View style={styles.resultsBanner}>
+                    {results.roomName && (
+                      <Text style={styles.roomNameBannerText}>{results.roomName}</Text>
+                    )}
+                    <Text style={styles.resultsBannerText}>
+                      {winnerIsYou ? '🏆 You won today!' : `🏆 Today's winner: @${results.winnerUsername}`}
                     </Text>
+                    {userDrawing && !winnerIsYou && (
+                      <Text style={styles.resultsBannerSubText}>
+                        You placed {ord(userIndex + 1)} of {results.totalInRoom} · {userDrawing.votes} {userDrawing.votes === 1 ? 'vote' : 'votes'}
+                      </Text>
+                    )}
                   </View>
-                  <TouchableOpacity onPress={() => openModal(`data:image/png;base64,${results.userImage}`)}>
-                    <Image
-                      source={{ uri: `data:image/png;base64,${results.userImage}` }}
-                      style={[styles.image, { width: cardWidth, height: cardWidth }]}
-                    />
-                  </TouchableOpacity>
-                </View>
-              )}
-            </ScrollView>
+
+                  {results.drawings.map((drawing, index) => (
+                    <View
+                      key={drawing.id}
+                      style={[
+                        styles.drawingContainer,
+                        { width: cardWidth },
+                        drawing.isYou && styles.drawingContainerSelf,
+                      ]}
+                    >
+                      <View style={styles.resultsHeader}>
+                        <Text style={styles.resultsSubHeaderText}>
+                          {index === 0 ? '🏆 ' : ''}{ord(index + 1)} · {drawing.votes} {drawing.votes === 1 ? 'vote' : 'votes'}
+                          {drawing.isYou ? ' · you' : ''}
+                        </Text>
+                      </View>
+                      <TouchableOpacity onPress={() => openModal(`data:image/png;base64,${drawing.image}`)}>
+                        <Image
+                          source={{ uri: `data:image/png;base64,${drawing.image}` }}
+                          style={[styles.image, { width: cardWidth, height: cardWidth }]}
+                        />
+                      </TouchableOpacity>
+                      <View style={styles.reactionRow}>
+                        {REACTION_TYPES.map(({ key, emoji }) => {
+                          const count = drawing.reactions[key] || 0;
+                          const active = drawing.userReactions.includes(key);
+                          return (
+                            <TouchableOpacity
+                              key={key}
+                              disabled={drawing.isYou}
+                              onPress={() => handleReact(drawing.id, key)}
+                              style={[
+                                styles.reactionButton,
+                                active && styles.reactionButtonActive,
+                                drawing.isYou && styles.reactionButtonReadOnly,
+                              ]}
+                            >
+                              <Text style={styles.reactionEmoji}>{emoji}</Text>
+                              {count > 0 && <Text style={styles.reactionCount}>{count}</Text>}
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    </View>
+                  ))}
+                </ScrollView>
+              );
+            })()
           ) : (
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyTitle}>
@@ -327,7 +396,7 @@ useEffect(() => {
       </View>
   )}
 
-  {phase === 'results' && results?.winner?.isYou && (
+  {phase === 'results' && results?.drawings?.[0]?.isYou && (
     <ConfettiCannon
       count={150}
       origin={{ x: screenWidth / 2, y: 0 }}
@@ -394,20 +463,73 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
   },
+  resultsBanner: {
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: 'rgba(2,52,72,0.06)',
+    borderRadius: 12,
+  },
+  resultsBannerText: {
+    fontFamily: 'Poppins_700Bold',
+    fontSize: 17,
+    color: '#023448',
+    textAlign: 'center',
+  },
+  resultsBannerSubText: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 13,
+    color: '#555',
+    textAlign: 'center',
+    marginTop: 4,
+  },
   resultsHeader: {
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
   },
-  resultsHeaderText: {
-    fontFamily: 'Poppins_700Bold',
-    fontSize: 16,
-    color: '#023448',
-  },
   resultsSubHeaderText: {
     fontFamily: 'Poppins_700Bold',
     fontSize: 14,
+    color: '#555',
+  },
+  drawingContainerSelf: {
+    borderWidth: 2,
+    borderColor: 'rgba(2,52,72,0.35)',
+  },
+  reactionRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+  },
+  reactionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: '#f5f5f5',
+    gap: 4,
+  },
+  reactionButtonActive: {
+    backgroundColor: 'rgba(2,52,72,0.12)',
+  },
+  reactionButtonReadOnly: {
+    opacity: 0.85,
+    backgroundColor: '#fafafa',
+  },
+  reactionEmoji: {
+    fontSize: 18,
+  },
+  reactionCount: {
+    fontFamily: 'Poppins_700Bold',
+    fontSize: 13,
     color: '#555',
   },
   voteCount: {
@@ -462,6 +584,22 @@ const styles = StyleSheet.create({
     color: '#888',
     textAlign: 'center',
     marginTop: 4,
+  },
+  roomNameText: {
+    fontFamily: 'Poppins_700Bold',
+    fontSize: 13,
+    color: '#023448',
+    textAlign: 'center',
+    marginTop: 6,
+  },
+  roomNameBannerText: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 11,
+    color: '#888',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    textAlign: 'center',
+    marginBottom: 6,
   },
   emptyContainer: {
     flex: 1,
