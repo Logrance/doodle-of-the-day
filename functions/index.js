@@ -369,6 +369,84 @@ exports.getRoomDrawings = functions.https.onCall(async (data, context) => {
   }
 });
 
+exports.getRoomResults = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError(
+        "unauthenticated",
+        "User must be signed in.",
+    );
+  }
+
+  const userId = context.auth.uid;
+  const today = new Date(data.date || Date.now());
+  today.setHours(0, 0, 0, 0);
+  const startOfDay = today.getTime();
+  const endOfDay = startOfDay + 24 * 60 * 60 * 1000;
+
+  try {
+    const userDrawingSnap = await db.collection("drawings")
+        .where("userId", "==", userId)
+        .where("date", ">=", startOfDay)
+        .where("date", "<", endOfDay)
+        .limit(1)
+        .get();
+
+    if (userDrawingSnap.empty) {
+      return {hasDrawing: false};
+    }
+
+    const userDrawingData = userDrawingSnap.docs[0].data();
+    const roomId = userDrawingData.roomId;
+    if (!roomId) {
+      return {hasDrawing: true, roomAssigned: false};
+    }
+
+    const roomSnap = await db.collection("drawings")
+        .where("roomId", "==", roomId)
+        .where("date", ">=", startOfDay)
+        .where("date", "<", endOfDay)
+        .orderBy("votes", "desc")
+        .get();
+
+    if (roomSnap.empty) {
+      return {hasDrawing: true, roomAssigned: false};
+    }
+
+    const sortedDocs = roomSnap.docs;
+    const userIndex = sortedDocs.findIndex(
+        (d) => d.data().userId === userId,
+    );
+    const winnerDoc = sortedDocs[0];
+    const winnerData = winnerDoc.data();
+
+    const winnerUserDoc = await db.collection("users")
+        .doc(winnerData.userId).get();
+    const winnerUsername = winnerUserDoc.exists ?
+        winnerUserDoc.data().username : "Anonymous";
+
+    return {
+      hasDrawing: true,
+      roomAssigned: true,
+      userRank: userIndex + 1,
+      userVotes: sortedDocs[userIndex].data().votes || 0,
+      userImage: sortedDocs[userIndex].data().image,
+      totalInRoom: sortedDocs.length,
+      winner: {
+        username: winnerUsername,
+        votes: winnerData.votes || 0,
+        image: winnerData.image,
+        isYou: winnerData.userId === userId,
+      },
+    };
+  } catch (error) {
+    console.error("Error fetching room results:", error);
+    throw new functions.https.HttpsError(
+        "internal",
+        "Unable to fetch room results.",
+    );
+  }
+});
+
 exports.flagDrawing = functions.https.onCall(async (data, context) => {
   // Check if the request is authenticated
   if (!context.auth) {

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { usePhaseTimer } from '../../../hooks/usePhaseTimer';
-import { View, StyleSheet, Image, FlatList, Text, Modal, Alert, TouchableWithoutFeedback, Dimensions, Platform } from 'react-native';
+import { View, StyleSheet, Image, FlatList, Text, Modal, Alert, TouchableWithoutFeedback, Dimensions, Platform, ScrollView } from 'react-native';
 import CowLoader from '../../../components/CowLoader';
 import { auth, db, getCallableFunction } from '../../../firebaseConfig';
 import { collection, query, orderBy, limit, onSnapshot } from "firebase/firestore";
@@ -11,6 +11,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
 import { useIsFocused } from '@react-navigation/native';
+import ConfettiCannon from 'react-native-confetti-cannon';
 
 type Drawing = {
   id: string;
@@ -24,6 +25,27 @@ type GetRoomDrawingsResponse = {
   drawings: Drawing[];
 };
 
+type RoomResults = {
+  hasDrawing: boolean;
+  roomAssigned?: boolean;
+  userRank?: number;
+  userVotes?: number;
+  userImage?: string;
+  totalInRoom?: number;
+  winner?: {
+    username: string;
+    votes: number;
+    image: string;
+    isYou: boolean;
+  };
+};
+
+const ord = (n: number): string => {
+  const s = ['th', 'st', 'nd', 'rd'];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+};
+
 
 export default function VoteScreen() {
   const { height: screenHeight, width: screenWidth } = Dimensions.get('window');
@@ -33,6 +55,7 @@ export default function VoteScreen() {
   const { phase, countdown } = usePhaseTimer();
   const [drawingInfo, setDrawingInfo] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [results, setResults] = useState<RoomResults | null>(null);
 
   //For word theme state
   const [word, setWord] = useState<string | null>(null);
@@ -77,6 +100,21 @@ export default function VoteScreen() {
     } catch (error) {
     } finally {
       setLoading(false);
+  }
+};
+
+const fetchResults = async () => {
+  setLoading(true);
+  try {
+    const getRoomResults = getCallableFunction("getRoomResults") as (
+      data: { date: string }
+    ) => Promise<{ data: RoomResults }>;
+    const response = await getRoomResults({ date: new Date().toISOString() });
+    setResults(response.data);
+  } catch (error) {
+    setResults(null);
+  } finally {
+    setLoading(false);
   }
 };
 
@@ -167,10 +205,13 @@ useEffect(() => {
 }, []);
 
 useEffect(() => {
-  if (isFocused) {
+  if (!isFocused) return;
+  if (phase === 'results') {
+    fetchResults();
+  } else {
     fetchData();
   }
- }, [isFocused])
+ }, [isFocused, phase])
 
 
   return (
@@ -189,6 +230,59 @@ useEffect(() => {
           <View style={styles.loaderContainer}>
             <CowLoader size={loaderSize} />
           </View>
+        ) : phase === 'results' ? (
+          results?.hasDrawing && results.roomAssigned && results.winner ? (
+            <ScrollView contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
+              <View style={[styles.drawingContainer, { width: cardWidth }]}>
+                <View style={styles.resultsHeader}>
+                  <Text style={styles.resultsHeaderText}>
+                    {results.winner.isYou ? '🏆 You won today!' : "🏆 Today's winner"}
+                  </Text>
+                </View>
+                <TouchableOpacity onPress={() => openModal(`data:image/png;base64,${results.winner!.image}`)}>
+                  <Image
+                    source={{ uri: `data:image/png;base64,${results.winner.image}` }}
+                    style={[styles.image, { width: cardWidth, height: cardWidth }]}
+                  />
+                </TouchableOpacity>
+                <View style={styles.cardFooter}>
+                  <Text style={styles.voteCount}>
+                    @{results.winner.username} · {results.winner.votes} {results.winner.votes === 1 ? 'vote' : 'votes'}
+                  </Text>
+                  <TouchableOpacity onPress={() => handleShare(results.winner!.image)} style={styles.buttonIcon}>
+                    <Entypo name="share" size={20} color="#666" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {!results.winner.isYou && results.userImage && (
+                <View style={[styles.drawingContainer, { width: cardWidth }]}>
+                  <View style={styles.resultsHeader}>
+                    <Text style={styles.resultsSubHeaderText}>
+                      You placed {ord(results.userRank!)} of {results.totalInRoom} · {results.userVotes} {results.userVotes === 1 ? 'vote' : 'votes'}
+                    </Text>
+                  </View>
+                  <TouchableOpacity onPress={() => openModal(`data:image/png;base64,${results.userImage}`)}>
+                    <Image
+                      source={{ uri: `data:image/png;base64,${results.userImage}` }}
+                      style={[styles.image, { width: cardWidth, height: cardWidth }]}
+                    />
+                  </TouchableOpacity>
+                </View>
+              )}
+            </ScrollView>
+          ) : (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyTitle}>
+                {results?.hasDrawing ? 'Results coming soon' : 'No doodle today'}
+              </Text>
+              <Text style={styles.emptySubtitle}>
+                {results?.hasDrawing
+                  ? 'Hang tight — winners are being picked.'
+                  : "You didn't draw today. Come back tomorrow for a new theme!"}
+              </Text>
+            </View>
+          )
         ) : drawingInfo.length > 0 ? (
         <FlatList
           data={drawingInfo}
@@ -225,14 +319,21 @@ useEffect(() => {
         <Text style={styles.emptyTitle}>
           {phase === 'drawing' && `Voting opens in ${countdown}`}
           {phase === 'voting' && 'No drawings to vote on yet'}
-          {phase === 'results' && 'Voting has closed'}
         </Text>
         <Text style={styles.emptySubtitle}>
           {phase === 'drawing' && 'Submit your drawing before 14:00 UK time.'}
           {phase === 'voting' && 'Check back in a moment.'}
-          {phase === 'results' && 'Results have been announced!'}
         </Text>
       </View>
+  )}
+
+  {phase === 'results' && results?.winner?.isYou && (
+    <ConfettiCannon
+      count={150}
+      origin={{ x: screenWidth / 2, y: 0 }}
+      autoStart
+      fadeOut
+    />
   )}
 
       <Modal
@@ -292,6 +393,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 14,
     paddingVertical: 12,
+  },
+  resultsHeader: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  resultsHeaderText: {
+    fontFamily: 'Poppins_700Bold',
+    fontSize: 16,
+    color: '#023448',
+  },
+  resultsSubHeaderText: {
+    fontFamily: 'Poppins_700Bold',
+    fontSize: 14,
+    color: '#555',
   },
   voteCount: {
     fontFamily: 'Poppins_700Bold',
