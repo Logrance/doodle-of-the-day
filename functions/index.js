@@ -160,6 +160,81 @@ exports.pickDailyWinner = functions.pubsub.schedule("00 20 * * *")
       }
     });
 
+exports.notifyMorningTheme = functions.pubsub.schedule("00 08 * * *")
+    .timeZone("Europe/London").onRun(async (context) => {
+      try {
+        const themeSnapshot = await db.collection("themes_today")
+            .orderBy("timestamp", "desc")
+            .limit(1)
+            .get();
+        if (themeSnapshot.empty) {
+          console.log("No theme for today — skipping morning push.");
+          return null;
+        }
+        const word = themeSnapshot.docs[0].data().word;
+
+        const usersSnapshot = await db.collection("users").get();
+        const messages = usersSnapshot.docs
+            .filter((doc) => doc.data().expoPushToken)
+            .map((doc) => ({
+              to: doc.data().expoPushToken,
+              title: `Today's theme: ${word} 🎨`,
+              body: "You have until 14:00 UK to submit your doodle.",
+              sound: "default",
+            }));
+        await sendExpoPushNotifications(messages);
+        console.log(`Sent morning push to ${messages.length} users.`);
+      } catch (error) {
+        console.error("Error sending morning push:", error);
+      }
+      return null;
+    });
+
+exports.notifyDrawingDeadline = functions.pubsub.schedule("30 13 * * *")
+    .timeZone("Europe/London").onRun(async (context) => {
+      try {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const startOfDay = today.getTime();
+        const endOfDay = startOfDay + 24 * 60 * 60 * 1000;
+
+        const drawingsSnapshot = await db.collection("drawings")
+            .where("date", ">=", startOfDay)
+            .where("date", "<", endOfDay)
+            .select("userId")
+            .get();
+        const submittedUserIds = new Set(
+            drawingsSnapshot.docs.map((d) => d.data().userId),
+        );
+
+        const usersSnapshot = await db.collection("users").get();
+        const messages = usersSnapshot.docs
+            .filter((doc) => {
+              const data = doc.data();
+              return data.expoPushToken && !submittedUserIds.has(doc.id);
+            })
+            .map((doc) => {
+              const streak = doc.data().currentStreak || 0;
+              const isStreak = streak > 0;
+              return {
+                to: doc.data().expoPushToken,
+                title: isStreak ?
+                  `🔥 Don't break your ${streak}-day streak!` :
+                  "⏰ 30 min left to doodle",
+                body: isStreak ?
+                  "30 min left — submit before 14:00 UK to keep it alive." :
+                  "Submit your doodle before 14:00 UK time.",
+                sound: "default",
+              };
+            });
+        await sendExpoPushNotifications(messages);
+        console.log(`Sent deadline push to ${messages.length} users.`);
+      } catch (error) {
+        console.error("Error sending deadline push:", error);
+      }
+      return null;
+    });
+
 // select random word function
 
 exports.selectRandomWord = functions.pubsub.schedule("00 00 * * *")
@@ -488,12 +563,30 @@ exports.addImageToDB = functions.https.onCall(async (data, context) => {
     // Update streak
     const userRef = db.collection("users").doc(userId);
     const userDoc = await userRef.get();
+    let usedFreeze = false;
     if (userDoc.exists) {
       const userData = userDoc.data();
       const todayStr = new Date().toISOString().split("T")[0];
       const lastSubmission = userData.lastSubmissionDate;
 
       const paletteWasAvailable = userData.paletteAvailable || false;
+
+      // Streak freezes: 1 every 7 days, capped at 1. Auto-consumed to bridge
+      // a single missed day so a one-off miss doesn't reset the streak.
+      const FREEZE_REFILL_DAYS = 7;
+      let freezesAvailable = userData.freezesAvailable || 0;
+      let lastFreezeGrantedDate = userData.lastFreezeGrantedDate || null;
+      const daysSinceFreezeGrant = lastFreezeGrantedDate ?
+          Math.round(
+              (new Date(todayStr) - new Date(lastFreezeGrantedDate)) /
+              (1000 * 60 * 60 * 24),
+          ) : Infinity;
+      if (freezesAvailable < 1 &&
+          daysSinceFreezeGrant >= FREEZE_REFILL_DAYS) {
+        freezesAvailable = 1;
+        lastFreezeGrantedDate = todayStr;
+      }
+
       let newStreak = 1;
       let consecutive = false;
       if (lastSubmission) {
@@ -504,6 +597,11 @@ exports.addImageToDB = functions.https.onCall(async (data, context) => {
         if (diffDays === 1) {
           newStreak = (userData.currentStreak || 0) + 1;
           consecutive = true;
+        } else if (diffDays === 2 && freezesAvailable > 0) {
+          newStreak = (userData.currentStreak || 0) + 1;
+          consecutive = true;
+          usedFreeze = true;
+          freezesAvailable -= 1;
         }
       }
 
@@ -524,10 +622,17 @@ exports.addImageToDB = functions.https.onCall(async (data, context) => {
         longestStreak: Math.max(newStreak, userData.longestStreak || 0),
         lastSubmissionDate: todayStr,
         paletteAvailable: newPaletteAvailable,
+        freezesAvailable,
+        lastFreezeGrantedDate,
       });
     }
 
-    return {success: true, message: "Drawing submitted successfully!"};
+    return {
+      success: true,
+      message: usedFreeze ?
+        "❄️ Streak saved! You used your freeze." :
+        "Drawing submitted successfully!",
+    };
   } catch (error) {
     throw new functions.https.HttpsError(
         "internal",
@@ -823,6 +928,7 @@ exports.getUserStats = functions.https.onCall(async (data, context) => {
       longestStreak: userData.longestStreak || 0,
       winCount: userData.winCount || 0,
       paletteAvailable: userData.paletteAvailable || false,
+      freezesAvailable: userData.freezesAvailable || 0,
     };
   } catch (error) {
     throw new functions.https.HttpsError(

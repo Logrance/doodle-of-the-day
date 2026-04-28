@@ -37,11 +37,18 @@ export default function CanvasScreen() {
   const [word, setWord] = useState<string | null>(null);
   const [currentStreak, setCurrentStreak] = useState(0);
   const [paletteAvailable, setPaletteAvailable] = useState(false);
+  const [freezesAvailable, setFreezesAvailable] = useState(0);
   const [selectedColor, setSelectedColor] = useState('#000000');
-  const [showLockHint, setShowLockHint] = useState(false);
-  const lockHintTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const PALETTE = ['#000000', '#800000', '#0047AB', '#50C878', '#FF7800', '#6B2FA0'];
+
+  const paletteHint = (() => {
+    if (paletteAvailable) return '🎨 Colours unlocked — use them today!';
+    if (currentStreak === 0) return '🔥 Draw 3 days in a row to unlock colours';
+    if (currentStreak % 3 === 0) return '🎨 Colours unlock tomorrow — keep your streak alive!';
+    const remaining = 3 - (currentStreak % 3);
+    return `🔥 ${currentStreak} / 3 — ${remaining} more day${remaining === 1 ? '' : 's'} to unlock colours`;
+  })();
 
   // iOS native canvas ref
   const nativeCanvasRef = useRef<DrawingCanvasRef>(null);
@@ -94,12 +101,25 @@ export default function CanvasScreen() {
     }
   };
 
+  const fetchStreakStats = useCallback(async () => {
+    try {
+      const getUserStats = getCallableFunction("getUserStats");
+      const response = await getUserStats({}) as {
+        data: { currentStreak: number; paletteAvailable: boolean; freezesAvailable: number }
+      };
+      setCurrentStreak(response.data.currentStreak);
+      setPaletteAvailable(response.data.paletteAvailable);
+      setFreezesAvailable(response.data.freezesAvailable);
+    } catch (error) {}
+  }, []);
+
   const addImageToDB = async (imageBase64: string) => {
     try {
       const addImage = getCallableFunction("addImageToDB") as unknown as (params: { imageBase64: string }) => Promise<AddImageResponse>;
       const response = await addImage({ imageBase64 });
       Alert.alert("Success", response.data.message);
       clearCanvas();
+      fetchStreakStats();
     } catch (error) {
       Alert.alert("Submission Failed", error.message || "Error submitting drawing");
       clearCanvas();
@@ -143,18 +163,8 @@ export default function CanvasScreen() {
   }, []);
 
   useEffect(() => {
-    const fetchStreak = async () => {
-      try {
-        const getUserStats = getCallableFunction("getUserStats");
-        const response = await getUserStats({}) as {
-          data: { currentStreak: number; paletteAvailable: boolean }
-        };
-        setCurrentStreak(response.data.currentStreak);
-        setPaletteAvailable(response.data.paletteAvailable);
-      } catch (error) {}
-    };
-    fetchStreak();
-  }, []);
+    fetchStreakStats();
+  }, [fetchStreakStats]);
 
   const handleModalClose = async () => {
     setIsVisible(false);
@@ -219,6 +229,25 @@ export default function CanvasScreen() {
         <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
           {renderCanvas()}
 
+          <View style={styles.cornerBadges}>
+            {currentStreak > 0 && (
+              <View pointerEvents="none" style={styles.streakBadge}>
+                <Text style={styles.streakText}>🔥 {currentStreak}</Text>
+              </View>
+            )}
+            {freezesAvailable > 0 && (
+              <TouchableOpacity
+                onPress={() => Alert.alert(
+                  "❄️ Streak Freeze",
+                  "If you miss a day, your freeze automatically saves your streak. You earn 1 freeze every 7 days."
+                )}
+                style={[styles.streakBadge, styles.freezeBadge]}
+              >
+                <Text style={styles.streakText}>❄️ {freezesAvailable}</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
           <View style={styles.paletteRow}>
             {PALETTE.map((color, index) => {
               const isBlack = index === 0;
@@ -226,15 +255,10 @@ export default function CanvasScreen() {
               return (
                 <TouchableOpacity
                   key={color}
+                  disabled={locked}
                   onPress={() => {
-                    if (locked) {
-                      if (lockHintTimer.current) clearTimeout(lockHintTimer.current);
-                      setShowLockHint(true);
-                      lockHintTimer.current = setTimeout(() => setShowLockHint(false), 2500);
-                    } else {
-                      setSelectedColor(color);
-                      currentColor.current = color;
-                    }
+                    setSelectedColor(color);
+                    currentColor.current = color;
                   }}
                   style={[
                     styles.swatch,
@@ -249,13 +273,9 @@ export default function CanvasScreen() {
               );
             })}
           </View>
-          {showLockHint && (
-            <View style={styles.lockHint}>
-              <Text style={styles.lockHintText}>
-                🔥 Draw 3 days in a row to unlock colours
-              </Text>
-            </View>
-          )}
+          <View style={styles.paletteHint}>
+            <Text style={styles.paletteHintText}>{paletteHint}</Text>
+          </View>
 
           <View style={styles.swatchContainer}>
             <TouchableOpacity onPress={clearCanvas} style={styles.buttonAnother}>
@@ -429,22 +449,31 @@ const styles = StyleSheet.create({
   lockIcon: {
     position: 'absolute',
   },
-  lockHint: {
+  paletteHint: {
     alignItems: 'center',
-    paddingBottom: 6,
+    paddingBottom: 8,
     backgroundColor: 'white',
   },
-  lockHintText: {
+  paletteHintText: {
     fontFamily: 'Poppins_400Regular',
-    fontSize: 11,
-    color: '#888',
+    fontSize: 12,
+    color: '#666',
+  },
+  cornerBadges: {
+    position: 'absolute',
+    top: 12,
+    right: 16,
+    alignItems: 'flex-end',
+    gap: 6,
   },
   streakBadge: {
     backgroundColor: 'rgba(2,52,72,0.08)',
-    borderRadius: 8,
-    paddingHorizontal: 8,
+    borderRadius: 12,
+    paddingHorizontal: 10,
     paddingVertical: 4,
-    marginLeft: 8,
+  },
+  freezeBadge: {
+    backgroundColor: 'rgba(120,180,220,0.22)',
   },
   streakText: {
     fontFamily: 'Poppins_700Bold',

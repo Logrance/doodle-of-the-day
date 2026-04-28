@@ -20,15 +20,17 @@ const ProfileScreen: React.FC = () => {
   const [currentStreak, setCurrentStreak] = useState(0);
   const [longestStreak, setLongestStreak] = useState(0);
   const [winCount, setWinCount] = useState(0);
+  const [freezesAvailable, setFreezesAvailable] = useState(0);
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
         const getUserStats = getCallableFunction('getUserStats');
-        const response = await getUserStats({}) as { data: { currentStreak: number; longestStreak: number; winCount: number } };
+        const response = await getUserStats({}) as { data: { currentStreak: number; longestStreak: number; winCount: number; freezesAvailable: number } };
         setCurrentStreak(response.data.currentStreak);
         setLongestStreak(response.data.longestStreak);
         setWinCount(response.data.winCount);
+        setFreezesAvailable(response.data.freezesAvailable);
       } catch (error) {}
     };
     fetchStats();
@@ -86,6 +88,12 @@ const ProfileScreen: React.FC = () => {
               <Text style={styles.statLabel}>best streak</Text>
             </View>
           </View>
+
+          <Text style={styles.freezeNote}>
+            {freezesAvailable > 0
+              ? `❄️ ${freezesAvailable} streak freeze ready — saves you if you miss a day`
+              : '❄️ Earn a streak freeze every 7 days — saves you if you miss a day'}
+          </Text>
 
           <View style={styles.buttonContainer}>
             <TouchableOpacity onPress={() => navigation.navigate('Deets')} style={styles.buttonSecondary}>
@@ -192,6 +200,15 @@ const styles = StyleSheet.create({
     width: 1,
     height: 40,
     backgroundColor: '#ddd',
+  },
+  freezeNote: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 12,
+    color: '#666',
+    textAlign: 'center',
+    marginTop: -12,
+    marginBottom: 20,
+    paddingHorizontal: 24,
   },
   buttonContainer: { flex: 1, alignItems: 'center' },
   buttonSecondary: {
