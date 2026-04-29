@@ -812,11 +812,14 @@ exports.addImageToDB = functions.https.onCall(async (data, context) => {
       // Using it (submitting while it was available) consumes it.
       // Breaking the streak forfeits any pending unlock.
       let newPaletteAvailable = false;
+      let newPaletteUnlockedOn = null;
       if (consecutive) {
         if (newStreak % 3 === 0) {
-          newPaletteAvailable = true; // Unlocked for tomorrow
+          newPaletteAvailable = true; // Unlocked, gated to next day by date
+          newPaletteUnlockedOn = todayStr;
         } else if (paletteWasAvailable) {
           newPaletteAvailable = false; // Consumed today
+          newPaletteUnlockedOn = null;
         }
       }
 
@@ -825,6 +828,7 @@ exports.addImageToDB = functions.https.onCall(async (data, context) => {
         longestStreak: Math.max(newStreak, userData.longestStreak || 0),
         lastSubmissionDate: todayStr,
         paletteAvailable: newPaletteAvailable,
+        paletteUnlockedOn: newPaletteUnlockedOn,
         freezesAvailable,
         lastFreezeGrantedDate,
       });
@@ -1277,11 +1281,15 @@ exports.getUserStats = functions.https.onCall(async (data, context) => {
       throw new functions.https.HttpsError("not-found", "User not found.");
     }
     const userData = userDoc.data();
+    const todayStr = new Date().toISOString().split("T")[0];
+    const unlockedOn = userData.paletteUnlockedOn || null;
+    const paletteAvailable = (userData.paletteAvailable || false) &&
+        unlockedOn !== todayStr;
     return {
       currentStreak: userData.currentStreak || 0,
       longestStreak: userData.longestStreak || 0,
       winCount: userData.winCount || 0,
-      paletteAvailable: userData.paletteAvailable || false,
+      paletteAvailable,
       freezesAvailable: userData.freezesAvailable || 0,
     };
   } catch (error) {
