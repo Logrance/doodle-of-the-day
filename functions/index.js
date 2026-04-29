@@ -151,6 +151,7 @@ exports.pickDailyWinner = functions.pubsub.schedule("00 20 * * *")
                     "Congratulations — your doodle won today's vote!" :
                     "Did you win? Check the results now.",
                   sound: "default",
+                  data: {url: "doodleoftheday://home/vote"},
                 };
               });
           await sendExpoPushNotifications(messages);
@@ -181,6 +182,7 @@ exports.notifyMorningTheme = functions.pubsub.schedule("00 08 * * *")
               title: `Today's theme: ${word} 🎨`,
               body: "You have until 14:00 UK to submit your doodle.",
               sound: "default",
+              data: {url: "doodleoftheday://home/draw"},
             }));
         await sendExpoPushNotifications(messages);
         console.log(`Sent morning push to ${messages.length} users.`);
@@ -225,6 +227,7 @@ exports.notifyDrawingDeadline = functions.pubsub.schedule("30 13 * * *")
                   "30 min left — submit before 14:00 UK to keep it alive." :
                   "Submit your doodle before 14:00 UK time.",
                 sound: "default",
+                data: {url: "doodleoftheday://home/draw"},
               };
             });
         await sendExpoPushNotifications(messages);
@@ -342,6 +345,7 @@ exports.assignRooms = functions.pubsub.schedule("00 14 * * *")
               title: "Time to vote! 🗳️",
               body: "Voting is open — go pick your favourite doodle.",
               sound: "default",
+              data: {url: "doodleoftheday://home/vote"},
             }));
         await sendExpoPushNotifications(messages);
       }
@@ -1017,6 +1021,123 @@ exports.getLeaderboard = functions.https.onCall(async (data, context) => {
     );
   }
 });
+
+/**
+ * Aggregate winners for the given range and return a leaderboard.
+ * Range is one of "week", "month", or "all". For "all" we use the
+ * pre-aggregated users.winCount field; for "week"/"month" we count
+ * winners docs whose date falls inside the range.
+ * @param {string} range
+ * @param {string} currentUserId
+ * @return {Promise<object>}
+ */
+async function buildRangedLeaderboard(range, currentUserId) {
+  if (range === "all") {
+    const top = await db.collection("users")
+        .orderBy("winCount", "desc")
+        .limit(12)
+        .get();
+    const leaderboard = top.docs.map((doc) => ({
+      id: doc.id,
+      username: doc.data().username,
+      winCount: doc.data().winCount,
+    }));
+    let currentUserRank = null;
+    let currentUserData = null;
+    if (!leaderboard.find((u) => u.id === currentUserId)) {
+      const all = await db.collection("users")
+          .orderBy("winCount", "desc")
+          .get();
+      const ids = all.docs.map((d) => d.id);
+      currentUserRank = ids.indexOf(currentUserId) + 1;
+      const me = all.docs.find((d) => d.id === currentUserId);
+      if (me) {
+        currentUserData = {
+          id: me.id,
+          username: me.data().username,
+          winCount: me.data().winCount,
+        };
+      }
+    }
+    return {leaderboard, currentUserRank, currentUserData};
+  }
+
+  const now = new Date();
+  const start = new Date(now);
+  if (range === "week") start.setDate(now.getDate() - 7);
+  else start.setDate(now.getDate() - 30);
+  start.setHours(0, 0, 0, 0);
+
+  const winSnap = await db.collection("winners")
+      .where("date", ">=", admin.firestore.Timestamp.fromDate(start))
+      .get();
+
+  const counts = new Map();
+  winSnap.docs.forEach((doc) => {
+    const uid = doc.data().userId;
+    if (!uid) return;
+    counts.set(uid, (counts.get(uid) || 0) + 1);
+  });
+
+  const sorted = [...counts.entries()]
+      .map(([id, winCount]) => ({id, winCount}))
+      .sort((a, b) => b.winCount - a.winCount);
+
+  const topEntries = sorted.slice(0, 12);
+  const userDocs = await Promise.all(
+      topEntries.map((e) => db.collection("users").doc(e.id).get()),
+  );
+
+  const leaderboard = topEntries.map((entry, idx) => ({
+    id: entry.id,
+    username: userDocs[idx].exists ?
+      userDocs[idx].data().username :
+      "Unknown",
+    winCount: entry.winCount,
+  }));
+
+  let currentUserRank = null;
+  let currentUserData = null;
+  if (!leaderboard.find((u) => u.id === currentUserId)) {
+    const allIds = sorted.map((x) => x.id);
+    const idx = allIds.indexOf(currentUserId);
+    if (idx >= 0) {
+      currentUserRank = idx + 1;
+      const me = await db.collection("users").doc(currentUserId).get();
+      if (me.exists) {
+        currentUserData = {
+          id: me.id,
+          username: me.data().username,
+          winCount: sorted[idx].winCount,
+        };
+      }
+    }
+  }
+  return {leaderboard, currentUserRank, currentUserData};
+}
+
+exports.getLeaderboardByRange = functions.https.onCall(
+    async (data, context) => {
+      if (!context.auth) {
+        throw new functions.https.HttpsError(
+            "unauthenticated",
+            "User must be authenticated to access the leaderboard.",
+        );
+      }
+      const range =
+        ["week", "month", "all"].includes(data && data.range) ?
+          data.range :
+          "all";
+      try {
+        return await buildRangedLeaderboard(range, context.auth.uid);
+      } catch (error) {
+        console.error("getLeaderboardByRange error:", error);
+        throw new functions.https.HttpsError(
+            "internal",
+            "Failed to retrieve leaderboard data.",
+        );
+      }
+    });
 
 exports.fetchUserDrawings = functions.https.onCall(async (data, context) => {
   if (!context.auth) {

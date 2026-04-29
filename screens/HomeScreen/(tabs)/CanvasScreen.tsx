@@ -289,8 +289,12 @@ export default function CanvasScreen() {
           </View>
 
           <View style={styles.swatchContainer}>
-            <TouchableOpacity onPress={clearCanvas} style={styles.buttonAnother}>
-              <AntDesign name="delete" size={22} color="white" />
+            <TouchableOpacity
+              onPress={clearCanvas}
+              style={styles.deleteButton}
+              accessibilityLabel="Clear canvas"
+            >
+              <AntDesign name="delete" size={20} color="#8a8a8a" />
             </TouchableOpacity>
 
             <View style={styles.themeWrapper}>
@@ -303,8 +307,13 @@ export default function CanvasScreen() {
               </Text>
             </View>
 
-            <TouchableOpacity onPress={captureCanvas} style={styles.buttonOther}>
-              <MaterialIcons name="check-circle" size={22} color="white" />
+            <TouchableOpacity
+              onPress={captureCanvas}
+              style={styles.submitButton}
+              accessibilityLabel="Submit drawing"
+            >
+              <MaterialIcons name="check-circle" size={18} color="white" />
+              <Text style={styles.submitButtonText}>Submit</Text>
             </TouchableOpacity>
           </View>
 
@@ -367,15 +376,29 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#eee',
   },
-  buttonOther: {
+  submitButton: {
     backgroundColor: '#023448',
-    padding: 10,
-    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 22,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
-  buttonAnother: {
-    backgroundColor: 'rgba(2,52,72,0.7)',
-    padding: 10,
-    borderRadius: 10,
+  submitButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontFamily: 'Poppins_700Bold',
+  },
+  deleteButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: 'transparent',
   },
   themeWrapper: {
     alignItems: 'center',
@@ -462,7 +485,9 @@ const styles = StyleSheet.create({
   },
   paletteHint: {
     alignItems: 'center',
+    justifyContent: 'center',
     paddingBottom: 8,
+    minHeight: 24,
     backgroundColor: 'white',
   },
   paletteHintText: {

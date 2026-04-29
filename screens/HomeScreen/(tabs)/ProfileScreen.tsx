@@ -1,15 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, Image, Dimensions, SafeAreaView, ScrollView } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, Image, Dimensions, SafeAreaView, ScrollView, Share } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { auth, getCallableFunction } from '../../../firebaseConfig';
 import { useNavigation } from '@react-navigation/core';
 import { StackNavigationProp } from '@react-navigation/stack';
+import Ionicons from '@expo/vector-icons/Ionicons';
 
 type RootStackParamList = {
   Home: undefined;
   Welcome: undefined;
   UserDrawingsScreen: undefined;
   WinnerDrawingsScreen: undefined;
+  GalleryScreen: { initialTab?: 'drawings' | 'winners' } | undefined;
   Deets: undefined;
   LeaderboardScreen: undefined;
 };
@@ -40,6 +42,16 @@ const ProfileScreen: React.FC = () => {
     try {
       await auth.signOut();
       navigation.replace('Welcome');
+    } catch (error: any) {
+      alert(error.message);
+    }
+  };
+
+  const handleInvite = async () => {
+    try {
+      await Share.share({
+        message: 'Doodle with me on Doodle of the Day — one theme, one doodle, every day. https://doodleoftheday.app',
+      });
     } catch (error: any) {
       alert(error.message);
     }
@@ -97,22 +109,27 @@ const ProfileScreen: React.FC = () => {
 
           <View style={styles.buttonContainer}>
             <TouchableOpacity onPress={() => navigation.navigate('Deets')} style={styles.buttonSecondary}>
+              <Ionicons name="person-circle-outline" size={22} color="#111" style={styles.buttonIcon} />
               <Text style={styles.buttonText}>Account</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity onPress={() => navigation.navigate('WinnerDrawingsScreen')} style={styles.buttonSecondary}>
-              <Text style={styles.buttonText}>My winners</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('GalleryScreen')} style={styles.buttonSecondary}>
+              <Ionicons name="images-outline" size={22} color="#111" style={styles.buttonIcon} />
+              <Text style={styles.buttonText}>Gallery</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity onPress={() => navigation.navigate('UserDrawingsScreen')} style={styles.buttonSecondary}>
-              <Text style={styles.buttonText}>My drawings</Text>
+            <TouchableOpacity onPress={handleInvite} style={styles.buttonSecondary}>
+              <Ionicons name="person-add-outline" size={22} color="#111" style={styles.buttonIcon} />
+              <Text style={styles.buttonText}>Invite a friend</Text>
             </TouchableOpacity>
 
             <TouchableOpacity onPress={() => navigation.navigate('LeaderboardScreen')} style={styles.buttonPrimary}>
+              <Ionicons name="trophy-outline" size={22} color="white" style={styles.buttonIcon} />
               <Text style={[styles.buttonText, { color: 'white' }]}>Leaderboard</Text>
             </TouchableOpacity>
 
             <TouchableOpacity onPress={handleSignOut} style={styles.buttonGhost}>
+              <Ionicons name="log-out-outline" size={22} color="#111" style={styles.buttonIcon} />
               <Text style={styles.buttonText}>Sign out</Text>
             </TouchableOpacity>
           </View>
@@ -127,6 +144,7 @@ export default ProfileScreen;
 const buttonBase = {
   width: '92%' as const,
   height: 56,
+  flexDirection: 'row' as const,
   justifyContent: 'center' as const,
   alignItems: 'center' as const,
   borderRadius: 12,
@@ -239,5 +257,8 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins_700Bold',
     fontSize: 16,
     color: '#111',
+  },
+  buttonIcon: {
+    marginRight: 10,
   },
 });

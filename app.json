@@ -3,6 +3,7 @@
     "name": "Doodle of the Day",
     "slug": "Doodle-of-the-Day",
     "version": "1.0.23",
+    "scheme": "doodleoftheday",
     "orientation": "portrait",
     "icon": "./assets/icon_bacon.png",
     "userInterfaceStyle": "light",

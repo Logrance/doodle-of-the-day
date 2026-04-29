@@ -68,6 +68,7 @@ export default function VoteScreen() {
   const [drawingInfo, setDrawingInfo] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [results, setResults] = useState<RoomResults | null>(null);
+  const [votedForId, setVotedForId] = useState<string | null>(null);
 
   //For word theme state
   const [word, setWord] = useState<string | null>(null);
@@ -200,6 +201,7 @@ const handleVote = async (userId: string) => {
 
     const response = await voteFunction({ userId });
     Alert.alert("Success", response.data.message);
+    setVotedForId(userId);
 
     fetchData();
     refreshPresence();
@@ -263,6 +265,23 @@ useEffect(() => {
         <Text style={styles.themeHeading}>{word || "Loading..."}</Text>
         {phase === 'voting' && drawingInfo[0]?.roomName && (
           <Text style={styles.roomNameText}>You're in {drawingInfo[0].roomName}</Text>
+        )}
+        {phase === 'voting' && drawingInfo.length > 0 && (
+          <View style={styles.voteProgressWrap}>
+            <Text style={styles.voteProgressLabel}>
+              {votedForId
+                ? '✓ Vote cast — results at 20:00'
+                : `${drawingInfo.length} ${drawingInfo.length === 1 ? 'drawing' : 'drawings'} in your room — pick your favourite`}
+            </Text>
+            <View style={styles.voteProgressBar}>
+              <View
+                style={[
+                  styles.voteProgressFill,
+                  { width: votedForId ? '100%' : '0%' },
+                ]}
+              />
+            </View>
+          </View>
         )}
         <Text style={styles.countdownText}>
           {phase === 'drawing' && `Voting opens in ${countdown}`}
@@ -366,30 +385,48 @@ useEffect(() => {
           data={drawingInfo}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
-          renderItem={({ item }) => (
-            <View style={[styles.drawingContainer, { width: cardWidth }]}>
-              <TouchableOpacity onPress={() => openModal(`data:image/png;base64,${item.image}`)}>
-                <Image
-                  source={{ uri: `data:image/png;base64,${item.image}` }}
-                  style={[styles.image, { width: cardWidth, height: cardWidth }]}
-                />
-              </TouchableOpacity>
-              <View style={styles.cardFooter}>
-                <Text style={styles.voteCount}>{item.votes || 0} {item.votes === 1 ? 'vote' : 'votes'}</Text>
-                <View style={styles.buttonRow}>
-                  <TouchableOpacity onPress={() => handleFlag(item.id, item.image)} style={styles.buttonIcon}>
-                    <Ionicons name="flag-outline" size={20} color="#666" />
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => handleVote(item.id)} style={styles.buttonVote}>
-                    <Text style={styles.buttonText}>Vote</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => handleShare(item.image)} style={styles.buttonIcon}>
-                    <Entypo name="share" size={20} color="#666" />
-                  </TouchableOpacity>
+          renderItem={({ item }) => {
+            const isChosen = votedForId === item.id;
+            const hasVoted = votedForId !== null;
+            return (
+              <View
+                style={[
+                  styles.drawingContainer,
+                  { width: cardWidth },
+                  isChosen && styles.drawingContainerChosen,
+                ]}
+              >
+                <TouchableOpacity onPress={() => openModal(`data:image/png;base64,${item.image}`)}>
+                  <Image
+                    source={{ uri: `data:image/png;base64,${item.image}` }}
+                    style={[styles.image, { width: cardWidth, height: cardWidth }]}
+                  />
+                </TouchableOpacity>
+                <View style={styles.cardFooter}>
+                  <Text style={styles.voteCount}>{item.votes || 0} {item.votes === 1 ? 'vote' : 'votes'}</Text>
+                  <View style={styles.buttonRow}>
+                    <TouchableOpacity onPress={() => handleFlag(item.id, item.image)} style={styles.buttonIcon}>
+                      <Ionicons name="flag-outline" size={20} color="#666" />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => handleVote(item.id)}
+                      style={[
+                        styles.buttonVote,
+                        isChosen && styles.buttonVoteChosen,
+                        hasVoted && !isChosen && styles.buttonVoteDimmed,
+                      ]}
+                      disabled={hasVoted}
+                    >
+                      <Text style={styles.buttonText}>{isChosen ? '✓ Voted' : 'Vote'}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => handleShare(item.image)} style={styles.buttonIcon}>
+                      <Entypo name="share" size={20} color="#666" />
+                    </TouchableOpacity>
+                  </View>
                 </View>
               </View>
-            </View>
-          )}
+            );
+          }}
           showsVerticalScrollIndicator={false}
         />
     ) : (
@@ -600,6 +637,40 @@ const styles = StyleSheet.create({
     color: '#023448',
     textAlign: 'center',
     marginTop: 6,
+  },
+  voteProgressWrap: {
+    width: '100%',
+    marginTop: 10,
+    paddingHorizontal: 16,
+  },
+  voteProgressLabel: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 12,
+    color: '#555',
+    textAlign: 'center',
+    marginBottom: 6,
+  },
+  voteProgressBar: {
+    height: 4,
+    width: '100%',
+    backgroundColor: '#eee',
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  voteProgressFill: {
+    height: '100%',
+    backgroundColor: '#023448',
+    borderRadius: 2,
+  },
+  drawingContainerChosen: {
+    borderWidth: 2,
+    borderColor: '#023448',
+  },
+  buttonVoteChosen: {
+    backgroundColor: '#1f7a4d',
+  },
+  buttonVoteDimmed: {
+    backgroundColor: '#aaa',
   },
   presenceLine: {
     fontFamily: 'Poppins_400Regular',

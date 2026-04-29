@@ -29,15 +29,39 @@ const WelcomeScreen: React.FC = () => {
             <Image source={require('../assets/icon_bacon.png')} style={styles.logoImage} resizeMode="cover" />
           </View>
           <Text style={styles.title}>Doodle of the Day</Text>
-          <Text style={styles.subtitle}>Draw. Share. Compete.</Text>
+          <Text style={styles.subtitle}>One theme. One doodle. Every day.</Text>
+        </View>
+
+        <View style={styles.previewContainer}>
+          <View style={styles.previewRow}>
+            <Text style={styles.previewEmoji}>🎨</Text>
+            <View style={styles.previewTextWrap}>
+              <Text style={styles.previewTitle}>Draw the daily theme</Text>
+              <Text style={styles.previewBody}>A fresh word drops each morning — you have until 14:00 UK to doodle.</Text>
+            </View>
+          </View>
+          <View style={styles.previewRow}>
+            <Text style={styles.previewEmoji}>🗳️</Text>
+            <View style={styles.previewTextWrap}>
+              <Text style={styles.previewTitle}>Vote in your room</Text>
+              <Text style={styles.previewBody}>Get matched with other doodlers and pick your favourite by 20:00.</Text>
+            </View>
+          </View>
+          <View style={styles.previewRow}>
+            <Text style={styles.previewEmoji}>🏆</Text>
+            <View style={styles.previewTextWrap}>
+              <Text style={styles.previewTitle}>Win, keep your streak</Text>
+              <Text style={styles.previewBody}>3-day streaks unlock the colour palette. Miss a day? Streak freezes have you covered.</Text>
+            </View>
+          </View>
         </View>
 
         <View style={styles.buttonContainer}>
-          <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('Login')}>
-            <Text style={styles.buttonText}>Log In</Text>
+          <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('SignUp')}>
+            <Text style={styles.buttonText}>Sign Up</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.buttonOutline} onPress={() => navigation.navigate('SignUp')}>
-            <Text style={styles.buttonOutlineText}>Sign Up</Text>
+          <TouchableOpacity style={styles.buttonOutline} onPress={() => navigation.navigate('Login')}>
+            <Text style={styles.buttonOutlineText}>Log In</Text>
           </TouchableOpacity>
         </View>
       </LinearGradient>
@@ -49,12 +73,12 @@ export default WelcomeScreen;
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#012232' },
-  background: { flex: 1, justifyContent: 'space-between', alignItems: 'center', paddingVertical: 60 },
-  top: { alignItems: 'center', marginTop: 40 },
+  background: { flex: 1, justifyContent: 'space-between', alignItems: 'center', paddingVertical: 40, paddingHorizontal: 24 },
+  top: { alignItems: 'center', marginTop: 16 },
   logoCircle: {
-    width: 160,
-    height: 160,
-    borderRadius: 32,
+    width: 120,
+    height: 120,
+    borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
@@ -64,10 +88,41 @@ const styles = StyleSheet.create({
     elevation: 10,
     overflow: 'hidden',
   },
-  logoImage: { width: 160, height: 160 },
-  title: { fontFamily: 'Poppins_700Bold', fontSize: 26, marginTop: 24, color: 'white' },
-  subtitle: { fontFamily: 'Poppins_400Regular', fontSize: 14, color: 'rgba(255,255,255,0.65)', marginTop: 6 },
-  buttonContainer: { width: '80%', gap: 12 },
+  logoImage: { width: 120, height: 120 },
+  title: { fontFamily: 'Poppins_700Bold', fontSize: 26, marginTop: 18, color: 'white' },
+  subtitle: { fontFamily: 'Poppins_400Regular', fontSize: 14, color: 'rgba(255,255,255,0.75)', marginTop: 6, textAlign: 'center' },
+  previewContainer: {
+    width: '100%',
+    gap: 14,
+    marginVertical: 12,
+  },
+  previewRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 14,
+    padding: 14,
+    gap: 12,
+  },
+  previewEmoji: {
+    fontSize: 26,
+  },
+  previewTextWrap: {
+    flex: 1,
+  },
+  previewTitle: {
+    fontFamily: 'Poppins_700Bold',
+    fontSize: 15,
+    color: 'white',
+    marginBottom: 2,
+  },
+  previewBody: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.75)',
+    lineHeight: 17,
+  },
+  buttonContainer: { width: '100%', gap: 12 },
   button: {
     backgroundColor: 'white',
     padding: 15,
