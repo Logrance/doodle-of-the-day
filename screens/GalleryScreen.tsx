@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useRoute, RouteProp } from '@react-navigation/native';
 import UserDrawingsScreen from './UserDrawingsScreen';
 import WinnerDrawingsScreen from './WinnerDrawingsScreen';
+import { colors } from '../theme/colors';
 
 type GalleryRouteParams = {
   initialTab?: 'drawings' | 'winners';
@@ -46,12 +47,12 @@ export default GalleryScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'white',
+    backgroundColor: colors.surface,
   },
   segmented: {
     flexDirection: 'row',
     margin: 12,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: colors.surfaceTrack,
     borderRadius: 10,
     padding: 4,
   },
@@ -62,8 +63,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   segmentActive: {
-    backgroundColor: 'white',
-    shadowColor: '#000',
+    backgroundColor: colors.surface,
+    shadowColor: colors.shadow,
     shadowOpacity: 0.08,
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 1 },
@@ -72,11 +73,11 @@ const styles = StyleSheet.create({
   segmentText: {
     fontFamily: 'Poppins_400Regular',
     fontSize: 14,
-    color: '#666',
+    color: colors.textMuted,
   },
   segmentTextActive: {
     fontFamily: 'Poppins_700Bold',
-    color: '#023448',
+    color: colors.navy,
   },
   body: {
     flex: 1,

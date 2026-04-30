@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, Image, Dimensions, SafeAreaView, ScrollView, Share } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, Image, Dimensions, SafeAreaView, ScrollView, Share, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { auth, getCallableFunction } from '../../../firebaseConfig';
 import { useNavigation } from '@react-navigation/core';
 import { StackNavigationProp } from '@react-navigation/stack';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { colors } from '../../../theme/colors';
 
 type RootStackParamList = {
   Home: undefined;
@@ -43,7 +44,7 @@ const ProfileScreen: React.FC = () => {
       await auth.signOut();
       navigation.replace('Welcome');
     } catch (error: any) {
-      alert(error.message);
+      Alert.alert('Error', error.message);
     }
   };
 
@@ -53,7 +54,7 @@ const ProfileScreen: React.FC = () => {
         message: 'Doodle with me on Doodle of the Day — one theme, one doodle, every day. https://doodleoftheday.app',
       });
     } catch (error: any) {
-      alert(error.message);
+      Alert.alert('Error', error.message);
     }
   };
 
@@ -65,7 +66,7 @@ const ProfileScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <LinearGradient colors={['#faf7fb', '#f2e4ef', '#e8d8e8']} style={styles.backgroundImage}>
+      <LinearGradient colors={colors.authGradient} style={styles.backgroundImage}>
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           <View style={styles.topTextContainer}>
             <View style={[styles.logoCircle, { width: isSmallScreen ? 100 : 130, height: isSmallScreen ? 100 : 130, borderRadius: 24 }]}>
@@ -109,27 +110,27 @@ const ProfileScreen: React.FC = () => {
 
           <View style={styles.buttonContainer}>
             <TouchableOpacity onPress={() => navigation.navigate('Deets')} style={styles.buttonSecondary}>
-              <Ionicons name="person-circle-outline" size={22} color="#111" style={styles.buttonIcon} />
+              <Ionicons name="person-circle-outline" size={22} color={colors.textPrimary} style={styles.buttonIcon} />
               <Text style={styles.buttonText}>Account</Text>
             </TouchableOpacity>
 
             <TouchableOpacity onPress={() => navigation.navigate('GalleryScreen')} style={styles.buttonSecondary}>
-              <Ionicons name="images-outline" size={22} color="#111" style={styles.buttonIcon} />
+              <Ionicons name="images-outline" size={22} color={colors.textPrimary} style={styles.buttonIcon} />
               <Text style={styles.buttonText}>Gallery</Text>
             </TouchableOpacity>
 
             <TouchableOpacity onPress={handleInvite} style={styles.buttonSecondary}>
-              <Ionicons name="person-add-outline" size={22} color="#111" style={styles.buttonIcon} />
+              <Ionicons name="person-add-outline" size={22} color={colors.textPrimary} style={styles.buttonIcon} />
               <Text style={styles.buttonText}>Invite a friend</Text>
             </TouchableOpacity>
 
             <TouchableOpacity onPress={() => navigation.navigate('LeaderboardScreen')} style={styles.buttonPrimary}>
-              <Ionicons name="trophy-outline" size={22} color="white" style={styles.buttonIcon} />
-              <Text style={[styles.buttonText, { color: 'white' }]}>Leaderboard</Text>
+              <Ionicons name="trophy-outline" size={22} color={colors.white} style={styles.buttonIcon} />
+              <Text style={[styles.buttonText, { color: colors.white }]}>Leaderboard</Text>
             </TouchableOpacity>
 
             <TouchableOpacity onPress={handleSignOut} style={styles.buttonGhost}>
-              <Ionicons name="log-out-outline" size={22} color="#111" style={styles.buttonIcon} />
+              <Ionicons name="log-out-outline" size={22} color={colors.textPrimary} style={styles.buttonIcon} />
               <Text style={styles.buttonText}>Sign out</Text>
             </TouchableOpacity>
           </View>
@@ -169,13 +170,13 @@ const styles = StyleSheet.create({
   titleText: {
     fontFamily: 'Poppins_700Bold',
     fontSize: 22,
-    color: '#111',
+    color: colors.textPrimary,
     lineHeight: 30,
   },
   logoCircle: {
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 8,
@@ -187,7 +188,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.75)',
+    backgroundColor: colors.cardOverlay75,
     borderRadius: 16,
     marginHorizontal: 20,
     marginBottom: 24,
@@ -205,24 +206,24 @@ const styles = StyleSheet.create({
   statValue: {
     fontFamily: 'Poppins_700Bold',
     fontSize: 20,
-    color: '#023448',
+    color: colors.navy,
   },
   statLabel: {
     fontFamily: 'Poppins_400Regular',
     fontSize: 11,
-    color: '#666',
+    color: colors.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   statDivider: {
     width: 1,
     height: 40,
-    backgroundColor: '#ddd',
+    backgroundColor: colors.borderStrong,
   },
   freezeNote: {
     fontFamily: 'Poppins_400Regular',
     fontSize: 12,
-    color: '#666',
+    color: colors.textMuted,
     textAlign: 'center',
     marginTop: -12,
     marginBottom: 20,
@@ -231,8 +232,8 @@ const styles = StyleSheet.create({
   buttonContainer: { flex: 1, alignItems: 'center' },
   buttonSecondary: {
     ...buttonBase,
-    backgroundColor: 'rgba(224,183,202,0.85)',
-    shadowColor: '#000',
+    backgroundColor: colors.authButtonBg,
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -240,8 +241,8 @@ const styles = StyleSheet.create({
   },
   buttonPrimary: {
     ...buttonBase,
-    backgroundColor: 'rgba(2,52,72,0.85)',
-    shadowColor: '#000',
+    backgroundColor: colors.navyAlpha85,
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
     shadowRadius: 4,
@@ -251,12 +252,12 @@ const styles = StyleSheet.create({
     ...buttonBase,
     backgroundColor: 'transparent',
     borderWidth: 2,
-    borderColor: '#333',
+    borderColor: colors.textSecondary,
   },
   buttonText: {
     fontFamily: 'Poppins_700Bold',
     fontSize: 16,
-    color: '#111',
+    color: colors.textPrimary,
   },
   buttonIcon: {
     marginRight: 10,

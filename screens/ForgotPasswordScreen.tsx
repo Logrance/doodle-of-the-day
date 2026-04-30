@@ -8,6 +8,7 @@ import { auth } from '../firebaseConfig';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { useNavigation } from '@react-navigation/core';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { colors } from '../theme/colors';
 
 const ForgotPasswordScreen: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -36,15 +37,15 @@ const ForgotPasswordScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-        <LinearGradient colors={['#faf7fb', '#f2e4ef', '#e8d8e8']} style={styles.background}>
+        <LinearGradient colors={colors.authGradient} style={styles.background}>
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-            <MaterialCommunityIcons name="arrow-left" size={24} color="#111" />
+            <MaterialCommunityIcons name="arrow-left" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
 
           <View style={styles.content}>
             {sent ? (
               <View style={styles.card}>
-                <MaterialCommunityIcons name="email-check-outline" size={52} color="rgba(2,52,72,0.8)" />
+                <MaterialCommunityIcons name="email-check-outline" size={52} color={colors.navyAlpha80} />
                 <Text style={styles.heading}>Check your inbox</Text>
                 <Text style={styles.body}>
                   If an account exists for <Text style={styles.bold}>{email}</Text>, we've sent a password reset link.
@@ -64,7 +65,7 @@ const ForgotPasswordScreen: React.FC = () => {
                   onChangeText={text => { setEmail(text); setEmailError(''); }}
                   style={[styles.input, emailError && styles.inputError]}
                   placeholder="you@example.com"
-                  placeholderTextColor="#888"
+                  placeholderTextColor={colors.textMuted}
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
@@ -90,40 +91,41 @@ const ForgotPasswordScreen: React.FC = () => {
 export default ForgotPasswordScreen;
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#faf7fb' },
+  container: { flex: 1, backgroundColor: colors.authBackground },
   background: { flex: 1 },
   backButton: { position: 'absolute', top: 16, left: 16, padding: 8, zIndex: 10 },
   content: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   card: {
     width: '80%',
-    backgroundColor: 'rgba(255,255,255,0.88)',
+    maxWidth: 460,
+    backgroundColor: colors.cardOverlay88,
     borderRadius: 16,
     padding: 28,
     alignItems: 'center',
   },
-  heading: { fontFamily: 'Poppins_700Bold', fontSize: 20, color: '#111', marginTop: 12, marginBottom: 8 },
-  body: { fontFamily: 'Poppins_400Regular', fontSize: 13, color: '#444', textAlign: 'center', lineHeight: 20, marginBottom: 8 },
-  bold: { fontFamily: 'Poppins_700Bold', color: '#111' },
-  label: { fontFamily: 'Poppins_700Bold', fontSize: 13, color: '#222', marginBottom: 4, marginTop: 12, alignSelf: 'flex-start' },
+  heading: { fontFamily: 'Poppins_700Bold', fontSize: 20, color: colors.textPrimary, marginTop: 12, marginBottom: 8 },
+  body: { fontFamily: 'Poppins_400Regular', fontSize: 13, color: colors.textSecondary, textAlign: 'center', lineHeight: 20, marginBottom: 8 },
+  bold: { fontFamily: 'Poppins_700Bold', color: colors.textPrimary },
+  label: { fontFamily: 'Poppins_700Bold', fontSize: 13, color: colors.textPrimary, marginBottom: 4, marginTop: 12, alignSelf: 'flex-start' },
   input: {
     width: '100%',
-    backgroundColor: 'rgba(224,183,202,0.6)',
+    backgroundColor: colors.authInputBg,
     paddingHorizontal: 15,
     paddingVertical: 12,
-    borderRadius: 6,
+    borderRadius: 10,
     borderWidth: 1.5,
     borderColor: 'transparent',
     fontFamily: 'Poppins_400Regular',
   },
-  inputError: { borderColor: '#c0392b' },
-  errorText: { color: '#c0392b', fontSize: 12, marginTop: 4, alignSelf: 'flex-start', fontFamily: 'Poppins_400Regular' },
+  inputError: { borderColor: colors.danger },
+  errorText: { color: colors.danger, fontSize: 12, marginTop: 4, alignSelf: 'flex-start', fontFamily: 'Poppins_400Regular' },
   button: {
-    backgroundColor: 'rgba(2,52,72,0.8)',
+    backgroundColor: colors.navyAlpha80,
     padding: 15,
-    borderRadius: 8,
+    borderRadius: 10,
     alignItems: 'center',
     width: '100%',
     marginTop: 20,
   },
-  buttonText: { fontFamily: 'Poppins_700Bold', fontSize: 16, color: 'white' },
+  buttonText: { fontFamily: 'Poppins_700Bold', fontSize: 16, color: colors.white },
 });

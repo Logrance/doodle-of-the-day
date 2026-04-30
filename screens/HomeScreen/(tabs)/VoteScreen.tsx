@@ -13,6 +13,7 @@ import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
 import { useIsFocused } from '@react-navigation/native';
 import ConfettiCannon from 'react-native-confetti-cannon';
+import { colors } from '../../../theme/colors';
 
 type Drawing = {
   id: string;
@@ -61,7 +62,7 @@ const ord = (n: number): string => {
 export default function VoteScreen() {
   const { height: screenHeight, width: screenWidth } = Dimensions.get('window');
   const loaderSize = screenHeight < 667 ? 80 : 100;
-  const cardWidth = screenWidth - 32;
+  const cardWidth = Math.min(screenWidth - 32, 600);
 
   const { phase, countdown } = usePhaseTimer();
   const { presence, refresh: refreshPresence } = usePresence();
@@ -176,9 +177,9 @@ const handleFlag = async (drawingId: string, image: string) => {
           try {
             const flagDrawing = getCallableFunction("flagDrawing");
             const response = await flagDrawing({ drawingId, image }) as { data: { message: string } };
-            alert(response.data.message);
+            Alert.alert('Drawing flagged', response.data.message);
           } catch (error) {
-            alert("Failed to flag drawing. Please try again later.");
+            Alert.alert('Flag failed', 'Failed to flag drawing. Please try again later.');
           }
         },
       },
@@ -221,7 +222,7 @@ const handleShare = async (image: string) => {
       dialogTitle: 'Share your drawing!',
     });
   } else {
-    alert("Sharing is not available on this device");
+    Alert.alert('Sharing unavailable', 'Sharing is not available on this device.');
   }
 };
 
@@ -306,8 +307,8 @@ useEffect(() => {
               const userDrawing = userIndex >= 0 ? results.drawings[userIndex] : null;
               const winnerIsYou = results.drawings[0].isYou;
               return (
-                <ScrollView contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
-                  <View style={styles.resultsBanner}>
+                <ScrollView contentContainerStyle={[styles.listContent, { alignItems: 'center' }]} showsVerticalScrollIndicator={false}>
+                  <View style={[styles.resultsBanner, { width: cardWidth }]}>
                     {results.roomName && (
                       <Text style={styles.roomNameBannerText}>{results.roomName}</Text>
                     )}
@@ -384,7 +385,7 @@ useEffect(() => {
         <FlatList
           data={drawingInfo}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, { alignItems: 'center' }]}
           renderItem={({ item }) => {
             const isChosen = votedForId === item.id;
             const hasVoted = votedForId !== null;
@@ -406,7 +407,7 @@ useEffect(() => {
                   <Text style={styles.voteCount}>{item.votes || 0} {item.votes === 1 ? 'vote' : 'votes'}</Text>
                   <View style={styles.buttonRow}>
                     <TouchableOpacity onPress={() => handleFlag(item.id, item.image)} style={styles.buttonIcon}>
-                      <Ionicons name="flag-outline" size={20} color="#666" />
+                      <Ionicons name="flag-outline" size={20} color={colors.textMuted} />
                     </TouchableOpacity>
                     <TouchableOpacity
                       onPress={() => handleVote(item.id)}
@@ -420,7 +421,7 @@ useEffect(() => {
                       <Text style={styles.buttonText}>{isChosen ? '✓ Voted' : 'Vote'}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => handleShare(item.image)} style={styles.buttonIcon}>
-                      <Entypo name="share" size={20} color="#666" />
+                      <Entypo name="share" size={20} color={colors.textMuted} />
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -477,7 +478,7 @@ useEffect(() => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#faf8f9',
+    backgroundColor: colors.surfaceAlt,
   },
   loaderContainer: {
     flex: 1,
@@ -490,10 +491,10 @@ const styles = StyleSheet.create({
   },
   drawingContainer: {
     marginBottom: 20,
-    backgroundColor: 'white',
+    backgroundColor: colors.surface,
     borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
@@ -514,19 +515,19 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     paddingVertical: 12,
     paddingHorizontal: 16,
-    backgroundColor: 'rgba(2,52,72,0.06)',
+    backgroundColor: colors.navyAlpha06,
     borderRadius: 12,
   },
   resultsBannerText: {
     fontFamily: 'Poppins_700Bold',
     fontSize: 17,
-    color: '#023448',
+    color: colors.navy,
     textAlign: 'center',
   },
   resultsBannerSubText: {
     fontFamily: 'Poppins_400Regular',
     fontSize: 13,
-    color: '#555',
+    color: colors.textSecondary,
     textAlign: 'center',
     marginTop: 4,
   },
@@ -534,16 +535,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: colors.border,
   },
   resultsSubHeaderText: {
     fontFamily: 'Poppins_700Bold',
     fontSize: 14,
-    color: '#555',
+    color: colors.textSecondary,
   },
   drawingContainerSelf: {
     borderWidth: 2,
-    borderColor: 'rgba(2,52,72,0.35)',
+    borderColor: colors.navyAlpha35,
   },
   reactionRow: {
     flexDirection: 'row',
@@ -552,7 +553,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 8,
     borderTopWidth: 1,
-    borderTopColor: '#eee',
+    borderTopColor: colors.border,
   },
   reactionButton: {
     flexDirection: 'row',
@@ -560,15 +561,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 16,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: colors.surfaceMuted,
     gap: 4,
   },
   reactionButtonActive: {
-    backgroundColor: 'rgba(2,52,72,0.12)',
+    backgroundColor: colors.navyAlpha12,
   },
   reactionButtonReadOnly: {
     opacity: 0.85,
-    backgroundColor: '#fafafa',
+    backgroundColor: colors.surfaceMutedAlt,
   },
   reactionEmoji: {
     fontSize: 18,
@@ -576,12 +577,12 @@ const styles = StyleSheet.create({
   reactionCount: {
     fontFamily: 'Poppins_700Bold',
     fontSize: 13,
-    color: '#555',
+    color: colors.textSecondary,
   },
   voteCount: {
     fontFamily: 'Poppins_700Bold',
     fontSize: 14,
-    color: '#555',
+    color: colors.textSecondary,
   },
   buttonRow: {
     flexDirection: 'row',
@@ -591,16 +592,16 @@ const styles = StyleSheet.create({
   buttonIcon: {
     padding: 8,
     borderRadius: 8,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: colors.surfaceMuted,
   },
   buttonVote: {
-    backgroundColor: '#023448',
+    backgroundColor: colors.navy,
     paddingVertical: 8,
     paddingHorizontal: 20,
-    borderRadius: 8,
+    borderRadius: 10,
   },
   buttonText: {
-    color: 'white',
+    color: colors.white,
     fontFamily: 'Poppins_700Bold',
     fontSize: 14,
   },
@@ -613,7 +614,7 @@ const styles = StyleSheet.create({
   themeLabel: {
     fontFamily: 'Poppins_400Regular',
     fontSize: 11,
-    color: '#888',
+    color: colors.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 2,
@@ -622,19 +623,19 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins_700Bold',
     fontSize: 22,
     textAlign: 'center',
-    color: '#111',
+    color: colors.textPrimary,
   },
   countdownText: {
     fontFamily: 'Poppins_400Regular',
     fontSize: 12,
-    color: '#888',
+    color: colors.textMuted,
     textAlign: 'center',
     marginTop: 4,
   },
   roomNameText: {
     fontFamily: 'Poppins_700Bold',
     fontSize: 13,
-    color: '#023448',
+    color: colors.navy,
     textAlign: 'center',
     marginTop: 6,
   },
@@ -646,43 +647,43 @@ const styles = StyleSheet.create({
   voteProgressLabel: {
     fontFamily: 'Poppins_400Regular',
     fontSize: 12,
-    color: '#555',
+    color: colors.textSecondary,
     textAlign: 'center',
     marginBottom: 6,
   },
   voteProgressBar: {
     height: 4,
     width: '100%',
-    backgroundColor: '#eee',
+    backgroundColor: colors.border,
     borderRadius: 2,
     overflow: 'hidden',
   },
   voteProgressFill: {
     height: '100%',
-    backgroundColor: '#023448',
+    backgroundColor: colors.navy,
     borderRadius: 2,
   },
   drawingContainerChosen: {
     borderWidth: 2,
-    borderColor: '#023448',
+    borderColor: colors.navy,
   },
   buttonVoteChosen: {
-    backgroundColor: '#1f7a4d',
+    backgroundColor: colors.voteSuccess,
   },
   buttonVoteDimmed: {
-    backgroundColor: '#aaa',
+    backgroundColor: colors.textPlaceholder,
   },
   presenceLine: {
     fontFamily: 'Poppins_400Regular',
     fontSize: 12,
-    color: '#666',
+    color: colors.textMuted,
     textAlign: 'center',
     marginTop: 4,
   },
   roomNameBannerText: {
     fontFamily: 'Poppins_400Regular',
     fontSize: 11,
-    color: '#888',
+    color: colors.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.8,
     textAlign: 'center',
@@ -697,26 +698,26 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontFamily: 'Poppins_700Bold',
     fontSize: 18,
-    color: '#111',
+    color: colors.textPrimary,
     marginBottom: 8,
   },
   emptySubtitle: {
     fontFamily: 'Poppins_400Regular',
     fontSize: 14,
-    color: '#888',
+    color: colors.textMuted,
     textAlign: 'center',
     lineHeight: 22,
   },
   modalBackground: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    backgroundColor: colors.scrim85,
     justifyContent: 'center',
     alignItems: 'center',
   },
   enlargedImage: {
-    width: Dimensions.get('window').width * 0.92,
-    height: Dimensions.get('window').width * 0.92,
-    backgroundColor: 'white',
+    width: Math.min(Dimensions.get('window').width * 0.92, 600),
+    height: Math.min(Dimensions.get('window').width * 0.92, 600),
+    backgroundColor: colors.surface,
     borderRadius: 12,
   },
 });

@@ -6,6 +6,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { auth } from '../firebaseConfig';
 import { sendEmailVerification } from 'firebase/auth';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { colors } from '../theme/colors';
 
 type RootStackParamList = {
   Login: undefined;
@@ -35,9 +36,9 @@ const CheckEmailScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <LinearGradient colors={['#faf7fb', '#f2e4ef', '#e8d8e8']} style={styles.background}>
+      <LinearGradient colors={colors.authGradient} style={styles.background}>
         <View style={styles.card}>
-          <MaterialCommunityIcons name="email-check-outline" size={64} color="rgba(2,52,72,0.8)" />
+          <MaterialCommunityIcons name="email-check-outline" size={64} color={colors.navyAlpha80} />
           <Text style={styles.heading}>Check your email</Text>
           <Text style={styles.body}>
             We sent a verification link to{'\n'}
@@ -77,32 +78,33 @@ const styles = StyleSheet.create({
   background: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   card: {
     width: '80%',
-    backgroundColor: 'rgba(255,255,255,0.88)',
+    maxWidth: 460,
+    backgroundColor: colors.cardOverlay88,
     borderRadius: 16,
     padding: 32,
     alignItems: 'center',
   },
-  heading: { fontFamily: 'Poppins_700Bold', fontSize: 22, color: '#111', marginTop: 16, marginBottom: 12 },
-  body: { fontFamily: 'Poppins_400Regular', fontSize: 14, color: '#333', textAlign: 'center', lineHeight: 22 },
-  email: { fontFamily: 'Poppins_700Bold', color: '#111' },
+  heading: { fontFamily: 'Poppins_700Bold', fontSize: 22, color: colors.textPrimary, marginTop: 16, marginBottom: 12 },
+  body: { fontFamily: 'Poppins_400Regular', fontSize: 14, color: colors.textSecondary, textAlign: 'center', lineHeight: 22 },
+  email: { fontFamily: 'Poppins_700Bold', color: colors.textPrimary },
   hint: {
     fontFamily: 'Poppins_400Regular',
     fontSize: 13,
-    color: '#555',
+    color: colors.textSecondary,
     textAlign: 'center',
     marginTop: 12,
     lineHeight: 20,
   },
   resendButton: { marginTop: 20 },
-  resendText: { fontFamily: 'Poppins_400Regular', fontSize: 13, color: '#333', textDecorationLine: 'underline' },
-  resentText: { fontFamily: 'Poppins_400Regular', fontSize: 13, color: 'green', marginTop: 20 },
+  resendText: { fontFamily: 'Poppins_400Regular', fontSize: 13, color: colors.textSecondary, textDecorationLine: 'underline' },
+  resentText: { fontFamily: 'Poppins_400Regular', fontSize: 13, color: colors.success, marginTop: 20 },
   button: {
-    backgroundColor: 'rgba(2,52,72,0.8)',
+    backgroundColor: colors.navyAlpha80,
     padding: 15,
-    borderRadius: 8,
+    borderRadius: 10,
     alignItems: 'center',
     width: '100%',
     marginTop: 24,
   },
-  buttonText: { fontFamily: 'Poppins_700Bold', fontSize: 16, color: 'white' },
+  buttonText: { fontFamily: 'Poppins_700Bold', fontSize: 16, color: colors.white },
 });

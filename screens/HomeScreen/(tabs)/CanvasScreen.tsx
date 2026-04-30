@@ -10,6 +10,7 @@ import { db, getCallableFunction } from '../../../firebaseConfig';
 import AntDesign from '@expo/vector-icons/AntDesign';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import type { DrawingCanvasRef } from 'drawing-canvas';
+import { colors } from '../../../theme/colors';
 
 // Android-only imports — not evaluated on iOS
 let Canvas: any, Path: any, Skia: any, Rect: any;
@@ -49,7 +50,7 @@ export default function CanvasScreen() {
     if (currentStreak === 0) return '🔥 Draw 3 days in a row to unlock colours';
     if (currentStreak % 3 === 0) return '🎨 Colours unlock tomorrow — keep your streak alive!';
     const remaining = 3 - (currentStreak % 3);
-    return `🔥 ${currentStreak} / 3 — ${remaining} more day${remaining === 1 ? '' : 's'} to unlock colours`;
+    return `🎨 ${remaining} more day${remaining === 1 ? '' : 's'} to unlock colours`;
   })();
 
   // iOS native canvas ref
@@ -273,12 +274,12 @@ export default function CanvasScreen() {
                   }}
                   style={[
                     styles.swatch,
-                    { backgroundColor: locked ? '#ccc' : color },
+                    { backgroundColor: locked ? colors.textDisabled : color },
                     !locked && selectedColor === color && styles.swatchSelected,
                   ]}
                 >
                   {locked && (
-                    <AntDesign name="lock" size={12} color="white" style={styles.lockIcon} />
+                    <AntDesign name="lock" size={12} color={colors.white} style={styles.lockIcon} />
                   )}
                 </TouchableOpacity>
               );
@@ -294,7 +295,7 @@ export default function CanvasScreen() {
               style={styles.deleteButton}
               accessibilityLabel="Clear canvas"
             >
-              <AntDesign name="delete" size={20} color="#8a8a8a" />
+              <AntDesign name="delete" size={20} color={colors.textMuted} />
             </TouchableOpacity>
 
             <View style={styles.themeWrapper}>
@@ -312,7 +313,7 @@ export default function CanvasScreen() {
               style={styles.submitButton}
               accessibilityLabel="Submit drawing"
             >
-              <MaterialIcons name="check-circle" size={18} color="white" />
+              <MaterialIcons name="check-circle" size={18} color={colors.white} />
               <Text style={styles.submitButtonText}>Submit</Text>
             </TouchableOpacity>
           </View>
@@ -372,26 +373,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "white",
+    backgroundColor: colors.surface,
     borderTopWidth: 1,
-    borderTopColor: '#eee',
+    borderTopColor: colors.border,
   },
   submitButton: {
-    backgroundColor: '#023448',
+    backgroundColor: colors.navy,
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 22,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOpacity: 0.12,
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
     elevation: 2,
   },
   submitButtonText: {
-    color: 'white',
+    color: colors.white,
     fontSize: 14,
     fontFamily: 'Poppins_700Bold',
   },
@@ -408,12 +409,12 @@ const styles = StyleSheet.create({
   themeLabel: {
     fontFamily: 'Poppins_400Regular',
     fontSize: 11,
-    color: '#888',
+    color: colors.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   buttonText: {
-    color: 'white',
+    color: colors.white,
     fontSize: 16,
     fontFamily: 'Poppins_700Bold',
   },
@@ -421,13 +422,14 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: colors.scrim50,
   },
   modalContent: {
     width: '80%',
+    maxWidth: 460,
     padding: 20,
-    backgroundColor: 'white',
-    borderRadius: 10,
+    backgroundColor: colors.surface,
+    borderRadius: 16,
     alignItems: 'center',
   },
   modalText: {
@@ -435,7 +437,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     fontFamily: 'Poppins_400Regular',
     lineHeight: 26,
-    color: '#111',
+    color: colors.textPrimary,
     textAlign: 'left',
   },
   titleText: {
@@ -444,18 +446,18 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontFamily: 'Poppins_700Bold',
     lineHeight: 26,
-    color: '#111',
+    color: colors.textPrimary,
   },
   themeText: {
     fontFamily: 'Poppins_700Bold',
     textAlign: 'center',
     fontSize: 15,
-    color: '#111',
+    color: colors.textPrimary,
   },
   countdownText: {
     fontFamily: 'Poppins_400Regular',
     fontSize: 10,
-    color: '#888',
+    color: colors.textMuted,
     textAlign: 'center',
     marginTop: 1,
   },
@@ -465,9 +467,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     paddingVertical: 8,
-    backgroundColor: 'white',
+    backgroundColor: colors.surface,
     borderTopWidth: 1,
-    borderTopColor: '#eee',
+    borderTopColor: colors.border,
   },
   swatch: {
     width: 28,
@@ -477,7 +479,7 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   swatchSelected: {
-    borderColor: '#023448',
+    borderColor: colors.navy,
     transform: [{ scale: 1.2 }],
   },
   lockIcon: {
@@ -488,12 +490,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingBottom: 8,
     minHeight: 24,
-    backgroundColor: 'white',
+    backgroundColor: colors.surface,
   },
   paletteHintText: {
     fontFamily: 'Poppins_400Regular',
     fontSize: 12,
-    color: '#666',
+    color: colors.textMuted,
   },
   cornerBadges: {
     position: 'absolute',
@@ -506,7 +508,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 12,
     left: 16,
-    backgroundColor: 'rgba(2,52,72,0.06)',
+    backgroundColor: colors.navyAlpha06,
     borderRadius: 12,
     paddingHorizontal: 10,
     paddingVertical: 4,
@@ -514,24 +516,24 @@ const styles = StyleSheet.create({
   presenceText: {
     fontFamily: 'Poppins_400Regular',
     fontSize: 12,
-    color: '#444',
+    color: colors.textSecondary,
   },
   streakBadge: {
-    backgroundColor: 'rgba(2,52,72,0.08)',
+    backgroundColor: colors.navyAlpha08,
     borderRadius: 12,
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
   freezeBadge: {
-    backgroundColor: 'rgba(120,180,220,0.22)',
+    backgroundColor: colors.freezeIce,
   },
   streakText: {
     fontFamily: 'Poppins_700Bold',
     fontSize: 13,
-    color: '#023448',
+    color: colors.navy,
   },
   modalButton: {
-    backgroundColor: 'rgba(2,52,72,0.7)',
+    backgroundColor: colors.navyAlpha70,
     padding: 10,
     borderRadius: 10,
   },

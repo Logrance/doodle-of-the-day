@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { View, Text, FlatList, StyleSheet, Dimensions, TouchableOpacity } from "react-native";
 import CowLoader from '../components/CowLoader';
 import { auth, getCallableFunction } from "../firebaseConfig";
+import { colors } from '../theme/colors';
 
 interface User {
   id: string;
@@ -161,24 +162,24 @@ const LeaderboardScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#faf8f9' },
+  container: { flex: 1, backgroundColor: colors.surfaceAlt },
   header: {
     paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-    backgroundColor: 'white',
+    borderBottomColor: colors.border,
+    backgroundColor: colors.surface,
   },
   headerTitle: {
     fontFamily: 'Poppins_700Bold',
     fontSize: 20,
-    color: '#111',
+    color: colors.textPrimary,
     marginBottom: 12,
   },
   segmented: {
     flexDirection: 'row',
-    backgroundColor: '#f0f0f0',
+    backgroundColor: colors.surfaceTrack,
     borderRadius: 10,
     padding: 4,
   },
@@ -189,8 +190,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   segmentActive: {
-    backgroundColor: 'white',
-    shadowColor: '#000',
+    backgroundColor: colors.surface,
+    shadowColor: colors.shadow,
     shadowOpacity: 0.08,
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 1 },
@@ -199,11 +200,11 @@ const styles = StyleSheet.create({
   segmentText: {
     fontFamily: 'Poppins_400Regular',
     fontSize: 13,
-    color: '#666',
+    color: colors.textMuted,
   },
   segmentTextActive: {
     fontFamily: 'Poppins_700Bold',
-    color: '#023448',
+    color: colors.navy,
   },
   podiumContainer: {
     flexDirection: 'row',
@@ -212,9 +213,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 20,
     gap: 12,
-    backgroundColor: 'white',
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: colors.border,
   },
   podiumSlot: {
     flex: 1,
@@ -227,16 +228,16 @@ const styles = StyleSheet.create({
   podiumName: {
     fontFamily: 'Poppins_700Bold',
     fontSize: 13,
-    color: '#111',
+    color: colors.textPrimary,
     maxWidth: '100%',
   },
   podiumNameSelf: {
-    color: '#023448',
+    color: colors.navy,
   },
   podiumWins: {
     fontFamily: 'Poppins_400Regular',
     fontSize: 11,
-    color: '#666',
+    color: colors.textMuted,
     marginBottom: 6,
   },
   podiumBlock: {
@@ -246,13 +247,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  podiumBlockGold: { backgroundColor: '#f7d24f' },
-  podiumBlockSilver: { backgroundColor: '#c4c8d0' },
-  podiumBlockBronze: { backgroundColor: '#cd8b5a' },
+  podiumBlockGold: { backgroundColor: colors.gold },
+  podiumBlockSilver: { backgroundColor: colors.silver },
+  podiumBlockBronze: { backgroundColor: colors.bronze },
   podiumPlace: {
     fontFamily: 'Poppins_700Bold',
     fontSize: 22,
-    color: 'white',
+    color: colors.white,
   },
   listContent: {
     paddingHorizontal: 16,
@@ -266,18 +267,18 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 16,
     marginBottom: 8,
-    backgroundColor: 'white',
+    backgroundColor: colors.surface,
     borderRadius: 12,
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOpacity: 0.06,
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
     elevation: 2,
   },
   currentUserItem: {
-    backgroundColor: 'rgba(2,52,72,0.08)',
+    backgroundColor: colors.navyAlpha08,
     borderWidth: 1.5,
-    borderColor: 'rgba(2,52,72,0.2)',
+    borderColor: colors.navyAlpha20,
   },
   currentUserSticky: {
     marginHorizontal: 16,
@@ -285,14 +286,14 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: '#eee',
+    backgroundColor: colors.border,
     marginHorizontal: 16,
     marginBottom: 8,
   },
   rankNumber: {
     fontFamily: 'Poppins_700Bold',
     fontSize: 16,
-    color: '#888',
+    color: colors.textMuted,
     width: 36,
   },
   username: {
@@ -300,12 +301,12 @@ const styles = StyleSheet.create({
     fontSize: 15,
     flex: 1,
     marginLeft: 8,
-    color: '#111',
+    color: colors.textPrimary,
   },
   wins: {
     fontFamily: 'Poppins_700Bold',
     fontSize: 14,
-    color: '#555',
+    color: colors.textSecondary,
   },
   emptyContainer: {
     flex: 1,
@@ -316,13 +317,13 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontFamily: 'Poppins_700Bold',
     fontSize: 18,
-    color: '#111',
+    color: colors.textPrimary,
     marginBottom: 8,
   },
   emptySubtitle: {
     fontFamily: 'Poppins_400Regular',
     fontSize: 14,
-    color: '#888',
+    color: colors.textMuted,
     textAlign: 'center',
     lineHeight: 22,
   },

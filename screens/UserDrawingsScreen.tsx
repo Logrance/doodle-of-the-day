@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { View, Text, FlatList, Image, StyleSheet, Modal, TouchableWithoutFeedback, Dimensions } from "react-native";
+import { View, Text, FlatList, Image, StyleSheet, Modal, TouchableWithoutFeedback, Dimensions, Alert } from "react-native";
 import CowLoader from '../components/CowLoader';
 //import { getCallableFunction } from "../firebaseConfig";
 import { auth, db } from "../firebaseConfig";
@@ -9,6 +9,7 @@ import * as FileSystem from 'expo-file-system';
 import Entypo from '@expo/vector-icons/Entypo';
 import { collection, query, where, getDocs, orderBy, limit, startAfter } from "firebase/firestore";
 import { Timestamp } from "firebase/firestore";
+import { colors } from '../theme/colors';
 
 interface Drawing {
     id: string;
@@ -47,7 +48,7 @@ const handleShare = async (image: string) => {
         dialogTitle: 'Share your drawing!',
       });
     } else {
-      alert("Sharing is not available on this device");
+      Alert.alert('Sharing unavailable', 'Sharing is not available on this device.');
     }
   }; 
 
@@ -197,7 +198,7 @@ useEffect(() => {
 
 
 
-    const cardWidth = Dimensions.get('window').width - 32;
+    const cardWidth = Math.min(Dimensions.get('window').width - 32, 600);
 
     return (
         <GestureHandlerRootView style={{ flex: 1 }}>
@@ -210,7 +211,7 @@ useEffect(() => {
                 <FlatList
                     data={drawings}
                     keyExtractor={(item) => item.id}
-                    contentContainerStyle={styles.listContent}
+                    contentContainerStyle={[styles.listContent, { alignItems: 'center' }]}
                     renderItem={({ item }) => (
                         <View style={[styles.drawingContainer, { width: cardWidth }]}>
                             <TouchableOpacity onPress={() => openModal(`data:image/png;base64,${item.image}`)}>
@@ -222,7 +223,7 @@ useEffect(() => {
                             <View style={styles.cardFooter}>
                               <Text style={styles.themeText}>{item.theme}</Text>
                               <TouchableOpacity onPress={() => handleShare(item.image)} style={styles.buttonOther}>
-                                <Entypo name="share" size={18} color="#666" />
+                                <Entypo name="share" size={18} color={colors.textMuted} />
                               </TouchableOpacity>
                             </View>
                         </View>
@@ -265,15 +266,15 @@ useEffect(() => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#faf8f9' },
+    container: { flex: 1, backgroundColor: colors.surfaceAlt },
     loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     listContent: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24 },
     drawingContainer: {
         marginBottom: 20,
-        backgroundColor: 'white',
+        backgroundColor: colors.surface,
         borderRadius: 16,
         overflow: 'hidden',
-        shadowColor: '#000',
+        shadowColor: colors.shadow,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.08,
         shadowRadius: 8,
@@ -290,13 +291,13 @@ const styles = StyleSheet.create({
     themeText: {
         fontFamily: 'Poppins_700Bold',
         fontSize: 14,
-        color: '#333',
+        color: colors.textSecondary,
         flex: 1,
     },
     buttonOther: {
         padding: 8,
         borderRadius: 8,
-        backgroundColor: '#f5f5f5',
+        backgroundColor: colors.surfaceMuted,
     },
     emptyContainer: {
         flex: 1,
@@ -307,26 +308,26 @@ const styles = StyleSheet.create({
     emptyTitle: {
         fontFamily: 'Poppins_700Bold',
         fontSize: 18,
-        color: '#111',
+        color: colors.textPrimary,
         marginBottom: 8,
     },
     emptySubtitle: {
         fontFamily: 'Poppins_400Regular',
         fontSize: 14,
-        color: '#888',
+        color: colors.textMuted,
         textAlign: 'center',
         lineHeight: 22,
     },
     modalBackground: {
         flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.85)',
+        backgroundColor: colors.scrim85,
         justifyContent: 'center',
         alignItems: 'center',
     },
     enlargedImage: {
-        width: Dimensions.get('window').width * 0.92,
-        height: Dimensions.get('window').width * 0.92,
-        backgroundColor: 'white',
+        width: Math.min(Dimensions.get('window').width * 0.92, 600),
+        height: Math.min(Dimensions.get('window').width * 0.92, 600),
+        backgroundColor: colors.surface,
         borderRadius: 12,
     },
 });

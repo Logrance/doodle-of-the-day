@@ -7,6 +7,7 @@ import ProfileStack from '../ProfileStack';
 import Foundation from '@expo/vector-icons/Foundation';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
+import { colors } from '../../theme/colors';
 
 const Tab = createBottomTabNavigator();
 
@@ -17,20 +18,20 @@ export default function HomeScreen() {
     <Tab.Navigator
       screenOptions={{
         tabBarStyle: {
-          backgroundColor: 'white',
-          borderTopColor: '#eee',
+          backgroundColor: colors.surface,
+          borderTopColor: colors.border,
           borderTopWidth: 1,
           height: 60,
           paddingBottom: 8,
           paddingTop: 4,
-          shadowColor: '#000',
+          shadowColor: colors.shadow,
           shadowOffset: { width: 0, height: -2 },
           shadowOpacity: 0.06,
           shadowRadius: 8,
           elevation: 8,
         },
-        tabBarActiveTintColor: '#023448',
-        tabBarInactiveTintColor: '#aaa',
+        tabBarActiveTintColor: colors.navy,
+        tabBarInactiveTintColor: colors.textPlaceholder,
         tabBarLabelStyle: {
           fontFamily: 'Poppins_400Regular',
           fontSize: 11,

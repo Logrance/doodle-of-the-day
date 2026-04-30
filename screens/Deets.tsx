@@ -6,6 +6,7 @@ import { sendPasswordResetEmail } from 'firebase/auth';
 import { auth, getCallableFunction } from "../firebaseConfig";
 import { useNavigation } from '@react-navigation/core';
 import { StackNavigationProp } from '@react-navigation/stack';
+import { colors } from '../theme/colors';
 
 type RootStackParamList = {
   Welcome: undefined;
@@ -89,12 +90,12 @@ export default function Deets() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <LinearGradient colors={['#faf7fb', '#f2e4ef', '#e8d8e8']} style={styles.backgroundImage}>
+      <LinearGradient colors={colors.authGradient} style={styles.backgroundImage}>
         <View style={styles.card}>
           <Text style={styles.heading}>Account</Text>
 
           <View style={styles.row}>
-            <MaterialCommunityIcons name="email-outline" size={20} color="#555" style={styles.rowIcon} />
+            <MaterialCommunityIcons name="email-outline" size={20} color={colors.textSecondary} style={styles.rowIcon} />
             <Text style={styles.rowText}>{auth.currentUser?.email}</Text>
           </View>
 
@@ -102,10 +103,10 @@ export default function Deets() {
             <MaterialCommunityIcons
               name={isVerified ? 'check-circle-outline' : 'alert-circle-outline'}
               size={20}
-              color={isVerified ? '#2e7d32' : '#c0392b'}
+              color={isVerified ? colors.success : colors.danger}
               style={styles.rowIcon}
             />
-            <Text style={[styles.rowText, { color: isVerified ? '#2e7d32' : '#c0392b' }]}>
+            <Text style={[styles.rowText, { color: isVerified ? colors.success : colors.danger }]}>
               {isVerified ? 'Email verified' : 'Email not verified'}
             </Text>
           </View>
@@ -140,14 +141,15 @@ const styles = StyleSheet.create({
   backgroundImage: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   card: {
     width: '88%',
-    backgroundColor: 'rgba(255,255,255,0.92)',
-    borderRadius: 20,
+    maxWidth: 460,
+    backgroundColor: colors.cardOverlay92,
+    borderRadius: 16,
     padding: 28,
   },
   heading: {
     fontFamily: 'Poppins_700Bold',
     fontSize: 22,
-    color: '#111',
+    color: colors.textPrimary,
     marginBottom: 20,
   },
   row: {
@@ -155,37 +157,37 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: colors.border,
   },
   rowIcon: { marginRight: 10 },
   rowText: {
     fontFamily: 'Poppins_400Regular',
     fontSize: 14,
-    color: '#333',
+    color: colors.textSecondary,
     flex: 1,
   },
   resetButton: {
     marginTop: 20,
     padding: 14,
     borderRadius: 10,
-    backgroundColor: 'rgba(2,52,72,0.08)',
+    backgroundColor: colors.navyAlpha08,
     alignItems: 'center',
   },
   resetText: {
     fontFamily: 'Poppins_700Bold',
     fontSize: 15,
-    color: '#023448',
+    color: colors.navy,
   },
   deleteButton: {
     marginTop: 12,
     padding: 14,
     borderRadius: 10,
-    backgroundColor: 'rgba(192,57,43,0.1)',
+    backgroundColor: colors.dangerSoft,
     alignItems: 'center',
   },
   deleteText: {
     fontFamily: 'Poppins_700Bold',
     fontSize: 15,
-    color: '#c0392b',
+    color: colors.danger,
   },
 });

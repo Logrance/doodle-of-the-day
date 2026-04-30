@@ -10,6 +10,7 @@ import { signInWithEmailAndPassword } from 'firebase/auth';
 import { useNavigation } from '@react-navigation/core';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { colors } from '../theme/colors';
 
 type RootStackParamList = {
   HomeScreen: undefined;
@@ -63,7 +64,7 @@ const LoginScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-        <LinearGradient colors={['#faf7fb', '#f2e4ef', '#e8d8e8']} style={styles.background}>
+        <LinearGradient colors={colors.authGradient} style={styles.background}>
           <ScrollView
             contentContainerStyle={styles.scroll}
             keyboardShouldPersistTaps="handled"
@@ -84,7 +85,7 @@ const LoginScreen: React.FC = () => {
                 onChangeText={text => { setEmail(text); setErrors(e => ({ ...e, email: undefined, form: undefined })); }}
                 style={[styles.input, errors.email && styles.inputError]}
                 placeholder="you@example.com"
-                placeholderTextColor="#888"
+                placeholderTextColor={colors.textMuted}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -98,13 +99,13 @@ const LoginScreen: React.FC = () => {
                   onChangeText={text => { setPassword(text); setErrors(e => ({ ...e, password: undefined, form: undefined })); }}
                   style={styles.passwordInput}
                   placeholder="Password"
-                  placeholderTextColor="#888"
+                  placeholderTextColor={colors.textMuted}
                   secureTextEntry={!showPassword}
                 />
                 <MaterialCommunityIcons
                   name={showPassword ? 'eye-off' : 'eye'}
                   size={22}
-                  color="#555"
+                  color={colors.textSecondary}
                   onPress={() => setShowPassword(p => !p)}
                 />
               </View>
@@ -135,7 +136,7 @@ const LoginScreen: React.FC = () => {
 export default LoginScreen;
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#faf7fb' },
+  container: { flex: 1, backgroundColor: colors.authBackground },
   background: { flex: 1 },
   scroll: { flexGrow: 1, alignItems: 'center', paddingVertical: 60 },
   logoCircle: {
@@ -144,7 +145,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 8,
@@ -153,46 +154,46 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   logoImage: { width: 120, height: 120 },
-  form: { width: '80%' },
-  heading: { fontFamily: 'Poppins_700Bold', fontSize: 22, color: '#111', marginBottom: 16 },
-  label: { fontFamily: 'Poppins_700Bold', fontSize: 13, color: '#222', marginBottom: 4, marginTop: 12 },
+  form: { width: '80%', maxWidth: 460 },
+  heading: { fontFamily: 'Poppins_700Bold', fontSize: 22, color: colors.textPrimary, marginBottom: 16 },
+  label: { fontFamily: 'Poppins_700Bold', fontSize: 13, color: colors.textPrimary, marginBottom: 4, marginTop: 12 },
   input: {
-    backgroundColor: 'rgba(224,183,202,0.6)',
+    backgroundColor: colors.authInputBg,
     paddingHorizontal: 15,
     paddingVertical: 12,
-    borderRadius: 6,
+    borderRadius: 10,
     borderWidth: 1.5,
     borderColor: 'transparent',
     fontFamily: 'Poppins_400Regular',
   },
-  inputError: { borderColor: '#c0392b' },
-  errorText: { color: '#c0392b', fontSize: 12, marginTop: 4, fontFamily: 'Poppins_400Regular' },
+  inputError: { borderColor: colors.danger },
+  errorText: { color: colors.danger, fontSize: 12, marginTop: 4, fontFamily: 'Poppins_400Regular' },
   formError: {
-    backgroundColor: 'rgba(192,57,43,0.1)',
-    borderRadius: 6,
+    backgroundColor: colors.dangerSoft,
+    borderRadius: 10,
     padding: 10,
     marginBottom: 8,
-    color: '#c0392b',
+    color: colors.danger,
     fontFamily: 'Poppins_400Regular',
     fontSize: 13,
   },
   passwordRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(224,183,202,0.6)',
+    backgroundColor: colors.authInputBg,
     paddingHorizontal: 15,
-    borderRadius: 6,
+    borderRadius: 10,
     borderWidth: 1.5,
     borderColor: 'transparent',
   },
   passwordInput: { flex: 1, paddingVertical: 12, fontFamily: 'Poppins_400Regular' },
   forgotButton: { alignSelf: 'flex-end', marginTop: 8, marginBottom: 24 },
-  forgotText: { color: '#333', fontFamily: 'Poppins_400Regular', fontSize: 13, textDecorationLine: 'underline' },
+  forgotText: { color: colors.textSecondary, fontFamily: 'Poppins_400Regular', fontSize: 13, textDecorationLine: 'underline' },
   button: {
-    backgroundColor: 'rgba(2,52,72,0.8)',
+    backgroundColor: colors.navyAlpha80,
     padding: 15,
-    borderRadius: 8,
+    borderRadius: 10,
     alignItems: 'center',
   },
-  buttonText: { fontFamily: 'Poppins_700Bold', fontSize: 16, color: 'white' },
+  buttonText: { fontFamily: 'Poppins_700Bold', fontSize: 16, color: colors.white },
 });
