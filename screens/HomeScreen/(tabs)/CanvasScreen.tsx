@@ -36,7 +36,6 @@ export default function CanvasScreen() {
   const { phase, countdown } = usePhaseTimer();
   const { presence, refresh: refreshPresence } = usePresence();
   const [isVisible, setIsVisible] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
   const [word, setWord] = useState<string | null>(null);
   const [currentStreak, setCurrentStreak] = useState(0);
   const [paletteAvailable, setPaletteAvailable] = useState(false);
@@ -151,8 +150,6 @@ export default function CanvasScreen() {
       ]
     );
   };
-
-  const handleNextPage = () => setCurrentPage((prev) => prev + 1);
 
   useEffect(() => {
     const checkTutorialStatus = async () => {
@@ -321,41 +318,25 @@ export default function CanvasScreen() {
           <Modal visible={isVisible} transparent={true} animationType="fade">
             <View style={styles.modalOverlay}>
               <View style={styles.modalContent}>
-                {currentPage === 1 && (
-                  <>
-                    <Text style={styles.titleText}>
-                      Welcome to Doodle of the Day! Here's how the app works:
-                    </Text>
-                    <Text style={styles.modalText}>
-                      • Draw your picture based on the daily theme by 14:00 UK time.
-                      {"\n"}
-                      • At 14:00 you are allocated a voting room. You have one vote, and once cast, it can't be taken back, so use it wisely.
-                      {"\n"}
-                      • Winners are picked at 20:00.
-                    </Text>
-                    <TouchableOpacity onPress={handleNextPage} style={styles.modalButton}>
-                      <Text style={styles.buttonText}>Next</Text>
-                    </TouchableOpacity>
-                  </>
-                )}
-
-                {currentPage === 2 && (
-                  <>
-                    <Text style={styles.titleText}>Our Doodle Philosophy</Text>
-                    <Text style={styles.modalText}>
-                      • In our app, there's no eraser. Why? Because we want you to be bold! But don't worry—there is a delete button if you've been a little too bold.
-                      {"\n"}
-                      • We've also kept it simple with just one line thickness and no colour options. Why? Too many options can get in the way of creativity.
-                      {"\n"}
-                      • Happy doodling! 😊
-                    </Text>
-                    <View>
-                      <TouchableOpacity onPress={handleModalClose} style={styles.modalButton}>
-                        <Text style={styles.buttonText}>Got it!</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </>
-                )}
+                <Text style={styles.titleText}>Welcome to Doodle of the Day</Text>
+                <Text style={styles.modalLead}>One theme, one drawing, every day.</Text>
+                <View style={styles.modalBullets}>
+                  <Text style={styles.modalBullet}>
+                    • Draw before <Text style={styles.modalStrong}>14:00 UK</Text> — one submission per day.
+                  </Text>
+                  <Text style={styles.modalBullet}>
+                    • Vote in your room before <Text style={styles.modalStrong}>20:00</Text> — one vote, and it's final.
+                  </Text>
+                  <Text style={styles.modalBullet}>
+                    • Winners are revealed at <Text style={styles.modalStrong}>20:00</Text>.
+                  </Text>
+                </View>
+                <Text style={styles.modalFootnote}>
+                  The canvas has no eraser and starts in black ink. Build a 3-day streak to unlock the colour palette.
+                </Text>
+                <TouchableOpacity onPress={handleModalClose} style={styles.modalButton}>
+                  <Text style={styles.buttonText}>Got it</Text>
+                </TouchableOpacity>
               </View>
             </View>
           </Modal>
@@ -427,26 +408,49 @@ const styles = StyleSheet.create({
   modalContent: {
     width: '80%',
     maxWidth: 460,
-    padding: 20,
+    padding: 28,
     backgroundColor: colors.surface,
     borderRadius: 16,
-    alignItems: 'center',
-  },
-  modalText: {
-    fontSize: 16,
-    marginBottom: 20,
-    fontFamily: 'Poppins_400Regular',
-    lineHeight: 26,
-    color: colors.textPrimary,
-    textAlign: 'left',
+    alignItems: 'stretch',
   },
   titleText: {
-    fontSize: 18,
-    marginBottom: 20,
+    fontSize: 20,
     textAlign: 'center',
     fontFamily: 'Poppins_700Bold',
-    lineHeight: 26,
     color: colors.textPrimary,
+    marginBottom: 4,
+  },
+  modalLead: {
+    fontSize: 14,
+    textAlign: 'center',
+    fontFamily: 'Poppins_400Regular',
+    color: colors.textMuted,
+    marginBottom: 20,
+  },
+  modalBullets: {
+    gap: 10,
+    marginBottom: 20,
+  },
+  modalBullet: {
+    fontSize: 14,
+    fontFamily: 'Poppins_400Regular',
+    lineHeight: 22,
+    color: colors.textPrimary,
+  },
+  modalStrong: {
+    fontFamily: 'Poppins_700Bold',
+    color: colors.textPrimary,
+  },
+  modalFootnote: {
+    fontSize: 13,
+    fontFamily: 'Poppins_400Regular',
+    lineHeight: 20,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: 24,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
   },
   themeText: {
     fontFamily: 'Poppins_700Bold',
@@ -533,8 +537,10 @@ const styles = StyleSheet.create({
     color: colors.navy,
   },
   modalButton: {
-    backgroundColor: colors.navyAlpha70,
-    padding: 10,
+    backgroundColor: colors.navy,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
     borderRadius: 10,
+    alignSelf: 'center',
   },
 });
