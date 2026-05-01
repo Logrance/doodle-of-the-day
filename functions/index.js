@@ -1054,6 +1054,7 @@ async function buildRangedLeaderboard(range, currentUserId) {
       id: doc.id,
       username: doc.data().username,
       winCount: doc.data().winCount,
+      currentStreak: doc.data().currentStreak || 0,
     }));
     let currentUserRank = null;
     let currentUserData = null;
@@ -1069,6 +1070,7 @@ async function buildRangedLeaderboard(range, currentUserId) {
           id: me.id,
           username: me.data().username,
           winCount: me.data().winCount,
+          currentStreak: me.data().currentStreak || 0,
         };
       }
     }
@@ -1107,6 +1109,9 @@ async function buildRangedLeaderboard(range, currentUserId) {
       userDocs[idx].data().username :
       "Unknown",
     winCount: entry.winCount,
+    currentStreak: userDocs[idx].exists ?
+      (userDocs[idx].data().currentStreak || 0) :
+      0,
   }));
 
   let currentUserRank = null;
@@ -1122,6 +1127,7 @@ async function buildRangedLeaderboard(range, currentUserId) {
           id: me.id,
           username: me.data().username,
           winCount: sorted[idx].winCount,
+          currentStreak: me.data().currentStreak || 0,
         };
       }
     }

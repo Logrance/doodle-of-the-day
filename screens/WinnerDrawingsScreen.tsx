@@ -2,7 +2,7 @@ import { collection, query, where, getDocs, orderBy, limit, startAfter } from "f
 import { useEffect, useState } from "react";
 import { View, Text, FlatList, Image, StyleSheet, Modal, TouchableWithoutFeedback, TouchableOpacity as RNTouchableOpacity, Dimensions, Alert } from "react-native";
 import CowLoader from '../components/CowLoader';
-import { db, auth } from "../firebaseConfig";
+import { db, auth, getCallableFunction } from "../firebaseConfig";
 import { TouchableOpacity, GestureHandlerRootView } from 'react-native-gesture-handler';
 import ConfettiCannon from 'react-native-confetti-cannon';
 import moment from 'moment';
@@ -11,6 +11,7 @@ import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
 import Entypo from '@expo/vector-icons/Entypo';
 import { colors } from '../theme/colors';
+import { hasUnlock } from '../theme/unlocks';
 
 interface Winner {
     id: string;
@@ -31,9 +32,10 @@ const WinnerDrawingsScreen = () => {
   const [loadingMore, setLoadingMore] = useState(false);
 
   const [showConfetti, setShowConfetti] = useState(false);
-  const [showWinnerModal, setShowWinnerModal] = useState(false); 
+  const [showWinnerModal, setShowWinnerModal] = useState(false);
 
   const [lastVisible, setLastVisible] = useState(null);
+  const [currentStreak, setCurrentStreak] = useState(0);
 
   const openModal = (imageUri: string) => {
     setSelectedImage(imageUri);
@@ -164,6 +166,14 @@ const handleShare = async (image: string) => {
 
   useEffect(() => {
     fetchData();
+    const fetchStreak = async () => {
+      try {
+        const getUserStats = getCallableFunction("getUserStats");
+        const response = await getUserStats({}) as { data: { currentStreak: number } };
+        setCurrentStreak(response.data.currentStreak);
+      } catch {}
+    };
+    fetchStreak();
   }, []);
 
     const cardWidth = Math.min(Dimensions.get('window').width - 32, 600);
@@ -181,7 +191,7 @@ const handleShare = async (image: string) => {
                  keyExtractor={(item) => item.id}
                  contentContainerStyle={[styles.listContent, { alignItems: 'center' }]}
                  renderItem={({ item }) => (
-                   <View style={[styles.drawingContainer, { width: cardWidth }]}>
+                   <View style={[styles.drawingContainer, { width: cardWidth }, hasUnlock(currentStreak, 'goldFrame') && styles.drawingContainerGold]}>
                      <TouchableOpacity onPress={() => openModal(`data:image/png;base64,${item.image}`)}>
                        <Image
                          source={{ uri: `data:image/png;base64,${item.image}` }}
@@ -267,6 +277,10 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.08,
         shadowRadius: 8,
         elevation: 3,
+    },
+    drawingContainerGold: {
+        borderWidth: 3,
+        borderColor: colors.gold,
     },
     image: { resizeMode: 'contain' },
     cardFooter: {

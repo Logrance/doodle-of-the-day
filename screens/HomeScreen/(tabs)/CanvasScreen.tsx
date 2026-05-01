@@ -11,6 +11,7 @@ import AntDesign from '@expo/vector-icons/AntDesign';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import type { DrawingCanvasRef } from 'drawing-canvas';
 import { colors } from '../../../theme/colors';
+import { getStreakColor } from '../../../theme/unlocks';
 
 // Android-only imports — not evaluated on iOS
 let Canvas: any, Path: any, Skia: any, Rect: any;
@@ -241,7 +242,7 @@ export default function CanvasScreen() {
           <View style={styles.cornerBadges}>
             {currentStreak > 0 && (
               <View pointerEvents="none" style={styles.streakBadge}>
-                <Text style={styles.streakText}>🔥 {currentStreak}</Text>
+                <Text style={[styles.streakText, getStreakColor(currentStreak) ? { color: getStreakColor(currentStreak) } : null]}>🔥 {currentStreak}</Text>
               </View>
             )}
             {freezesAvailable > 0 && (

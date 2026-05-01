@@ -3,12 +3,20 @@ import { View, Text, FlatList, StyleSheet, Dimensions, TouchableOpacity } from "
 import CowLoader from '../components/CowLoader';
 import { auth, getCallableFunction } from "../firebaseConfig";
 import { colors } from '../theme/colors';
+import { hasUnlock } from '../theme/unlocks';
 
 interface User {
   id: string;
   username: string;
   winCount: number;
+  currentStreak: number;
 }
+
+const tierMark = (streak: number): string | null => {
+  if (hasUnlock(streak, 'master')) return '👑';
+  if (hasUnlock(streak, 'veteran')) return '⭐';
+  return null;
+};
 
 type GetLeaderboardResponse = {
   leaderboard: User[];
@@ -100,7 +108,7 @@ const LeaderboardScreen = () => {
                       style={[styles.podiumName, u.id === currentUserId && styles.podiumNameSelf]}
                       numberOfLines={1}
                     >
-                      {u.username}
+                      {tierMark(u.currentStreak) ? `${tierMark(u.currentStreak)} ` : ''}{u.username}
                     </Text>
                     <Text style={styles.podiumWins}>
                       {u.winCount} {u.winCount === 1 ? 'win' : 'wins'}
@@ -138,7 +146,7 @@ const LeaderboardScreen = () => {
               renderItem={({ item, index }) => (
                 <View style={[styles.leaderboardItem, item.id === currentUserId && styles.currentUserItem]}>
                   <Text style={styles.rankNumber}>{index + 4}</Text>
-                  <Text style={styles.username}>{item.username}</Text>
+                  <Text style={styles.username}>{tierMark(item.currentStreak) ? `${tierMark(item.currentStreak)} ` : ''}{item.username}</Text>
                   <Text style={styles.wins}>{item.winCount} {item.winCount === 1 ? 'win' : 'wins'}</Text>
                 </View>
               )}
@@ -150,7 +158,7 @@ const LeaderboardScreen = () => {
               <View style={styles.divider} />
               <View style={[styles.leaderboardItem, styles.currentUserItem, styles.currentUserSticky]}>
                 <Text style={styles.rankNumber}>{currentUserRank}</Text>
-                <Text style={styles.username}>{currentUserData.username}</Text>
+                <Text style={styles.username}>{tierMark(currentUserData.currentStreak) ? `${tierMark(currentUserData.currentStreak)} ` : ''}{currentUserData.username}</Text>
                 <Text style={styles.wins}>{currentUserData.winCount} {currentUserData.winCount === 1 ? 'win' : 'wins'}</Text>
               </View>
             </>

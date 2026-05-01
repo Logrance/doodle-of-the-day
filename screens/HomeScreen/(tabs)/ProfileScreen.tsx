@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View, Dimensions, SafeAreaView, ScrollView, Share, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import LogoMark from '../../../components/LogoMark';
+import Badge from '../../../components/Badge';
+import { hasUnlock, getStreakColor } from '../../../theme/unlocks';
 import { auth, getCallableFunction } from '../../../firebaseConfig';
 import { useNavigation } from '@react-navigation/core';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -80,7 +82,7 @@ const ProfileScreen: React.FC = () => {
           <View style={styles.statsRow}>
             <View style={styles.statCard}>
               <Text style={styles.statEmoji}>🔥</Text>
-              <Text style={styles.statValue}>{currentStreak}</Text>
+              <Text style={[styles.statValue, { color: getStreakColor(currentStreak) ?? colors.textPrimary }]}>{currentStreak}</Text>
               <Text style={styles.statLabel}>day streak</Text>
             </View>
             <View style={styles.statDivider} />
@@ -102,6 +104,14 @@ const ProfileScreen: React.FC = () => {
               ? `❄️ ${freezesAvailable} streak freeze ready — saves you if you miss a day`
               : '❄️ Earn a streak freeze every 7 days — saves you if you miss a day'}
           </Text>
+
+          {hasUnlock(currentStreak, 'doodlerBadge') && (
+            <View style={styles.badgeRow}>
+              <Badge label="Doodler" />
+              {hasUnlock(currentStreak, 'veteran') && <Badge label="Veteran" />}
+              {hasUnlock(currentStreak, 'master') && <Badge label="Master" variant="gold" />}
+            </View>
+          )}
 
           <View style={styles.buttonContainer}>
             <TouchableOpacity onPress={() => navigation.navigate('Deets')} style={styles.buttonSecondary}>
@@ -212,6 +222,14 @@ const styles = StyleSheet.create({
     marginTop: -12,
     marginBottom: 20,
     paddingHorizontal: 24,
+  },
+  badgeRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+    marginBottom: 16,
   },
   buttonContainer: { flex: 1, alignItems: 'center' },
   buttonSecondary: {
