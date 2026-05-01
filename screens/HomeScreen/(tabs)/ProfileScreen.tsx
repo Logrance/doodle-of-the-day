@@ -1,7 +1,6 @@
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, Dimensions, SafeAreaView, ScrollView, Share, Alert } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, SafeAreaView, ScrollView, Share, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import LogoMark from '../../../components/LogoMark';
 import Badge from '../../../components/Badge';
 import { hasUnlock, getStreakColor } from '../../../theme/unlocks';
 import { useCachedUserStats } from '../../../hooks/useCachedUserStats';
@@ -25,7 +24,8 @@ type RootStackParamList = {
 const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const { stats } = useCachedUserStats();
-  const { currentStreak, longestStreak, winCount, freezesAvailable } = stats;
+  const { username, currentStreak, longestStreak, winCount, freezesAvailable } = stats;
+  const email = auth.currentUser?.email ?? '';
 
   const handleSignOut = async () => {
     try {
@@ -46,22 +46,13 @@ const ProfileScreen: React.FC = () => {
     }
   };
 
-  const { height: screenHeight } = Dimensions.get('window');
-
-
-  const isSmallScreen = screenHeight < 667;
-
-
   return (
     <SafeAreaView style={styles.container}>
       <LinearGradient colors={colors.authGradient} style={styles.backgroundImage}>
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          <View style={styles.topTextContainer}>
-            <LogoMark size={isSmallScreen ? 100 : 130} />
-            <View style={styles.titleBlock}>
-              <Text style={styles.titleText}>Doodle</Text>
-              <Text style={styles.titleText}>of the Day</Text>
-            </View>
+          <View style={styles.identityBlock}>
+            {username ? <Text style={styles.usernameText}>@{username}</Text> : null}
+            {email ? <Text style={styles.emailText}>{email}</Text> : null}
           </View>
 
           <View style={styles.statsRow}>
@@ -146,22 +137,22 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   backgroundImage: { flex: 1 },
   scrollContent: { paddingBottom: 40, flexGrow: 1, justifyContent: 'center' },
-  topTextContainer: {
-    flexDirection: 'row',
+  identityBlock: {
     alignItems: 'center',
-    justifyContent: 'center',
     marginTop: 40,
     marginBottom: 24,
-    gap: 20,
+    paddingHorizontal: 24,
   },
-  titleBlock: {
-    alignItems: 'flex-start',
-  },
-  titleText: {
+  usernameText: {
     fontFamily: 'Poppins_700Bold',
-    fontSize: 22,
+    fontSize: 24,
     color: colors.textPrimary,
-    lineHeight: 30,
+  },
+  emailText: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 14,
+    color: colors.textMuted,
+    marginTop: 4,
   },
   statsRow: {
     flexDirection: 'row',

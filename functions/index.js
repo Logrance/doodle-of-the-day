@@ -1301,6 +1301,7 @@ exports.getUserStats = functions.https.onCall(async (data, context) => {
     const paletteAvailable = (userData.paletteAvailable || false) &&
         unlockedOn !== todayStr;
     return {
+      username: userData.username || "",
       currentStreak: userData.currentStreak || 0,
       longestStreak: userData.longestStreak || 0,
       winCount: userData.winCount || 0,

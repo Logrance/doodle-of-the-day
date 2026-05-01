@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth, getCallableFunction } from '../firebaseConfig';
 
 export interface UserStats {
+  username: string;
   currentStreak: number;
   longestStreak: number;
   winCount: number;
@@ -12,6 +13,7 @@ export interface UserStats {
 }
 
 const DEFAULT_STATS: UserStats = {
+  username: '',
   currentStreak: 0,
   longestStreak: 0,
   winCount: 0,
@@ -19,12 +21,13 @@ const DEFAULT_STATS: UserStats = {
   freezesAvailable: 0,
 };
 
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 const cacheKey = (uid: string) => `userStats:v${SCHEMA_VERSION}:${uid}`;
 
 const isValidStats = (v: unknown): v is UserStats =>
   !!v &&
   typeof v === 'object' &&
+  typeof (v as UserStats).username === 'string' &&
   typeof (v as UserStats).currentStreak === 'number' &&
   typeof (v as UserStats).longestStreak === 'number' &&
   typeof (v as UserStats).winCount === 'number' &&
