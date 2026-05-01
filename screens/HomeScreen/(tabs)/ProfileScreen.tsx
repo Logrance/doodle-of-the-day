@@ -1,10 +1,10 @@
-import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, SafeAreaView, ScrollView, Share, Alert } from 'react-native';
+import React, { useState } from 'react';
+import { StyleSheet, Text, TouchableOpacity, View, Image, SafeAreaView, ScrollView, Share, Alert, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Badge from '../../../components/Badge';
 import { hasUnlock, getStreakColor } from '../../../theme/unlocks';
 import { useCachedUserStats } from '../../../hooks/useCachedUserStats';
-import { auth } from '../../../firebaseConfig';
+import { auth, getCallableFunction } from '../../../firebaseConfig';
 import { useNavigation } from '@react-navigation/core';
 import { StackNavigationProp } from '@react-navigation/stack';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -23,9 +23,42 @@ type RootStackParamList = {
 
 const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
-  const { stats } = useCachedUserStats();
-  const { username, currentStreak, longestStreak, winCount, freezesAvailable } = stats;
-  const email = auth.currentUser?.email ?? '';
+  const { stats, refresh } = useCachedUserStats();
+  const { username, avatarUrl, currentStreak, longestStreak, winCount, freezesAvailable } = stats;
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+
+  const handleEditAvatar = async () => {
+    let ImagePicker: typeof import('expo-image-picker');
+    try {
+      ImagePicker = require('expo-image-picker');
+    } catch {
+      Alert.alert('Update needed', 'Avatar uploads need the latest app version. Please update from TestFlight.');
+      return;
+    }
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert('Permission required', 'Please allow photo library access to set an avatar.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.5,
+      base64: true,
+    });
+    if (result.canceled || !result.assets?.[0]?.base64) return;
+    setIsUploadingAvatar(true);
+    try {
+      const setAvatar = getCallableFunction('setAvatar');
+      await setAvatar({ imageBase64: result.assets[0].base64 });
+      refresh();
+    } catch (error: any) {
+      Alert.alert('Upload failed', error.message || 'Could not upload avatar.');
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
 
   const handleSignOut = async () => {
     try {
@@ -51,8 +84,21 @@ const ProfileScreen: React.FC = () => {
       <LinearGradient colors={colors.authGradient} style={styles.backgroundImage}>
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           <View style={styles.identityBlock}>
-            {username ? <Text style={styles.usernameText}>@{username}</Text> : null}
-            {email ? <Text style={styles.emailText}>{email}</Text> : null}
+            <TouchableOpacity onPress={handleEditAvatar} activeOpacity={0.85} style={styles.avatarWrapper}>
+              {avatarUrl ? (
+                <Image source={{ uri: avatarUrl }} style={styles.avatar} />
+              ) : (
+                <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                  <Text style={styles.avatarLetter}>{(username || 'D')[0].toUpperCase()}</Text>
+                </View>
+              )}
+              <View style={styles.avatarEditBadge}>
+                {isUploadingAvatar
+                  ? <ActivityIndicator size="small" color={colors.white} />
+                  : <Ionicons name="camera" size={14} color={colors.white} />}
+              </View>
+            </TouchableOpacity>
+            {username ? <Text style={styles.usernameText}>{username}</Text> : null}
           </View>
 
           <View style={styles.statsRow}>
@@ -143,16 +189,42 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     paddingHorizontal: 24,
   },
+  avatarWrapper: {
+    marginBottom: 12,
+  },
+  avatar: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: colors.surfaceMuted,
+  },
+  avatarPlaceholder: {
+    backgroundColor: colors.navy,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarLetter: {
+    fontFamily: 'Poppins_700Bold',
+    fontSize: 36,
+    color: colors.white,
+  },
+  avatarEditBadge: {
+    position: 'absolute',
+    right: -2,
+    bottom: -2,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.navy,
+    borderWidth: 2,
+    borderColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   usernameText: {
     fontFamily: 'Poppins_700Bold',
     fontSize: 24,
     color: colors.textPrimary,
-  },
-  emailText: {
-    fontFamily: 'Poppins_400Regular',
-    fontSize: 14,
-    color: colors.textMuted,
-    marginTop: 4,
   },
   statsRow: {
     flexDirection: 'row',

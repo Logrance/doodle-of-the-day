@@ -1,6 +1,7 @@
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const https = require("https");
+const crypto = require("crypto");
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -1302,6 +1303,7 @@ exports.getUserStats = functions.https.onCall(async (data, context) => {
         unlockedOn !== todayStr;
     return {
       username: userData.username || "",
+      avatarUrl: userData.avatarUrl || "",
       currentStreak: userData.currentStreak || 0,
       longestStreak: userData.longestStreak || 0,
       winCount: userData.winCount || 0,
@@ -1312,5 +1314,52 @@ exports.getUserStats = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError(
         "internal",
         "Failed to fetch user stats.", error);
+  }
+});
+
+exports.setAvatar = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError(
+        "unauthenticated",
+        "User must be authenticated.",
+    );
+  }
+  const userId = context.auth.uid;
+  const {imageBase64} = data || {};
+  if (typeof imageBase64 !== "string" || imageBase64.length < 100) {
+    throw new functions.https.HttpsError(
+        "invalid-argument",
+        "imageBase64 is required.",
+    );
+  }
+  // Reject anything wildly oversized — picker is set to quality 0.5
+  // so a square avatar should land well under 1 MB even at high res.
+  if (imageBase64.length > 2000000) {
+    throw new functions.https.HttpsError(
+        "invalid-argument",
+        "Avatar image is too large.",
+    );
+  }
+  try {
+    const bucket = admin.storage().bucket();
+    const filePath = `avatars/${userId}.jpg`;
+    const file = bucket.file(filePath);
+    const token = crypto.randomBytes(16).toString("hex");
+    await file.save(Buffer.from(imageBase64, "base64"), {
+      metadata: {
+        contentType: "image/jpeg",
+        metadata: {firebaseStorageDownloadTokens: token},
+      },
+    });
+    const encodedPath = encodeURIComponent(filePath);
+    const url = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodedPath}?alt=media&token=${token}`;
+    await db.collection("users").doc(userId).update({avatarUrl: url});
+    return {url};
+  } catch (error) {
+    console.error("setAvatar error:", error);
+    throw new functions.https.HttpsError(
+        "internal",
+        "Failed to save avatar.",
+    );
   }
 });
