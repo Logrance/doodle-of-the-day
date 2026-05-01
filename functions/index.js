@@ -383,7 +383,8 @@ exports.getRoomDrawings = functions.https.onCall(async (data, context) => {
       return {drawings: []}; // No drawing found for the user today
     }
 
-    const userDrawing = userDrawingSnapshot.docs[0].data();
+    const userDrawingDoc = userDrawingSnapshot.docs[0];
+    const userDrawing = userDrawingDoc.data();
     const userRoomId = userDrawing.roomId;
 
     // Step 2: Query the room's drawings, excluding the user's own drawing
@@ -396,9 +397,10 @@ exports.getRoomDrawings = functions.https.onCall(async (data, context) => {
         .orderBy("userId", "desc")
         .get();
 
-    // Map and return drawing data
+    // Map other drawings, then append the user's own with an isYou flag.
     const drawings = roomDrawingsSnapshot.docs.map((doc) =>
-      ({id: doc.id, ...doc.data()}));
+      ({id: doc.id, ...doc.data(), isYou: false}));
+    drawings.push({id: userDrawingDoc.id, ...userDrawing, isYou: true});
     return {drawings};
   } catch (error) {
     console.error("Error fetching room drawings:", error);
@@ -652,6 +654,13 @@ exports.handleVote = functions.https.onCall(async (data, context) => {
         throw new functions.https.HttpsError(
             "not-found",
             "Drawing does not exist.");
+      }
+
+      if (drawingDoc.data().userId === currentUser) {
+        throw new functions.https.HttpsError(
+            "permission-denied",
+            "You can't vote for your own drawing.",
+        );
       }
 
       // Increment the vote count for the drawing

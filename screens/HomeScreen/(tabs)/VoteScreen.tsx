@@ -21,6 +21,8 @@ type Drawing = {
   userId: string;
   date: number;
   votes: number;
+  image: string;
+  isYou: boolean;
 };
 
 type GetRoomDrawingsResponse = {
@@ -389,12 +391,14 @@ useEffect(() => {
           renderItem={({ item }) => {
             const isChosen = votedForId === item.id;
             const hasVoted = votedForId !== null;
+            const isOwn = item.isYou;
             return (
               <View
                 style={[
                   styles.drawingContainer,
                   { width: cardWidth },
                   isChosen && styles.drawingContainerChosen,
+                  isOwn && styles.drawingContainerSelf,
                 ]}
               >
                 <TouchableOpacity onPress={() => openModal(`data:image/png;base64,${item.image}`)}>
@@ -404,22 +408,30 @@ useEffect(() => {
                   />
                 </TouchableOpacity>
                 <View style={styles.cardFooter}>
-                  <Text style={styles.voteCount}>{item.votes || 0} {item.votes === 1 ? 'vote' : 'votes'}</Text>
+                  {isOwn ? (
+                    <Text style={styles.youBadge}>Your drawing</Text>
+                  ) : (
+                    <View />
+                  )}
                   <View style={styles.buttonRow}>
-                    <TouchableOpacity onPress={() => handleFlag(item.id, item.image)} style={styles.buttonIcon}>
-                      <Ionicons name="flag-outline" size={20} color={colors.textMuted} />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={() => handleVote(item.id)}
-                      style={[
-                        styles.buttonVote,
-                        isChosen && styles.buttonVoteChosen,
-                        hasVoted && !isChosen && styles.buttonVoteDimmed,
-                      ]}
-                      disabled={hasVoted}
-                    >
-                      <Text style={styles.buttonText}>{isChosen ? '✓ Voted' : 'Vote'}</Text>
-                    </TouchableOpacity>
+                    {!isOwn && (
+                      <TouchableOpacity onPress={() => handleFlag(item.id, item.image)} style={styles.buttonIcon}>
+                        <Ionicons name="flag-outline" size={20} color={colors.textMuted} />
+                      </TouchableOpacity>
+                    )}
+                    {!isOwn && (
+                      <TouchableOpacity
+                        onPress={() => handleVote(item.id)}
+                        style={[
+                          styles.buttonVote,
+                          isChosen && styles.buttonVoteChosen,
+                          hasVoted && !isChosen && styles.buttonVoteDimmed,
+                        ]}
+                        disabled={hasVoted}
+                      >
+                        <Text style={styles.buttonText}>{isChosen ? '✓ Voted' : 'Vote'}</Text>
+                      </TouchableOpacity>
+                    )}
                     <TouchableOpacity onPress={() => handleShare(item.image)} style={styles.buttonIcon}>
                       <Entypo name="share" size={20} color={colors.textMuted} />
                     </TouchableOpacity>
@@ -579,10 +591,15 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.textSecondary,
   },
-  voteCount: {
+  youBadge: {
     fontFamily: 'Poppins_700Bold',
-    fontSize: 14,
-    color: colors.textSecondary,
+    fontSize: 13,
+    color: colors.navy,
+    backgroundColor: colors.navyAlpha08,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    overflow: 'hidden',
   },
   buttonRow: {
     flexDirection: 'row',
