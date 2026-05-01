@@ -28,7 +28,7 @@
       }
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/cow2_highcontrast.png"
     },
     "plugins": [
       "expo-font",

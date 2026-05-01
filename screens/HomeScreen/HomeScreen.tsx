@@ -39,12 +39,12 @@ export default function HomeScreen() {
       }}
     >
       <Tab.Screen
-        name="Home"
+        name="Profile"
         component={ProfileStack}
         options={{
           headerShown: false,
           tabBarIcon: ({ color }) => (
-            <Foundation name="home" size={24} color={color} />
+            <Foundation name="torso" size={24} color={color} />
           ),
         }}
       />

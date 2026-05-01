@@ -158,8 +158,7 @@ const handleShare = async (image: string) => {
   
           setWinnerDrawing((prev) => [...prev, ...newWinners]);
         }
-      } catch (error) {
-        console.error("Error fetching next data:", error);
+      } catch {
       } finally {
         setLoadingMore(false);
       }

@@ -1,5 +1,4 @@
 import React, { useEffect } from 'react';
-import { StyleSheet } from 'react-native';
 import { NavigationContainer, LinkingOptions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import * as SplashScreen from 'expo-splash-screen';
@@ -41,7 +40,7 @@ const linking: LinkingOptions<RootStackParamList> = {
       HomeScreen: {
         path: 'home',
         screens: {
-          Home: 'profile',
+          Profile: 'profile',
           Draw: 'draw',
           Vote: 'vote',
         },
@@ -91,12 +90,3 @@ export default function App() {
     </NavigationContainer>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});

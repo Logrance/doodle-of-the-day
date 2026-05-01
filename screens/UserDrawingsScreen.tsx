@@ -184,8 +184,7 @@ const handleShare = async (image: string) => {
 
         setDrawings((prev) => [...prev, ...newDrawings]);
       }
-    } catch (error) {
-      console.error("Error fetching next data:", error);
+    } catch {
     } finally {
       setLoadingMore(false);
     }

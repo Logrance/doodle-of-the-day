@@ -228,7 +228,7 @@ const styles = StyleSheet.create({
   },
   buttonPrimary: {
     ...buttonBase,
-    backgroundColor: colors.navyAlpha85,
+    backgroundColor: colors.navy,
     shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
@@ -238,8 +238,8 @@ const styles = StyleSheet.create({
   buttonGhost: {
     ...buttonBase,
     backgroundColor: 'transparent',
-    borderWidth: 2,
-    borderColor: colors.textSecondary,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
   },
   buttonText: {
     fontFamily: 'Poppins_700Bold',

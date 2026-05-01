@@ -30,10 +30,10 @@ export const colors = {
   surfaceMutedAlt: '#fafafa',
   surfaceTrack: '#f0f0f0',
 
-  authGradient: ['#faf7fb', '#f2e4ef', '#e8d8e8'] as const,
-  authBackground: '#faf7fb',
-  authInputBg: 'rgba(224,183,202,0.6)',
-  authButtonBg: 'rgba(224,183,202,0.85)',
+  authGradient: ['#fafbfc', '#f4f5f7', '#eef0f2'] as const,
+  authBackground: '#fafbfc',
+  authInputBg: 'rgba(2,52,72,0.04)',
+  authButtonBg: '#ffffff',
 
   welcomeGradient: ['#012232', '#023448', '#056a8a'] as const,
 

@@ -127,7 +127,6 @@ export default function CanvasScreen() {
         {
           text: "Cancel",
           style: "cancel",
-          onPress: () => console.log("Submission canceled"),
         },
         {
           text: "Submit",

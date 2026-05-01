@@ -242,9 +242,7 @@ useEffect(() => {
         setWord(wordDoc.data().word);
       }
     },
-    (error) => {
-      console.error('Error fetching theme:', error);
-    }
+    () => {}
   );
 
   return () => unsubscribe();

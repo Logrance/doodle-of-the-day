@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert, SafeAreaView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { sendPasswordResetEmail } from 'firebase/auth';
+import { sendPasswordResetEmail, sendEmailVerification } from 'firebase/auth';
 import { auth, getCallableFunction } from "../firebaseConfig";
 import { useNavigation } from '@react-navigation/core';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -22,6 +22,21 @@ export default function Deets() {
     const [isResettingPassword, setIsResettingPassword] = useState(false);
     const [isDeletingAccount, setIsDeletingAccount] = useState(false);
     const [isVerified, setIsVerified] = useState(auth.currentUser?.emailVerified ?? false);
+    const [isResendingVerification, setIsResendingVerification] = useState(false);
+
+  const handleResendVerification = async () => {
+    const current = auth.currentUser;
+    if (!current) return;
+    setIsResendingVerification(true);
+    try {
+      await sendEmailVerification(current);
+      Alert.alert('Verification sent', `A verification email has been sent to ${current.email}. Check your inbox and tap the link.`);
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Could not send verification email.');
+    } finally {
+      setIsResendingVerification(false);
+    }
+  };
 
   const handlePasswordReset = async () => {
     if (user && user.email) {
@@ -116,6 +131,18 @@ export default function Deets() {
               {isVerified ? 'Email verified' : 'Email not verified'}
             </Text>
           </View>
+
+          {!isVerified && (
+            <TouchableOpacity
+              onPress={handleResendVerification}
+              style={styles.resetButton}
+              disabled={isResendingVerification}
+            >
+              <Text style={styles.resetText}>
+                {isResendingVerification ? 'Sending...' : 'Resend verification email'}
+              </Text>
+            </TouchableOpacity>
+          )}
 
           <TouchableOpacity
             onPress={handlePasswordReset}
