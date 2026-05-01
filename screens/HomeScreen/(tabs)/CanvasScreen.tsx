@@ -1,8 +1,9 @@
 import React, { useState, useRef, useCallback, useEffect, Children } from 'react';
 import { usePhaseTimer } from '../../../hooks/usePhaseTimer';
 import { usePresence } from '../../../hooks/usePresence';
+import { useCachedUserStats } from '../../../hooks/useCachedUserStats';
 import { View, Dimensions, TouchableOpacity, StyleSheet, Alert, Text, Modal, Platform } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { collection, query, orderBy, limit, onSnapshot } from "firebase/firestore";
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StatusBar } from 'expo-status-bar';
@@ -34,13 +35,13 @@ type AddImageResponse = { data: { message: string } };
 
 export default function CanvasScreen() {
   const { width, height } = Dimensions.get("window");
+  const insets = useSafeAreaInsets();
   const { phase, countdown } = usePhaseTimer();
   const { presence, refresh: refreshPresence } = usePresence();
   const [isVisible, setIsVisible] = useState(false);
   const [word, setWord] = useState<string | null>(null);
-  const [currentStreak, setCurrentStreak] = useState(0);
-  const [paletteAvailable, setPaletteAvailable] = useState(false);
-  const [freezesAvailable, setFreezesAvailable] = useState(0);
+  const { stats, refresh: refreshStats } = useCachedUserStats();
+  const { currentStreak, paletteAvailable, freezesAvailable } = stats;
   const [selectedColor, setSelectedColor] = useState('#000000');
 
   const PALETTE = ['#000000', '#800000', '#0047AB', '#50C878', '#FF7800', '#6B2FA0'];
@@ -104,25 +105,13 @@ export default function CanvasScreen() {
     }
   };
 
-  const fetchStreakStats = useCallback(async () => {
-    try {
-      const getUserStats = getCallableFunction("getUserStats");
-      const response = await getUserStats({}) as {
-        data: { currentStreak: number; paletteAvailable: boolean; freezesAvailable: number }
-      };
-      setCurrentStreak(response.data.currentStreak);
-      setPaletteAvailable(response.data.paletteAvailable);
-      setFreezesAvailable(response.data.freezesAvailable);
-    } catch (error) {}
-  }, []);
-
   const addImageToDB = async (imageBase64: string) => {
     try {
       const addImage = getCallableFunction("addImageToDB") as unknown as (params: { imageBase64: string }) => Promise<AddImageResponse>;
       const response = await addImage({ imageBase64 });
       Alert.alert("Success", response.data.message);
       clearCanvas();
-      fetchStreakStats();
+      refreshStats();
       refreshPresence();
     } catch (error) {
       Alert.alert("Submission Failed", error.message || "Error submitting drawing");
@@ -163,10 +152,6 @@ export default function CanvasScreen() {
     };
     checkTutorialStatus();
   }, []);
-
-  useEffect(() => {
-    fetchStreakStats();
-  }, [fetchStreakStats]);
 
   const handleModalClose = async () => {
     setIsVisible(false);
@@ -232,14 +217,14 @@ export default function CanvasScreen() {
           {renderCanvas()}
 
           {presence.doodlersToday > 0 && (
-            <View pointerEvents="none" style={styles.presencePill}>
+            <View pointerEvents="none" style={[styles.presencePill, { top: insets.top + 12 }]}>
               <Text style={styles.presenceText}>
                 🎨 {presence.doodlersToday} doodling today
               </Text>
             </View>
           )}
 
-          <View style={styles.cornerBadges}>
+          <View style={[styles.cornerBadges, { top: insets.top + 12 }]}>
             {currentStreak > 0 && (
               <View pointerEvents="none" style={styles.streakBadge}>
                 <Text style={[styles.streakText, getStreakColor(currentStreak) ? { color: getStreakColor(currentStreak) } : null]}>🔥 {currentStreak}</Text>
@@ -504,14 +489,12 @@ const styles = StyleSheet.create({
   },
   cornerBadges: {
     position: 'absolute',
-    top: 12,
     right: 16,
     alignItems: 'flex-end',
     gap: 6,
   },
   presencePill: {
     position: 'absolute',
-    top: 12,
     left: 16,
     backgroundColor: colors.navyAlpha06,
     borderRadius: 12,

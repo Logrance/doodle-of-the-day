@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View, Dimensions, SafeAreaView, ScrollView, Share, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import LogoMark from '../../../components/LogoMark';
 import Badge from '../../../components/Badge';
 import { hasUnlock, getStreakColor } from '../../../theme/unlocks';
-import { auth, getCallableFunction } from '../../../firebaseConfig';
+import { useCachedUserStats } from '../../../hooks/useCachedUserStats';
+import { auth } from '../../../firebaseConfig';
 import { useNavigation } from '@react-navigation/core';
 import { StackNavigationProp } from '@react-navigation/stack';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -23,24 +24,8 @@ type RootStackParamList = {
 
 const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
-  const [currentStreak, setCurrentStreak] = useState(0);
-  const [longestStreak, setLongestStreak] = useState(0);
-  const [winCount, setWinCount] = useState(0);
-  const [freezesAvailable, setFreezesAvailable] = useState(0);
-
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const getUserStats = getCallableFunction('getUserStats');
-        const response = await getUserStats({}) as { data: { currentStreak: number; longestStreak: number; winCount: number; freezesAvailable: number } };
-        setCurrentStreak(response.data.currentStreak);
-        setLongestStreak(response.data.longestStreak);
-        setWinCount(response.data.winCount);
-        setFreezesAvailable(response.data.freezesAvailable);
-      } catch (error) {}
-    };
-    fetchStats();
-  }, []);
+  const { stats } = useCachedUserStats();
+  const { currentStreak, longestStreak, winCount, freezesAvailable } = stats;
 
   const handleSignOut = async () => {
     try {

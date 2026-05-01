@@ -21,7 +21,7 @@ export default function Deets() {
     const user = auth.currentUser;
     const [isResettingPassword, setIsResettingPassword] = useState(false);
     const [isDeletingAccount, setIsDeletingAccount] = useState(false);
-    const [isVerified, setIsVerified] = useState(false)
+    const [isVerified, setIsVerified] = useState(auth.currentUser?.emailVerified ?? false);
 
   const handlePasswordReset = async () => {
     if (user && user.email) {
@@ -76,16 +76,22 @@ export default function Deets() {
 
 
     useEffect(() => {
-      const checkVerificationStatus = async () => {
-        try {
-          const updateUserVerification = getCallableFunction("updateUserVerification");
-          await updateUserVerification({});
+      const refresh = async () => {
+        const current = auth.currentUser;
+        if (!current) return;
+        if (current.emailVerified) {
           setIsVerified(true);
-        } catch (error: any) {
+          return;
         }
+        try {
+          await current.reload();
+          if (auth.currentUser?.emailVerified) {
+            setIsVerified(true);
+            getCallableFunction('updateUserVerification')({}).catch(() => {});
+          }
+        } catch {}
       };
-    
-      checkVerificationStatus();
+      refresh();
     }, []);
 
   return (

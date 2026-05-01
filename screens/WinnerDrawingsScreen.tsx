@@ -2,7 +2,8 @@ import { collection, query, where, getDocs, orderBy, limit, startAfter } from "f
 import { useEffect, useState } from "react";
 import { View, Text, FlatList, Image, StyleSheet, Modal, TouchableWithoutFeedback, TouchableOpacity as RNTouchableOpacity, Dimensions, Alert } from "react-native";
 import CowLoader from '../components/CowLoader';
-import { db, auth, getCallableFunction } from "../firebaseConfig";
+import { db, auth } from "../firebaseConfig";
+import { useCachedUserStats } from '../hooks/useCachedUserStats';
 import { TouchableOpacity, GestureHandlerRootView } from 'react-native-gesture-handler';
 import ConfettiCannon from 'react-native-confetti-cannon';
 import moment from 'moment';
@@ -35,7 +36,8 @@ const WinnerDrawingsScreen = () => {
   const [showWinnerModal, setShowWinnerModal] = useState(false);
 
   const [lastVisible, setLastVisible] = useState(null);
-  const [currentStreak, setCurrentStreak] = useState(0);
+  const { stats } = useCachedUserStats();
+  const currentStreak = stats.currentStreak;
 
   const openModal = (imageUri: string) => {
     setSelectedImage(imageUri);
@@ -166,14 +168,6 @@ const handleShare = async (image: string) => {
 
   useEffect(() => {
     fetchData();
-    const fetchStreak = async () => {
-      try {
-        const getUserStats = getCallableFunction("getUserStats");
-        const response = await getUserStats({}) as { data: { currentStreak: number } };
-        setCurrentStreak(response.data.currentStreak);
-      } catch {}
-    };
-    fetchStreak();
   }, []);
 
     const cardWidth = Math.min(Dimensions.get('window').width - 32, 600);
