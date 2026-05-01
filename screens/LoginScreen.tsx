@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import {
   KeyboardAvoidingView, ScrollView, StyleSheet, Text, TextInput,
-  TouchableOpacity, View, Image, SafeAreaView, Platform
+  TouchableOpacity, View, SafeAreaView, Platform
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import CowLoader from '../components/CowLoader';
+import LogoMark from '../components/LogoMark';
 import { auth } from '../firebaseConfig';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { useNavigation } from '@react-navigation/core';
@@ -70,9 +71,7 @@ const LoginScreen: React.FC = () => {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            <View style={styles.logoCircle}>
-              <Image source={require('../assets/icon_bacon.png')} style={styles.logoImage} resizeMode="cover" />
-            </View>
+            <LogoMark size={120} style={{ marginBottom: 32 }} />
 
             <View style={styles.form}>
               <Text style={styles.heading}>Welcome back</Text>
@@ -139,21 +138,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.authBackground },
   background: { flex: 1 },
   scroll: { flexGrow: 1, alignItems: 'center', paddingVertical: 60 },
-  logoCircle: {
-    width: 120,
-    height: 120,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 6,
-    overflow: 'hidden',
-    marginBottom: 32,
-  },
-  logoImage: { width: 120, height: 120 },
   form: { width: '80%', maxWidth: 460 },
   heading: { fontFamily: 'Poppins_700Bold', fontSize: 22, color: colors.textPrimary, marginBottom: 16 },
   label: { fontFamily: 'Poppins_700Bold', fontSize: 13, color: colors.textPrimary, marginBottom: 4, marginTop: 12 },

@@ -1,10 +1,11 @@
 import React, { useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image, SafeAreaView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/core';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { auth } from '../firebaseConfig';
 import { colors } from '../theme/colors';
+import LogoMark from '../components/LogoMark';
 
 type RootStackParamList = {
   HomeScreen: undefined;
@@ -26,9 +27,7 @@ const WelcomeScreen: React.FC = () => {
     <SafeAreaView style={styles.container}>
       <LinearGradient colors={colors.welcomeGradient} style={styles.background}>
         <View style={styles.top}>
-          <View style={styles.logoCircle}>
-            <Image source={require('../assets/icon_bacon.png')} style={styles.logoImage} resizeMode="cover" />
-          </View>
+          <LogoMark size={120} />
           <Text style={styles.title}>Doodle of the Day</Text>
           <Text style={styles.subtitle}>One theme. One doodle. Every day.</Text>
         </View>
@@ -76,20 +75,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.navyDark },
   background: { flex: 1, justifyContent: 'space-between', alignItems: 'center', paddingVertical: 40, paddingHorizontal: 24 },
   top: { alignItems: 'center', marginTop: 16 },
-  logoCircle: {
-    width: 120,
-    height: 120,
-    borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 10,
-    overflow: 'hidden',
-  },
-  logoImage: { width: 120, height: 120 },
   title: { fontFamily: 'Poppins_700Bold', fontSize: 26, marginTop: 18, color: colors.white },
   subtitle: { fontFamily: 'Poppins_400Regular', fontSize: 14, color: colors.whiteAlpha75, marginTop: 6, textAlign: 'center' },
   previewContainer: {

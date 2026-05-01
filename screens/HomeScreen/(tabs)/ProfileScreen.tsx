@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, Image, Dimensions, SafeAreaView, ScrollView, Share, Alert } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, Dimensions, SafeAreaView, ScrollView, Share, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import LogoMark from '../../../components/LogoMark';
 import { auth, getCallableFunction } from '../../../firebaseConfig';
 import { useNavigation } from '@react-navigation/core';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -69,13 +70,7 @@ const ProfileScreen: React.FC = () => {
       <LinearGradient colors={colors.authGradient} style={styles.backgroundImage}>
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           <View style={styles.topTextContainer}>
-            <View style={[styles.logoCircle, { width: isSmallScreen ? 100 : 130, height: isSmallScreen ? 100 : 130, borderRadius: 24 }]}>
-              <Image
-                source={require('../../../assets/icon_bacon.png')}
-                style={styles.logoImage}
-                resizeMode="cover"
-              />
-            </View>
+            <LogoMark size={isSmallScreen ? 100 : 130} />
             <View style={styles.titleBlock}>
               <Text style={styles.titleText}>Doodle</Text>
               <Text style={styles.titleText}>of the Day</Text>
@@ -173,17 +168,6 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     lineHeight: 30,
   },
-  logoCircle: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 6,
-    overflow: 'hidden',
-  },
-  logoImage: { width: '100%', height: '100%' },
   statsRow: {
     flexDirection: 'row',
     alignItems: 'center',
