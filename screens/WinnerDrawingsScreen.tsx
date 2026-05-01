@@ -1,6 +1,6 @@
 import { collection, query, where, getDocs, orderBy, limit, startAfter } from "firebase/firestore";
 import { useEffect, useState } from "react";
-import { View, Text, FlatList, Image, StyleSheet, Modal, TouchableWithoutFeedback, Dimensions, Alert } from "react-native";
+import { View, Text, FlatList, Image, StyleSheet, Modal, TouchableWithoutFeedback, TouchableOpacity as RNTouchableOpacity, Dimensions, Alert } from "react-native";
 import CowLoader from '../components/CowLoader';
 import { db, auth } from "../firebaseConfig";
 import { TouchableOpacity, GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -221,9 +221,9 @@ const handleShare = async (image: string) => {
           <View style={styles.modalBackgroundTwo}>
             <View style={styles.modalContainer}>
               <Text style={styles.winnerText}>🎉 You're today's winner!</Text>
-              <TouchableOpacity style={styles.closeButton} onPress={closeWinnerModal}>
+              <RNTouchableOpacity style={styles.closeButton} onPress={closeWinnerModal}>
                 <Text style={styles.closeButtonText}>Amazing!</Text>
-              </TouchableOpacity>
+              </RNTouchableOpacity>
             </View>
           </View>
         </Modal>
