@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, Image, SafeAreaView, ScrollView, Share, Alert, ActivityIndicator } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, Image, SafeAreaView, ScrollView, Share, Alert, ActivityIndicator, Modal, TouchableWithoutFeedback } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Badge from '../../../components/Badge';
-import { hasUnlock, getStreakColor } from '../../../theme/unlocks';
+import { hasUnlock, getStreakColor, getNextUnlock, TIERS } from '../../../theme/unlocks';
 import { useCachedUserStats } from '../../../hooks/useCachedUserStats';
 import { auth, getCallableFunction } from '../../../firebaseConfig';
 import { useNavigation } from '@react-navigation/core';
@@ -25,6 +25,8 @@ const ProfileScreen: React.FC = () => {
   const { stats, refresh } = useCachedUserStats();
   const { username, avatarUrl, currentStreak, longestStreak, winCount, freezesAvailable } = stats;
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [unlocksModalVisible, setUnlocksModalVisible] = useState(false);
+  const nextUnlock = getNextUnlock(currentStreak);
 
   const handleEditAvatar = async () => {
     try {
@@ -137,6 +139,15 @@ const ProfileScreen: React.FC = () => {
             </View>
           )}
 
+          <TouchableOpacity onPress={() => setUnlocksModalVisible(true)} style={styles.nextUnlockRow} activeOpacity={0.7}>
+            <Text style={styles.nextUnlockText}>
+              {nextUnlock
+                ? `🎯 ${nextUnlock.label} in ${nextUnlock.threshold - currentStreak} ${nextUnlock.threshold - currentStreak === 1 ? 'day' : 'days'}`
+                : '🏆 All unlocks earned'}
+            </Text>
+            <Text style={styles.nextUnlockSee}>See all</Text>
+          </TouchableOpacity>
+
           <View style={styles.buttonContainer}>
             <TouchableOpacity onPress={() => navigation.navigate('Deets')} style={styles.buttonSecondary}>
               <Ionicons name="person-circle-outline" size={22} color={colors.textPrimary} style={styles.buttonIcon} />
@@ -165,6 +176,44 @@ const ProfileScreen: React.FC = () => {
           </View>
         </ScrollView>
       </LinearGradient>
+
+      <Modal visible={unlocksModalVisible} transparent animationType="fade" onRequestClose={() => setUnlocksModalVisible(false)}>
+        <TouchableWithoutFeedback onPress={() => setUnlocksModalVisible(false)}>
+          <View style={styles.modalBackdrop}>
+            <TouchableWithoutFeedback>
+              <View style={styles.modalCard}>
+                <Text style={styles.modalTitle}>Unlocks</Text>
+                <Text style={styles.modalSubtitle}>Earned by keeping your daily streak</Text>
+                {TIERS.map(tier => {
+                  const earned = currentStreak >= tier.threshold;
+                  const remaining = tier.threshold - currentStreak;
+                  return (
+                    <View key={tier.id} style={styles.tierRow}>
+                      <View style={styles.tierMark}>
+                        <Ionicons
+                          name={earned ? 'checkmark-circle' : 'lock-closed-outline'}
+                          size={20}
+                          color={earned ? colors.success : colors.textMuted}
+                        />
+                      </View>
+                      <View style={styles.tierBody}>
+                        <Text style={[styles.tierLabel, earned && styles.tierLabelEarned]}>{tier.label}</Text>
+                        <Text style={styles.tierDescription}>{tier.description}</Text>
+                      </View>
+                      <Text style={styles.tierMeta}>
+                        {earned ? `${tier.threshold}d` : `${remaining}d to go`}
+                      </Text>
+                    </View>
+                  );
+                })}
+                <TouchableOpacity onPress={() => setUnlocksModalVisible(false)} style={styles.modalCloseButton}>
+                  <Text style={styles.modalCloseText}>Close</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -280,6 +329,104 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 20,
     marginBottom: 16,
+  },
+  nextUnlockRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginHorizontal: 20,
+    marginBottom: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    backgroundColor: colors.cardOverlay75,
+    borderRadius: 12,
+  },
+  nextUnlockText: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 13,
+    color: colors.textPrimary,
+    flex: 1,
+  },
+  nextUnlockSee: {
+    fontFamily: 'Poppins_700Bold',
+    fontSize: 12,
+    color: colors.navy,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: colors.scrim50,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  modalCard: {
+    width: '100%',
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    padding: 20,
+  },
+  modalTitle: {
+    fontFamily: 'Poppins_700Bold',
+    fontSize: 20,
+    color: colors.textPrimary,
+    marginBottom: 4,
+  },
+  modalSubtitle: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 13,
+    color: colors.textMuted,
+    marginBottom: 16,
+  },
+  tierRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  tierMark: {
+    width: 28,
+    alignItems: 'center',
+    paddingTop: 2,
+  },
+  tierBody: {
+    flex: 1,
+    paddingHorizontal: 4,
+  },
+  tierLabel: {
+    fontFamily: 'Poppins_700Bold',
+    fontSize: 14,
+    color: colors.textPrimary,
+  },
+  tierLabelEarned: {
+    color: colors.success,
+  },
+  tierDescription: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 12,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  tierMeta: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 12,
+    color: colors.textMuted,
+    minWidth: 64,
+    textAlign: 'right',
+    paddingTop: 2,
+  },
+  modalCloseButton: {
+    marginTop: 16,
+    alignSelf: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+  },
+  modalCloseText: {
+    fontFamily: 'Poppins_700Bold',
+    fontSize: 14,
+    color: colors.navy,
   },
   buttonContainer: { flex: 1, alignItems: 'center' },
   buttonSecondary: {
