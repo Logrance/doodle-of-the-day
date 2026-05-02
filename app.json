@@ -38,6 +38,12 @@
           "icon": "./assets/icon.png",
           "color": "#023448"
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Doodle of the Day uses your photos to let you set a profile avatar."
+        }
       ]
     ],
     "extra": {
