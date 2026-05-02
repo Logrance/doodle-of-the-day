@@ -504,6 +504,7 @@ exports.getRoomResults = functions.https.onCall(async (data, context) => {
       return {
         id: d.id,
         image: dData.image,
+        imageUrl: dData.imageUrl,
         votes: dData.votes || 0,
         isYou: dData.userId === userId,
         reactions: dData.reactions || {},

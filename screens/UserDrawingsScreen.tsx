@@ -1,19 +1,19 @@
 import { useEffect, useState } from "react";
-import { View, Text, FlatList, Image, StyleSheet, Modal, TouchableWithoutFeedback, Dimensions, Alert } from "react-native";
+import { View, Text, FlatList, Image, StyleSheet, Modal, TouchableWithoutFeedback, Dimensions } from "react-native";
 import CowLoader from '../components/CowLoader';
 //import { getCallableFunction } from "../firebaseConfig";
 import { auth, db } from "../firebaseConfig";
 import { TouchableOpacity, GestureHandlerRootView } from 'react-native-gesture-handler';
-import * as Sharing from 'expo-sharing';
-import * as FileSystem from 'expo-file-system';
 import Entypo from '@expo/vector-icons/Entypo';
 import { collection, query, where, getDocs, orderBy, limit, startAfter } from "firebase/firestore";
 import { Timestamp } from "firebase/firestore";
 import { colors } from '../theme/colors';
+import { drawingImageUri, shareDrawing } from '../theme/drawingImage';
 
 interface Drawing {
     id: string;
-    image: string;
+    image?: string;
+    imageUrl?: string;
     date: any;
     theme: string;
 }
@@ -33,24 +33,7 @@ const UserDrawingsScreen = () => {
   const [lastVisible, setLastVisible] = useState(null);
   const [loadingMore, setLoadingMore] = useState(false);
 
-    // Function to handle share
-const handleShare = async (image: string) => {
-    
-    const base64Image = image.replace(/^data:image\/\w+;base64,/, "");
-  
-    const filename = `${FileSystem.cacheDirectory}shared-image.png`;
-    await FileSystem.writeAsStringAsync(filename, base64Image, { encoding: FileSystem.EncodingType.Base64 });
-
-  
-    if (await Sharing.isAvailableAsync()) {
-      await Sharing.shareAsync(filename, {
-        mimeType: 'image/png',
-        dialogTitle: 'Share your drawing!',
-      });
-    } else {
-      Alert.alert('Sharing unavailable', 'Sharing is not available on this device.');
-    }
-  }; 
+    const handleShare = (item: Drawing) => shareDrawing(item);
 
   const openModal = (imageUri: string) => {
     setSelectedImage(imageUri);
@@ -142,6 +125,7 @@ const handleShare = async (image: string) => {
         return {
           id: doc.id,
           image: data.image,
+          imageUrl: data.imageUrl,
           date,
           theme: data.theme,
         };
@@ -179,7 +163,7 @@ const handleShare = async (image: string) => {
         querySnapshotNext.forEach((doc) => {
           const data = doc.data();
           const date = data.date instanceof Timestamp ? data.date.toDate() : "";
-          newDrawings.push({ id: doc.id, image: data.image, date, theme: data.theme });
+          newDrawings.push({ id: doc.id, image: data.image, imageUrl: data.imageUrl, date, theme: data.theme });
         });
 
         setDrawings((prev) => [...prev, ...newDrawings]);
@@ -213,15 +197,15 @@ useEffect(() => {
                     contentContainerStyle={[styles.listContent, { alignItems: 'center' }]}
                     renderItem={({ item }) => (
                         <View style={[styles.drawingContainer, { width: cardWidth }]}>
-                            <TouchableOpacity onPress={() => openModal(`data:image/png;base64,${item.image}`)}>
+                            <TouchableOpacity onPress={() => openModal(drawingImageUri(item))}>
                                 <Image
-                                    source={{ uri: `data:image/png;base64,${item.image}` }}
+                                    source={{ uri: drawingImageUri(item) }}
                                     style={[styles.image, { width: cardWidth, height: cardWidth }]}
                                 />
                             </TouchableOpacity>
                             <View style={styles.cardFooter}>
                               <Text style={styles.themeText}>{item.theme}</Text>
-                              <TouchableOpacity onPress={() => handleShare(item.image)} style={styles.buttonOther}>
+                              <TouchableOpacity onPress={() => handleShare(item)} style={styles.buttonOther}>
                                 <Entypo name="share" size={18} color={colors.textMuted} />
                               </TouchableOpacity>
                             </View>

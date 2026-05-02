@@ -9,9 +9,8 @@ import { TouchableOpacity, GestureHandlerRootView } from 'react-native-gesture-h
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Entypo from '@expo/vector-icons/Entypo';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import * as Sharing from 'expo-sharing';
-import * as FileSystem from 'expo-file-system';
 import { useIsFocused } from '@react-navigation/native';
+import { drawingImageUri, shareDrawing } from '../../../theme/drawingImage';
 import ConfettiCannon from 'react-native-confetti-cannon';
 import { colors } from '../../../theme/colors';
 
@@ -21,7 +20,8 @@ type Drawing = {
   userId: string;
   date: number;
   votes: number;
-  image: string;
+  image?: string;
+  imageUrl?: string;
   isYou: boolean;
 };
 
@@ -31,7 +31,8 @@ type GetRoomDrawingsResponse = {
 
 type ResultDrawing = {
   id: string;
-  image: string;
+  image?: string;
+  imageUrl?: string;
   votes: number;
   isYou: boolean;
   reactions: Record<string, number>;
@@ -163,7 +164,7 @@ const handleReact = async (drawingId: string, type: string) => {
 };
 
 // Function to handle flagging
-const handleFlag = async (drawingId: string, image: string) => {
+const handleFlag = async (drawingId: string) => {
   Alert.alert(
     "Flag Content",
     "Are you sure you want to flag this drawing for review?",
@@ -178,10 +179,10 @@ const handleFlag = async (drawingId: string, image: string) => {
         onPress: async () => {
           try {
             const flagDrawing = getCallableFunction("flagDrawing");
-            const response = await flagDrawing({ drawingId, image }) as { data: { message: string } };
+            const response = await flagDrawing({ drawingId }) as { data: { message: string } };
             Alert.alert('Drawing flagged', response.data.message);
-          } catch (error) {
-            Alert.alert('Flag failed', 'Failed to flag drawing. Please try again later.');
+          } catch (error: any) {
+            Alert.alert('Flag failed', error?.message || 'Failed to flag drawing. Please try again later.');
           }
         },
       },
@@ -214,19 +215,7 @@ const handleVote = async (userId: string) => {
 };
 
 // Function to handle share
-const handleShare = async (image: string) => {
-  const filename = `${FileSystem.cacheDirectory}shared-image.jpg`;
-  await FileSystem.writeAsStringAsync(filename, image, { encoding: FileSystem.EncodingType.Base64 });
-
-  if (await Sharing.isAvailableAsync()) {
-    await Sharing.shareAsync(filename, {
-      mimeType: 'image/jpg',
-      dialogTitle: 'Share your drawing!',
-    });
-  } else {
-    Alert.alert('Sharing unavailable', 'Sharing is not available on this device.');
-  }
-};
+const handleShare = (item: Drawing | ResultDrawing) => shareDrawing(item);
 
 
 useEffect(() => {
@@ -337,9 +326,9 @@ useEffect(() => {
                           {drawing.isYou ? ' · you' : ''}
                         </Text>
                       </View>
-                      <TouchableOpacity onPress={() => openModal(`data:image/png;base64,${drawing.image}`)}>
+                      <TouchableOpacity onPress={() => openModal(drawingImageUri(drawing))}>
                         <Image
-                          source={{ uri: `data:image/png;base64,${drawing.image}` }}
+                          source={{ uri: drawingImageUri(drawing) }}
                           style={[styles.image, { width: cardWidth, height: cardWidth }]}
                         />
                       </TouchableOpacity>
@@ -399,9 +388,9 @@ useEffect(() => {
                   isOwn && styles.drawingContainerSelf,
                 ]}
               >
-                <TouchableOpacity onPress={() => openModal(`data:image/png;base64,${item.image}`)}>
+                <TouchableOpacity onPress={() => openModal(drawingImageUri(item))}>
                   <Image
-                    source={{ uri: `data:image/png;base64,${item.image}` }}
+                    source={{ uri: drawingImageUri(item) }}
                     style={[styles.image, { width: cardWidth, height: cardWidth }]}
                   />
                 </TouchableOpacity>
@@ -413,7 +402,7 @@ useEffect(() => {
                   )}
                   <View style={styles.buttonRow}>
                     {!isOwn && (
-                      <TouchableOpacity onPress={() => handleFlag(item.id, item.image)} style={styles.buttonIcon}>
+                      <TouchableOpacity onPress={() => handleFlag(item.id)} style={styles.buttonIcon}>
                         <Ionicons name="flag-outline" size={20} color={colors.textMuted} />
                       </TouchableOpacity>
                     )}
@@ -430,7 +419,7 @@ useEffect(() => {
                         <Text style={styles.buttonText}>{isChosen ? '✓ Voted' : 'Vote'}</Text>
                       </TouchableOpacity>
                     )}
-                    <TouchableOpacity onPress={() => handleShare(item.image)} style={styles.buttonIcon}>
+                    <TouchableOpacity onPress={() => handleShare(item)} style={styles.buttonIcon}>
                       <Entypo name="share" size={20} color={colors.textMuted} />
                     </TouchableOpacity>
                   </View>
