@@ -7,6 +7,9 @@ public final class DrawingCanvasView: ExpoView {
   private var lastPoint: CGPoint = .zero
   private var hasMoved: Bool = false
 
+  // GPU layer that holds the committed image — set its `.contents` directly so
+  // updates avoid the CPU draw(_:) blit path entirely.
+  private let backingLayer = CALayer()
   // GPU-accelerated layer for the in-progress stroke — avoids setNeedsDisplay on every event
   private let strokeLayer = CAShapeLayer()
 
@@ -18,6 +21,9 @@ public final class DrawingCanvasView: ExpoView {
     super.init(appContext: appContext)
     backgroundColor = bgColor
     isMultipleTouchEnabled = false
+
+    backingLayer.actions = ["contents": NSNull()]
+    layer.addSublayer(backingLayer)
 
     strokeLayer.strokeColor = strokeColor.cgColor
     strokeLayer.fillColor = UIColor.clear.cgColor
@@ -31,8 +37,12 @@ public final class DrawingCanvasView: ExpoView {
 
   public override func layoutSubviews() {
     super.layoutSubviews()
+    backingLayer.frame = bounds
     strokeLayer.frame = bounds
-    if backingImage == nil { createFreshBackingImage() }
+    if backingImage == nil {
+      createFreshBackingImage()
+      backingLayer.contents = backingImage?.cgImage
+    }
   }
 
   public override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
@@ -99,18 +109,11 @@ public final class DrawingCanvasView: ExpoView {
     }
     currentPath = nil
     strokeLayer.path = nil
-    setNeedsDisplay()
   }
 
   public override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
     currentPath = nil
     strokeLayer.path = nil
-    setNeedsDisplay()
-  }
-
-  public override func draw(_ rect: CGRect) {
-    // The live stroke is handled by strokeLayer; just paint the committed image here.
-    backingImage?.draw(in: bounds)
   }
 
   func setStrokeColor(_ hex: String) {
@@ -120,9 +123,9 @@ public final class DrawingCanvasView: ExpoView {
 
   func clear() {
     createFreshBackingImage()
+    backingLayer.contents = backingImage?.cgImage
     currentPath = nil
     strokeLayer.path = nil
-    setNeedsDisplay()
   }
 
   func makeImageSnapshot() -> String {
@@ -171,6 +174,7 @@ public final class DrawingCanvasView: ExpoView {
       ctx.cgContext.setLineJoin(.round)
       path.stroke()
     }
+    backingLayer.contents = backingImage?.cgImage
   }
 
   private func commitFilled(_ path: UIBezierPath) {
@@ -182,6 +186,7 @@ public final class DrawingCanvasView: ExpoView {
       strokeColor.setFill()
       path.fill()
     }
+    backingLayer.contents = backingImage?.cgImage
   }
 
   private func createFreshBackingImage() {

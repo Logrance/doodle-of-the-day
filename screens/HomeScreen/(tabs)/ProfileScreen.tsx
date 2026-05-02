@@ -11,7 +11,6 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors } from '../../../theme/colors';
 
 type RootStackParamList = {
-  Home: undefined;
   Welcome: undefined;
   UserDrawingsScreen: undefined;
   WinnerDrawingsScreen: undefined;

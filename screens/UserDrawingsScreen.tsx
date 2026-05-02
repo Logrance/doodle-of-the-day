@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { View, Text, FlatList, Image, StyleSheet, Modal, TouchableWithoutFeedback, Dimensions } from "react-native";
 import CowLoader from '../components/CowLoader';
-//import { getCallableFunction } from "../firebaseConfig";
 import { auth, db } from "../firebaseConfig";
 import { TouchableOpacity, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Entypo from '@expo/vector-icons/Entypo';
@@ -17,11 +16,6 @@ interface Drawing {
     date: any;
     theme: string;
 }
-
-/*type GetFetchUserDrawingsResponse = {
-  drawings: Drawing[];
-  lastDoc: string | null;
-}; */
 
 const UserDrawingsScreen = () => {
     const [drawings, setDrawings] = useState<Drawing[]>([]);
@@ -45,50 +39,6 @@ const UserDrawingsScreen = () => {
     setModalVisible(false);
   };
 
-
-   /* const fetchData = async () => {
-      setLoading(true)
-      try {
-        const fetchUserDrawings = getCallableFunction('fetchUserDrawings');
-        const response = await fetchUserDrawings();
-        
-
-        const data = response.data as GetFetchUserDrawingsResponse;
-
-    
-        setDrawings(data.drawings);
-        //setLastVisible(data.lastDoc);
-      } catch (error) {
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    const fetchNextData = async () => {
-      if (!lastVisible || loadingMore) return;
-    
-      setLoadingMore(true);
-      try {
-        const fetchNextUserDrawings = getCallableFunction('fetchNextUserDrawings');
-        const response = await fetchNextUserDrawings({ lastDoc: lastVisible });
-    
-        const data = response.data as GetFetchUserDrawingsResponse;
-
-        if (data.drawings.length === 0) {
-          return; 
-        }
-    
-        setDrawings((prev) => [...prev, ...data.drawings]);
-        //setLastVisible(data.lastDoc);
-      } catch (error) {
-      } finally {
-        setLoadingMore(false);
-      }
-    };
-
-    useEffect(() => {
-    fetchData();
-  }, []); */
 
   const fetchData = async () => {
     setLoading(true)

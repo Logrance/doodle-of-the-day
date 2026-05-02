@@ -2,7 +2,7 @@
   "expo": {
     "name": "Doodle of the Day",
     "slug": "Doodle-of-the-Day",
-    "version": "1.0.23",
+    "version": "1.0.24",
     "scheme": "doodleoftheday",
     "orientation": "portrait",
     "icon": "./assets/cow2_highcontrast.png",
@@ -16,7 +16,8 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.doodleOfThe.day",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "CADisableMinimumFrameDuration": true
       }
     },
     "android": {
@@ -35,7 +36,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/icon.png",
+          "icon": "./assets/cow_icon.png",
           "color": "#023448"
         }
       ],

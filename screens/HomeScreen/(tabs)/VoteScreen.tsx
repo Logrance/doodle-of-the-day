@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { usePhaseTimer } from '../../../hooks/usePhaseTimer';
 import { usePresence } from '../../../hooks/usePresence';
-import { View, StyleSheet, Image, FlatList, Text, Modal, Alert, TouchableWithoutFeedback, Dimensions, Platform, ScrollView } from 'react-native';
+import { View, StyleSheet, Image, FlatList, Text, Modal, Alert, TouchableWithoutFeedback, Dimensions, ScrollView } from 'react-native';
 import CowLoader from '../../../components/CowLoader';
 import { auth, db, getCallableFunction } from '../../../firebaseConfig';
 import { collection, query, orderBy, limit, onSnapshot } from "firebase/firestore";
