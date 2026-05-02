@@ -1,0 +1,51 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() { return request.auth != null; }
+    function isOwner(uid) { return isSignedIn() && request.auth.uid == uid; }
+    function changedKeysHasOnly(allowed) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(allowed);
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) && changedKeysHasOnly(['expoPushToken']);
+      allow delete: if isOwner(userId);
+    }
+
+    match /themes_today/{themeId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    match /drawings/{drawingsId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    match /flags/{flagId} {
+      allow read, write: if false;
+    }
+
+    match /user_votes/{votesId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    match /winners/{winnersId} {
+      allow read: if isSignedIn() && request.auth.uid == resource.data.userId;
+      allow write: if false;
+    }
+
+    match /usernames/{usernameLower} {
+      allow read, write: if false;
+    }
+
+    match /user_reactions/{reactionId} {
+      allow read, write: if false;
+    }
+  }
+}

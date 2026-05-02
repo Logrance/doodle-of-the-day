@@ -208,8 +208,8 @@ const handleVote = async (userId: string) => {
 
     fetchData();
     refreshPresence();
-  } catch (error) {
-    Alert.alert("Already voted");
+  } catch (error: any) {
+    Alert.alert("Couldn't vote", error?.message || "Please try again.");
   }
 };
 

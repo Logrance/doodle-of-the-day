@@ -6,6 +6,36 @@ const crypto = require("crypto");
 admin.initializeApp();
 const db = admin.firestore();
 
+const USERNAME_REGEX = /^[a-zA-Z0-9_]{2,20}$/;
+
+/**
+ * Throws unauthenticated if the callable context has no auth.
+ * @param {object} context Firebase callable context.
+ */
+function requireAuth(context) {
+  if (!context.auth) {
+    throw new functions.https.HttpsError(
+        "unauthenticated",
+        "User must be authenticated.",
+    );
+  }
+}
+
+/**
+ * Throws unauthenticated/permission-denied unless the caller is signed in
+ * with a verified email.
+ * @param {object} context Firebase callable context.
+ */
+function requireVerifiedEmail(context) {
+  requireAuth(context);
+  if (!context.auth.token.email_verified) {
+    throw new functions.https.HttpsError(
+        "permission-denied",
+        "Please verify your email before doing this.",
+    );
+  }
+}
+
 /**
  * Send push notifications via Expo's push API.
  * @param {Array<{to: string, title: string, body: string}>} messages
@@ -505,13 +535,7 @@ exports.getRoomResults = functions.https.onCall(async (data, context) => {
 });
 
 exports.toggleReaction = functions.https.onCall(async (data, context) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError(
-        "unauthenticated",
-        "User must be signed in.",
-    );
-  }
-
+  requireVerifiedEmail(context);
   const userId = context.auth.uid;
   const {drawingId, type} = data;
   if (!drawingId || !VALID_REACTIONS.includes(type)) {
@@ -576,39 +600,50 @@ exports.toggleReaction = functions.https.onCall(async (data, context) => {
 });
 
 exports.flagDrawing = functions.https.onCall(async (data, context) => {
-  // Check if the request is authenticated
-  if (!context.auth) {
-    throw new functions.https.HttpsError(
-        "unauthenticated",
-        "User must be authenticated to flag content.",
-    );
-  }
-
-  const {drawingId, image} = data;
+  requireVerifiedEmail(context);
   const flaggedBy = context.auth.uid;
-
-  // Validate the data
-  if (!drawingId || !image) {
+  const {drawingId} = data || {};
+  if (typeof drawingId !== "string" || !drawingId) {
     throw new functions.https.HttpsError(
         "invalid-argument",
-        "The function must be called with a drawingId and image.",
+        "drawingId is required.",
     );
   }
 
   try {
-    // Create a reference for a new document in the 'flags' collection
-    const flagRef = db.collection("flags").doc();
-
-    // Set the document data
+    const drawingRef = db.collection("drawings").doc(drawingId);
+    const drawingDoc = await drawingRef.get();
+    if (!drawingDoc.exists) {
+      throw new functions.https.HttpsError(
+          "not-found",
+          "Drawing does not exist.",
+      );
+    }
+    const drawingData = drawingDoc.data();
+    if (drawingData.userId === flaggedBy) {
+      throw new functions.https.HttpsError(
+          "permission-denied",
+          "You cannot flag your own drawing.",
+      );
+    }
+    // Dedupe: one flag per user per drawing.
+    const flagId = `${flaggedBy}_${drawingId}`;
+    const flagRef = db.collection("flags").doc(flagId);
+    const existing = await flagRef.get();
+    if (existing.exists) {
+      return {message: "Already flagged."};
+    }
     await flagRef.set({
       drawingId,
-      image,
+      drawingUserId: drawingData.userId,
+      drawingDate: drawingData.date || null,
+      drawingTheme: drawingData.theme || null,
       flaggedBy,
       timestamp: admin.firestore.FieldValue.serverTimestamp(),
     });
-
     return {message: "Drawing has been flagged for review."};
   } catch (error) {
+    if (error instanceof functions.https.HttpsError) throw error;
     console.error("Error flagging drawing:", error);
     throw new functions.https.HttpsError(
         "internal",
@@ -618,94 +653,150 @@ exports.flagDrawing = functions.https.onCall(async (data, context) => {
 });
 
 exports.handleVote = functions.https.onCall(async (data, context) => {
-  const {userId} = data;
+  requireVerifiedEmail(context);
   const currentUser = context.auth.uid;
-
-  if (!currentUser) {
+  // Client passes the drawing id under `userId` (legacy name); accept either.
+  const targetDrawingId = (data && (data.drawingId || data.userId)) || "";
+  if (typeof targetDrawingId !== "string" || !targetDrawingId) {
     throw new functions.https.HttpsError(
-        "unauthenticated",
-        "User must be authenticated.",
+        "invalid-argument",
+        "drawingId is required.",
     );
   }
 
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const startOfDay = today.getTime();
+  const endOfDay = startOfDay + 24 * 60 * 60 * 1000;
+  const dateKey = today.toISOString().split("T")[0];
+
+  // Caller must have submitted today; their drawing's roomId scopes who they
+  // can vote for.
+  const callerDrawingSnap = await db.collection("drawings")
+      .where("userId", "==", currentUser)
+      .where("date", ">=", startOfDay)
+      .where("date", "<", endOfDay)
+      .limit(1)
+      .get();
+  if (callerDrawingSnap.empty) {
+    throw new functions.https.HttpsError(
+        "failed-precondition",
+        "Submit a doodle today before voting.",
+    );
+  }
+  const callerRoomId = callerDrawingSnap.docs[0].data().roomId;
+  if (!callerRoomId) {
+    throw new functions.https.HttpsError(
+        "failed-precondition",
+        "Voting hasn't opened yet.",
+    );
+  }
+
+  const voteRef = db.collection("user_votes")
+      .doc(`${currentUser}_${dateKey}`);
+  const drawingRef = db.collection("drawings").doc(targetDrawingId);
+
   try {
-    // Date key for today's vote record
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const dateKey = today.toISOString().split("T")[0];
-
-    // Reference to the user's vote for today
-    const voteRef = db.collection("user_votes")
-        .doc(`${currentUser}_${dateKey}`);
-    const voteDoc = await voteRef.get();
-
-    // Check if the user has already voted today
-    if (voteDoc.exists) {
-      throw new functions.https.HttpsError(
-          "already-exists",
-          "User has already voted today.");
-    }
-
-    // Proceed to cast the vote
-    const drawingRef = db.collection("drawings").doc(userId);
     await db.runTransaction(async (transaction) => {
-      const drawingDoc = await transaction.get(drawingRef);
-
+      const [voteDoc, drawingDoc] = await Promise.all([
+        transaction.get(voteRef),
+        transaction.get(drawingRef),
+      ]);
+      if (voteDoc.exists) {
+        throw new functions.https.HttpsError(
+            "already-exists",
+            "User has already voted today.");
+      }
       if (!drawingDoc.exists) {
         throw new functions.https.HttpsError(
             "not-found",
             "Drawing does not exist.");
       }
-
-      if (drawingDoc.data().userId === currentUser) {
+      const drawingData = drawingDoc.data();
+      if (drawingData.userId === currentUser) {
         throw new functions.https.HttpsError(
             "permission-denied",
             "You can't vote for your own drawing.",
         );
       }
-
-      // Increment the vote count for the drawing
+      if (drawingData.roomId !== callerRoomId) {
+        throw new functions.https.HttpsError(
+            "permission-denied",
+            "You can only vote in your own room.",
+        );
+      }
+      const drawingDate = drawingData.date || 0;
+      if (drawingDate < startOfDay || drawingDate >= endOfDay) {
+        throw new functions.https.HttpsError(
+            "permission-denied",
+            "You can only vote on today's drawings.",
+        );
+      }
       transaction.update(drawingRef,
           {votes: admin.firestore.FieldValue.increment(1)});
-
-      // Store the vote in 'user_votes' collection
       transaction.set(voteRef, {
         userId: currentUser,
-        drawingId: userId,
+        drawingId: targetDrawingId,
         voteDate: admin.firestore.Timestamp.fromDate(today),
       });
     });
-
     return {message: "Vote successfully cast!"};
   } catch (error) {
+    if (error instanceof functions.https.HttpsError) throw error;
     console.error("Error casting vote:", error);
     throw new functions.https.HttpsError(
-        "unknown",
-        "Already voted");
+        "internal",
+        "Failed to cast vote.");
   }
 });
 
 exports.createUserDocument = functions.https.onCall(async (data, context) => {
-  const {username, email, userId} = data;
-
-  if (!context.auth) {
+  requireAuth(context);
+  const userId = context.auth.uid;
+  const email = context.auth.token.email || null;
+  const rawUsername = typeof data.username === "string" ?
+      data.username.trim() : "";
+  if (!USERNAME_REGEX.test(rawUsername)) {
     throw new functions.https.HttpsError(
-        "unauthenticated",
-        "User must be authenticated.",
+        "invalid-argument",
+        "Username must be 2–20 characters: letters, numbers, or underscore.",
     );
   }
+  const usernameLower = rawUsername.toLowerCase();
+  const userRef = db.collection("users").doc(userId);
+  const usernameRef = db.collection("usernames").doc(usernameLower);
 
   try {
-    await db.collection("users").doc(userId).set({
-      username,
-      email,
-      userId,
-      winCount: 0,
-      hasSeenTutorial: false,
-      isVerified: false,
+    await db.runTransaction(async (tx) => {
+      const [existingUser, existingUsername] = await Promise.all([
+        tx.get(userRef),
+        tx.get(usernameRef),
+      ]);
+      if (existingUser.exists) {
+        throw new functions.https.HttpsError(
+            "already-exists",
+            "User document already exists.",
+        );
+      }
+      if (existingUsername.exists) {
+        throw new functions.https.HttpsError(
+            "already-exists",
+            "Username is taken.",
+        );
+      }
+      tx.set(userRef, {
+        username: rawUsername,
+        email,
+        userId,
+        winCount: 0,
+        hasSeenTutorial: false,
+        isVerified: false,
+      });
+      tx.set(usernameRef, {userId});
     });
     return {success: true};
   } catch (error) {
+    if (error instanceof functions.https.HttpsError) throw error;
     throw new functions.https.HttpsError(
         "internal",
         "Failed to create user document.",
@@ -714,14 +805,21 @@ exports.createUserDocument = functions.https.onCall(async (data, context) => {
 });
 
 exports.addImageToDB = functions.https.onCall(async (data, context) => {
-  if (!context.auth) {
+  requireVerifiedEmail(context);
+  const {imageBase64} = data || {};
+  if (typeof imageBase64 !== "string" || imageBase64.length < 100) {
     throw new functions.https.HttpsError(
-        "unauthenticated",
-        "User must be authenticated to submit a drawing.",
+        "invalid-argument",
+        "imageBase64 is required.",
     );
   }
-
-  const {imageBase64} = data;
+  // ~250 KB base64 ≈ ~185 KB binary — generous for a 1080-square PNG/JPEG.
+  if (imageBase64.length > 250000) {
+    throw new functions.https.HttpsError(
+        "invalid-argument",
+        "Drawing is too large.",
+    );
+  }
   const userId = context.auth.uid;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -908,41 +1006,63 @@ exports.updateTutorialStatus = functions.https.onCall(async (data, context) => {
   }
 });
 
-exports.deleteUserAccount = functions.https.onCall(async (data, context) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError(
-        "unauthenticated",
-        "User must be authenticated.",
-    );
+/**
+ * Deletes every document matching a query, in 400-doc Firestore batches.
+ * @param {FirebaseFirestore.Query} query The query whose results to delete.
+ */
+async function deleteByQuery(query) {
+  const snap = await query.get();
+  if (snap.empty) return;
+  const docs = snap.docs;
+  for (let i = 0; i < docs.length; i += 400) {
+    const batch = db.batch();
+    docs.slice(i, i + 400).forEach((doc) => batch.delete(doc.ref));
+    await batch.commit();
   }
+}
 
+exports.deleteUserAccount = functions.https.onCall(async (data, context) => {
+  requireAuth(context);
   const uid = context.auth.uid;
 
   try {
-    const batch = db.batch();
-    const winnersQuerySnapshot = await db.collection("winners")
-        .where("userId", "==", uid).get();
-    winnersQuerySnapshot.forEach((doc) => batch.delete(doc.ref));
-    const drawingsQuerySnapshot = await db.collection("drawings")
-        .where("userId", "==", uid).get();
-    drawingsQuerySnapshot.forEach((doc) => batch.delete(doc.ref));
-    const votesQuerySnapshot = await db.collection("user_votes")
-        .where("userId", "==", uid).get();
-    votesQuerySnapshot.forEach((doc) => batch.delete(doc.ref));
-    const flagsQuerySnapshot = await db.collection("flags")
-        .where("flaggedBy", "==", uid).get();
-    flagsQuerySnapshot.forEach((doc) => batch.delete(doc.ref));
-    await batch.commit();
-    // Delete user from Firestore
-    await admin.firestore().collection("users").doc(uid).delete();
-    // Delete user from Authentication
+    await Promise.all([
+      deleteByQuery(db.collection("winners").where("userId", "==", uid)),
+      deleteByQuery(db.collection("drawings").where("userId", "==", uid)),
+      deleteByQuery(db.collection("user_votes").where("userId", "==", uid)),
+      deleteByQuery(db.collection("flags").where("flaggedBy", "==", uid)),
+      deleteByQuery(db.collection("user_reactions").where("userId", "==", uid)),
+    ]);
+
+    // Free up the username registry slot (best-effort; older accounts may not
+    // have one).
+    const userDoc = await db.collection("users").doc(uid).get();
+    if (userDoc.exists) {
+      const username = userDoc.data().username;
+      if (typeof username === "string" && username) {
+        const usernameLower = username.trim().toLowerCase();
+        await db.collection("usernames").doc(usernameLower).delete()
+            .catch((e) => console.error("Username slot delete failed:", e));
+      }
+    }
+
+    // Best-effort delete of any avatar files this user owns. We try both
+    // extensions since setAvatar now picks based on magic bytes.
+    const bucket = admin.storage().bucket();
+    await Promise.all([
+      bucket.file(`avatars/${uid}.jpg`).delete().catch(() => {}),
+      bucket.file(`avatars/${uid}.png`).delete().catch(() => {}),
+    ]);
+
+    await db.collection("users").doc(uid).delete();
     await admin.auth().deleteUser(uid);
 
     return {message: "Account deleted successfully"};
   } catch (error) {
+    console.error("deleteUserAccount error:", error);
     throw new functions.https.HttpsError(
         "internal",
-        "Error deleting account: " + error.message);
+        "Error deleting account: " + (error.message || "unknown"));
   }
 });
 
@@ -1318,12 +1438,7 @@ exports.getUserStats = functions.https.onCall(async (data, context) => {
 });
 
 exports.setAvatar = functions.https.onCall(async (data, context) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError(
-        "unauthenticated",
-        "User must be authenticated.",
-    );
-  }
+  requireAuth(context);
   const userId = context.auth.uid;
   const {imageBase64} = data || {};
   if (typeof imageBase64 !== "string" || imageBase64.length < 100) {
@@ -1332,22 +1447,49 @@ exports.setAvatar = functions.https.onCall(async (data, context) => {
         "imageBase64 is required.",
     );
   }
-  // Reject anything wildly oversized — picker is set to quality 0.5
-  // so a square avatar should land well under 1 MB even at high res.
   if (imageBase64.length > 2000000) {
     throw new functions.https.HttpsError(
         "invalid-argument",
         "Avatar image is too large.",
     );
   }
+  let buffer;
+  try {
+    buffer = Buffer.from(imageBase64, "base64");
+  } catch (e) {
+    throw new functions.https.HttpsError(
+        "invalid-argument",
+        "imageBase64 is not valid base64.",
+    );
+  }
+  // Magic-byte sniff: JPEG starts with FF D8 FF; PNG starts with 89 50 4E 47.
+  // We accept either and label the stored file accordingly so we don't claim
+  // image/jpeg for arbitrary user-supplied bytes.
+  let contentType;
+  let extension;
+  if (buffer.length >= 3 &&
+      buffer[0] === 0xFF && buffer[1] === 0xD8 && buffer[2] === 0xFF) {
+    contentType = "image/jpeg";
+    extension = "jpg";
+  } else if (buffer.length >= 4 &&
+      buffer[0] === 0x89 && buffer[1] === 0x50 &&
+      buffer[2] === 0x4E && buffer[3] === 0x47) {
+    contentType = "image/png";
+    extension = "png";
+  } else {
+    throw new functions.https.HttpsError(
+        "invalid-argument",
+        "Avatar must be a JPEG or PNG image.",
+    );
+  }
   try {
     const bucket = admin.storage().bucket();
-    const filePath = `avatars/${userId}.jpg`;
+    const filePath = `avatars/${userId}.${extension}`;
     const file = bucket.file(filePath);
     const token = crypto.randomBytes(16).toString("hex");
-    await file.save(Buffer.from(imageBase64, "base64"), {
+    await file.save(buffer, {
       metadata: {
-        contentType: "image/jpeg",
+        contentType,
         metadata: {firebaseStorageDownloadTokens: token},
       },
     });

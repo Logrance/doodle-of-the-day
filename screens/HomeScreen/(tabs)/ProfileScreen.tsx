@@ -28,35 +28,38 @@ const ProfileScreen: React.FC = () => {
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
 
   const handleEditAvatar = async () => {
-    let ImagePicker: typeof import('expo-image-picker');
     try {
-      ImagePicker = require('expo-image-picker');
-    } catch {
-      Alert.alert('Update needed', 'Avatar uploads need the latest app version. Please update from TestFlight.');
-      return;
-    }
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) {
-      Alert.alert('Permission required', 'Please allow photo library access to set an avatar.');
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.5,
-      base64: true,
-    });
-    if (result.canceled || !result.assets?.[0]?.base64) return;
-    setIsUploadingAvatar(true);
-    try {
-      const setAvatar = getCallableFunction('setAvatar');
-      await setAvatar({ imageBase64: result.assets[0].base64 });
-      refresh();
+      const ImagePicker = require('expo-image-picker');
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert('Permission required', 'Please allow photo library access to set an avatar.');
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.5,
+        base64: true,
+      });
+      if (result.canceled || !result.assets?.[0]?.base64) return;
+      setIsUploadingAvatar(true);
+      try {
+        const setAvatar = getCallableFunction('setAvatar');
+        await setAvatar({ imageBase64: result.assets[0].base64 });
+        refresh();
+      } catch (error: any) {
+        Alert.alert('Upload failed', error.message || 'Could not upload avatar.');
+      } finally {
+        setIsUploadingAvatar(false);
+      }
     } catch (error: any) {
-      Alert.alert('Upload failed', error.message || 'Could not upload avatar.');
-    } finally {
-      setIsUploadingAvatar(false);
+      const msg: string = error?.message ?? '';
+      if (/native module|requireNativeModule|ExponentImagePicker/i.test(msg)) {
+        Alert.alert('Update needed', 'Avatar uploads need the latest app version. Please update from TestFlight once the new build is available.');
+      } else {
+        Alert.alert('Avatar', msg || 'Could not open the photo picker.');
+      }
     }
   };
 
