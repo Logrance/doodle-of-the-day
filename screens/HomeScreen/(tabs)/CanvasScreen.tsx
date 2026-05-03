@@ -115,7 +115,6 @@ export default function CanvasScreen() {
       refreshPresence();
     } catch (error) {
       Alert.alert("Submission Failed", error.message || "Error submitting drawing");
-      clearCanvas();
     }
   };
 

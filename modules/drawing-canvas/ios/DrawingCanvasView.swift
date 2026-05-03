@@ -129,7 +129,13 @@ public final class DrawingCanvasView: ExpoView {
   }
 
   func makeImageSnapshot() -> String {
-    let renderer = UIGraphicsImageRenderer(bounds: bounds)
+    // Pin to @2x regardless of native device scale. At @3x (iPhone 13+ Pro)
+    // the default renderer produced ~2 MP PNGs that exceeded the server
+    // payload cap; @2x is plenty crisp when redisplayed at canvas size.
+    let format = UIGraphicsImageRendererFormat.default()
+    format.scale = 2.0
+    format.opaque = true
+    let renderer = UIGraphicsImageRenderer(bounds: bounds, format: format)
     let image = renderer.image { ctx in
       bgColor.setFill()
       ctx.fill(bounds)

@@ -814,8 +814,9 @@ exports.addImageToDB = functions.https.onCall(async (data, context) => {
         "imageBase64 is required.",
     );
   }
-  // ~250 KB base64 ≈ ~185 KB binary — generous for a 1080-square PNG/JPEG.
-  if (imageBase64.length > 250000) {
+  // ~1 MB base64 ≈ ~750 KB binary — covers iOS @3x snapshots (iPhone 13+
+  // Pro renders ~1170×1800 PNGs straight off the device scale).
+  if (imageBase64.length > 1000000) {
     throw new functions.https.HttpsError(
         "invalid-argument",
         "Drawing is too large.",
