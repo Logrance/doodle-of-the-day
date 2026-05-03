@@ -23,6 +23,7 @@
     "android": {
       "package": "com.doodleOfThe.day",
       "versionCode": 23,
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/cow2_highcontrast.png",
         "backgroundColor": "#ffffff"

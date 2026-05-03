@@ -33,3 +33,7 @@ yarn-error.*
 
 # typescript
 *.tsbuildinfo
+
+# Firebase admin SDK private keys — NEVER commit
+*firebase-adminsdk*.json
+*service-account*.json

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "844780326712",
+    "project_id": "doodle-of-the-day-a7278",
+    "storage_bucket": "doodle-of-the-day-a7278.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:844780326712:android:f98145b73100293de2bbcd",
+        "android_client_info": {
+          "package_name": "com.doodleOfThe.day"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDx8yce9WtEPdCoQT40XAtfoK5YqrTQA3E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
