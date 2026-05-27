@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, Image, SafeAreaView, ScrollView, Share, Alert, ActivityIndicator, Modal, TouchableWithoutFeedback } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, Image, SafeAreaView, ScrollView, Share, Alert, ActivityIndicator, Modal, TouchableWithoutFeedback, TextInput, Linking } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Badge from '../../../components/Badge';
 import { hasUnlock, getStreakColor, getNextUnlock, TIERS } from '../../../theme/unlocks';
@@ -9,6 +9,7 @@ import { useNavigation } from '@react-navigation/core';
 import { StackNavigationProp } from '@react-navigation/stack';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors } from '../../../theme/colors';
+import FeatureTip from '../../../components/FeatureTip';
 
 type RootStackParamList = {
   Welcome: undefined;
@@ -23,10 +24,34 @@ type RootStackParamList = {
 const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const { stats, refresh } = useCachedUserStats();
-  const { username, avatarUrl, currentStreak, longestStreak, winCount, freezesAvailable } = stats;
+  const { username, avatarUrl, currentStreak, longestStreak, winCount, freezesAvailable, profileLink } = stats;
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [unlocksModalVisible, setUnlocksModalVisible] = useState(false);
+  const [linkModalVisible, setLinkModalVisible] = useState(false);
+  const [linkInput, setLinkInput] = useState('');
+  const [savingLink, setSavingLink] = useState(false);
   const nextUnlock = getNextUnlock(currentStreak);
+
+  const displayLink = (url: string) => url.replace(/^https?:\/\//i, '').replace(/\/$/, '');
+
+  const openLinkModal = () => {
+    setLinkInput(profileLink || '');
+    setLinkModalVisible(true);
+  };
+
+  const saveLink = async (url: string) => {
+    setSavingLink(true);
+    try {
+      const setProfileLink = getCallableFunction('setProfileLink');
+      await setProfileLink({ url });
+      await refresh();
+      setLinkModalVisible(false);
+    } catch (e: any) {
+      Alert.alert('Link not saved', e?.message || 'Please try again.');
+    } finally {
+      setSavingLink(false);
+    }
+  };
 
   const handleEditAvatar = async () => {
     try {
@@ -67,7 +92,6 @@ const ProfileScreen: React.FC = () => {
   const handleSignOut = async () => {
     try {
       await auth.signOut();
-      navigation.replace('Welcome');
     } catch (error: any) {
       Alert.alert('Error', error.message);
     }
@@ -76,7 +100,10 @@ const ProfileScreen: React.FC = () => {
   const handleInvite = async () => {
     try {
       await Share.share({
-        message: 'Doodle with me on Doodle of the Day — one theme, one doodle, every day. https://doodleoftheday.app',
+        message:
+          'Doodle with me on Doodle of the Day — one theme, one doodle, every day.\n\n' +
+          'iPhone: https://apps.apple.com/app/id6739217458\n' +
+          'Android: https://play.google.com/store/apps/details?id=com.doodleOfThe.day',
       });
     } catch (error: any) {
       Alert.alert('Error', error.message);
@@ -103,7 +130,28 @@ const ProfileScreen: React.FC = () => {
               </View>
             </TouchableOpacity>
             {username ? <Text style={styles.usernameText}>{username}</Text> : null}
+            {profileLink ? (
+              <TouchableOpacity onPress={openLinkModal} style={styles.linkRow} activeOpacity={0.7}>
+                <Ionicons name="link-outline" size={14} color={colors.navy} />
+                <Text style={styles.linkText} numberOfLines={1}>{displayLink(profileLink)}</Text>
+                <Ionicons name="pencil" size={12} color={colors.textMuted} />
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity onPress={openLinkModal} style={styles.addLinkButton} activeOpacity={0.7}>
+                <Ionicons name="add" size={16} color={colors.navy} />
+                <Text style={styles.addLinkText}>Add a link</Text>
+              </TouchableOpacity>
+            )}
           </View>
+
+          {!profileLink && (
+            <FeatureTip
+              tipId="profile-add-link"
+              style={styles.linkTip}
+              title="Showcase your work"
+              text="Add a link to your profile so people can find your art, socials or website."
+            />
+          )}
 
           <View style={styles.statsRow}>
             <View style={styles.statCard}>
@@ -214,6 +262,48 @@ const ProfileScreen: React.FC = () => {
           </View>
         </TouchableWithoutFeedback>
       </Modal>
+
+      <Modal visible={linkModalVisible} transparent animationType="fade" onRequestClose={() => setLinkModalVisible(false)}>
+        <TouchableWithoutFeedback onPress={() => setLinkModalVisible(false)}>
+          <View style={styles.modalBackdrop}>
+            <TouchableWithoutFeedback>
+              <View style={styles.modalCard}>
+                <Text style={styles.modalTitle}>Your link</Text>
+                <Text style={styles.modalSubtitle}>
+                  Add a website or social link for others to find your work.
+                </Text>
+                <TextInput
+                  style={styles.linkInput}
+                  value={linkInput}
+                  onChangeText={setLinkInput}
+                  placeholder="yourwebsite.com"
+                  placeholderTextColor={colors.textPlaceholder}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="url"
+                  editable={!savingLink}
+                />
+                <TouchableOpacity
+                  onPress={() => saveLink(linkInput.trim())}
+                  style={[styles.linkSaveButton, savingLink && { opacity: 0.6 }]}
+                  disabled={savingLink}
+                >
+                  <Text style={styles.linkSaveText}>{savingLink ? 'Saving…' : 'Save'}</Text>
+                </TouchableOpacity>
+                {profileLink ? (
+                  <TouchableOpacity onPress={() => saveLink('')} style={styles.modalCloseButton} disabled={savingLink}>
+                    <Text style={[styles.modalCloseText, { color: colors.danger }]}>Remove link</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity onPress={() => setLinkModalVisible(false)} style={styles.modalCloseButton}>
+                    <Text style={styles.modalCloseText}>Cancel</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -276,6 +366,56 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins_700Bold',
     fontSize: 24,
     color: colors.textPrimary,
+  },
+  linkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 6,
+    maxWidth: '80%',
+  },
+  linkText: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 13,
+    color: colors.navy,
+    flexShrink: 1,
+  },
+  addLinkButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    marginTop: 6,
+  },
+  addLinkText: {
+    fontFamily: 'Poppins_700Bold',
+    fontSize: 13,
+    color: colors.navy,
+  },
+  linkInput: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 15,
+    color: colors.textPrimary,
+    marginBottom: 16,
+  },
+  linkSaveButton: {
+    backgroundColor: colors.navy,
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  linkSaveText: {
+    fontFamily: 'Poppins_700Bold',
+    fontSize: 15,
+    color: colors.white,
+  },
+  linkTip: {
+    marginHorizontal: 20,
+    marginBottom: 20,
   },
   statsRow: {
     flexDirection: 'row',

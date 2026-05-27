@@ -1,4 +1,11 @@
-# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+# EAS uses .easignore instead of .gitignore when present, so this mirrors
+# .gitignore and additionally excludes the local root native projects so EAS
+# does a clean managed (CNG) prebuild — matching how production builds are made.
+# (The leading slash anchors to root, so modules/drawing-canvas/ios is kept.)
+
+# Native projects — force a managed prebuild on EAS
+/ios
+/android
 
 # dependencies
 node_modules/
@@ -15,10 +22,6 @@ web-build/
 *.p12
 *.key
 *.mobileprovision
-
-# Generated native projects (managed/CNG — EAS prebuilds these; see .easignore)
-/ios/
-/android/
 
 # Metro
 .metro-health-check*

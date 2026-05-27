@@ -10,9 +10,11 @@ import { StatusBar } from 'expo-status-bar';
 import { db, getCallableFunction } from '../../../firebaseConfig';
 import AntDesign from '@expo/vector-icons/AntDesign';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import type { DrawingCanvasRef } from 'drawing-canvas';
 import { colors } from '../../../theme/colors';
-import { getStreakColor } from '../../../theme/unlocks';
+import { getStreakColor, hasUnlock } from '../../../theme/unlocks';
+import FeatureTip from '../../../components/FeatureTip';
 
 // Android-only imports — not evaluated on iOS
 let Canvas: any, Path: any, Skia: any, Rect: any;
@@ -43,14 +45,17 @@ export default function CanvasScreen() {
   const { stats, refresh: refreshStats } = useCachedUserStats();
   const { currentStreak, paletteAvailable, freezesAvailable } = stats;
   const [selectedColor, setSelectedColor] = useState('#000000');
+  // Eraser is a white brush over the opaque-white canvas (unlocked at 21-day
+  // streak). No native change needed — it reuses the existing strokeColor path.
+  const [eraserActive, setEraserActive] = useState(false);
+  const eraserUnlocked = hasUnlock(currentStreak, 'eraser');
+  const ERASER_COLOR = '#FFFFFF';
 
   const PALETTE = ['#000000', '#800000', '#0047AB', '#50C878', '#FF7800', '#6B2FA0'];
 
   const paletteHint = (() => {
-    if (paletteAvailable) return '🎨 Colours unlocked — use them today!';
-    if (currentStreak === 0) return '🔥 Draw 3 days in a row to unlock colours';
-    if (currentStreak % 3 === 0) return '🎨 Colours unlock tomorrow — keep your streak alive!';
-    const remaining = 3 - (currentStreak % 3);
+    if (paletteAvailable) return '🎨 Colours unlocked!';
+    const remaining = Math.max(1, 3 - currentStreak);
     return `🎨 ${remaining} more day${remaining === 1 ? '' : 's'} to unlock colours`;
   })();
 
@@ -186,7 +191,7 @@ export default function CanvasScreen() {
         <DrawingCanvas
           ref={nativeCanvasRef}
           style={{ flex: 8 }}
-          strokeColor={selectedColor}
+          strokeColor={eraserActive ? ERASER_COLOR : selectedColor}
         />
       );
     }
@@ -241,6 +246,16 @@ export default function CanvasScreen() {
             )}
           </View>
 
+          {eraserUnlocked && (
+            <FeatureTip
+              tipId="eraser-unlocked"
+              style={styles.eraserTip}
+              arrow="down"
+              title="🎉 Eraser unlocked!"
+              text="You hit a 21-day streak — tap the eraser in your palette to rub out mistakes."
+            />
+          )}
+
           <View style={styles.paletteRow}>
             {PALETTE.map((color, index) => {
               const isBlack = index === 0;
@@ -250,13 +265,14 @@ export default function CanvasScreen() {
                   key={color}
                   disabled={locked}
                   onPress={() => {
+                    setEraserActive(false);
                     setSelectedColor(color);
                     currentColor.current = color;
                   }}
                   style={[
                     styles.swatch,
                     { backgroundColor: locked ? colors.textDisabled : color },
-                    !locked && selectedColor === color && styles.swatchSelected,
+                    !locked && !eraserActive && selectedColor === color && styles.swatchSelected,
                   ]}
                 >
                   {locked && (
@@ -265,6 +281,30 @@ export default function CanvasScreen() {
                 </TouchableOpacity>
               );
             })}
+            <TouchableOpacity
+              disabled={!eraserUnlocked}
+              onPress={() => {
+                setEraserActive(true);
+                currentColor.current = ERASER_COLOR;
+              }}
+              style={[
+                styles.swatch,
+                styles.eraserSwatch,
+                eraserActive && styles.swatchSelected,
+              ]}
+              accessibilityLabel={eraserUnlocked ? 'Eraser' : 'Eraser locked'}
+            >
+              <MaterialCommunityIcons
+                name="eraser"
+                size={16}
+                color={eraserUnlocked ? colors.textSecondary : colors.textDisabled}
+              />
+              {!eraserUnlocked && (
+                <View style={styles.eraserLockBadge}>
+                  <AntDesign name="lock" size={9} color={colors.white} />
+                </View>
+              )}
+            </TouchableOpacity>
           </View>
           <View style={styles.paletteHint}>
             <Text style={styles.paletteHintText}>{paletteHint}</Text>
@@ -289,14 +329,24 @@ export default function CanvasScreen() {
               </Text>
             </View>
 
-            <TouchableOpacity
-              onPress={captureCanvas}
-              style={styles.submitButton}
-              accessibilityLabel="Submit drawing"
-            >
-              <MaterialIcons name="check-circle" size={18} color={colors.white} />
-              <Text style={styles.submitButtonText}>Submit</Text>
-            </TouchableOpacity>
+            {phase === 'drawing' ? (
+              <TouchableOpacity
+                onPress={captureCanvas}
+                style={styles.submitButton}
+                accessibilityLabel="Submit drawing"
+              >
+                <MaterialIcons name="check-circle" size={18} color={colors.white} />
+                <Text style={styles.submitButtonText}>Submit</Text>
+              </TouchableOpacity>
+            ) : (
+              <View
+                style={[styles.submitButton, styles.submitButtonDisabled]}
+                accessibilityLabel="Submissions closed for today"
+              >
+                <MaterialIcons name="lock-outline" size={18} color={colors.white} />
+                <Text style={styles.submitButtonText}>Closed</Text>
+              </View>
+            )}
           </View>
 
           <Modal visible={isVisible} transparent={true} animationType="fade">
@@ -316,7 +366,7 @@ export default function CanvasScreen() {
                   </Text>
                 </View>
                 <Text style={styles.modalFootnote}>
-                  The canvas has no eraser and starts in black ink. Build a 3-day streak to unlock the colour palette.
+                  The canvas starts in black ink — keep your daily streak to unlock colours and an eraser.
                 </Text>
                 <TouchableOpacity onPress={handleModalClose} style={styles.modalButton}>
                   <Text style={styles.buttonText}>Got it</Text>
@@ -360,6 +410,11 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: 14,
     fontFamily: 'Poppins_700Bold',
+  },
+  submitButtonDisabled: {
+    backgroundColor: colors.textPlaceholder,
+    shadowOpacity: 0,
+    elevation: 0,
   },
   deleteButton: {
     padding: 8,
@@ -449,6 +504,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 1,
   },
+  eraserTip: {
+    marginHorizontal: 16,
+    marginBottom: 4,
+  },
   paletteRow: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -472,6 +531,23 @@ const styles = StyleSheet.create({
   },
   lockIcon: {
     position: 'absolute',
+  },
+  eraserSwatch: {
+    backgroundColor: colors.surfaceMuted,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  eraserLockBadge: {
+    position: 'absolute',
+    right: -2,
+    bottom: -2,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: colors.textMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   paletteHint: {
     alignItems: 'center',

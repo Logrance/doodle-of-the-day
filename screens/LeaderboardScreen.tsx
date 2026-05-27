@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { View, Text, FlatList, StyleSheet, Dimensions, TouchableOpacity } from "react-native";
 import CowLoader from '../components/CowLoader';
+import { useNavigation } from "@react-navigation/native";
 import { auth, getCallableFunction } from "../firebaseConfig";
 import { colors } from '../theme/colors';
 import { hasUnlock } from '../theme/unlocks';
+import FeatureTip from '../components/FeatureTip';
 
 interface User {
   id: string;
@@ -16,6 +18,12 @@ const tierMark = (streak: number): string | null => {
   if (hasUnlock(streak, 'master')) return '👑';
   if (hasUnlock(streak, 'veteran')) return '⭐';
   return null;
+};
+
+const ord = (n: number): string => {
+  const s = ['th', 'st', 'nd', 'rd'];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
 };
 
 type GetLeaderboardResponse = {
@@ -39,6 +47,9 @@ const LeaderboardScreen = () => {
   const [currentUserRank, setCurrentUserRank] = useState<number | null>(null);
   const [currentUserData, setCurrentUserData] = useState<User | null>(null);
   const [range, setRange] = useState<Range>('all');
+  const navigation = useNavigation<any>();
+  const openProfile = (id: string) =>
+    navigation.navigate('PublicProfileScreen', { userId: id });
 
   const fetchLeaderboard = async (selected: Range) => {
     setLoading(true);
@@ -64,18 +75,45 @@ const LeaderboardScreen = () => {
   const { height: screenHeight } = Dimensions.get('window');
   const loaderSize = screenHeight < 667 ? 80 : 100;
 
-  const top3 = users.slice(0, 3);
-  const rest = users.slice(3);
+  // Dense ranking: tied users share a rank, next distinct count is rank+1
+  // (so three tied for 1st → next user is 2nd, not 4th).
+  const ranks: number[] = [];
+  users.forEach((u, i) => {
+    if (i === 0) ranks.push(1);
+    else if (u.winCount === users[i - 1].winCount) ranks.push(ranks[i - 1]);
+    else ranks.push(ranks[i - 1] + 1);
+  });
 
-  const podiumOrder = [top3[1], top3[0], top3[2]];
+  const usersByRank = new Map<number, User[]>();
+  users.forEach((u, i) => {
+    const r = ranks[i];
+    const arr = usersByRank.get(r) ?? [];
+    arr.push(u);
+    usersByRank.set(r, arr);
+  });
+
+  // Podium positions: silver-left, gold-centre, bronze-right.
   const podiumHeights = [70, 96, 56];
   const podiumMedals = ['🥈', '🥇', '🥉'];
-  const podiumPlaces = [2, 1, 3];
+  const podiumOrder: number[] = [2, 1, 3];
+  const podiumSlots = podiumOrder.map((rank) => {
+    const arr = usersByRank.get(rank) ?? [];
+    return { rank, user: arr.length === 1 ? arr[0] : null, tied: arr.length > 1 };
+  });
+
+  // Ties that landed on a podium rank — surfaced as a group above the list.
+  const tiedPodiumGroups = [1, 2, 3]
+    .map((rank) => ({ rank, users: usersByRank.get(rank) ?? [] }))
+    .filter((g) => g.users.length > 1);
+
+  // Everyone below the podium ranks goes in the regular list.
+  const listEntries = users
+    .map((user, i) => ({ user, rank: ranks[i] }))
+    .filter((e) => e.rank > 3);
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Leaderboard</Text>
         <View style={styles.segmented}>
           {(Object.keys(RANGE_LABELS) as Range[]).map((r) => (
             <TouchableOpacity
@@ -96,36 +134,69 @@ const LeaderboardScreen = () => {
         </View>
       ) : (
         <>
-          {top3.length > 0 && (
+          {users.length > 0 && (
+            <FeatureTip
+              tipId="tap-author-names"
+              style={styles.tipSpacing}
+              title="Explore artists"
+              text="Tap anyone's name to see their profile and favourite drawings."
+            />
+          )}
+          {users.length > 0 && (
             <View style={styles.podiumContainer}>
-              {podiumOrder.map((u, i) => {
-                if (!u) return <View key={`empty-${i}`} style={[styles.podiumSlot, { opacity: 0 }]} />;
-                const place = podiumPlaces[i];
-                return (
-                  <View key={u.id} style={styles.podiumSlot}>
-                    <Text style={styles.podiumMedal}>{podiumMedals[i]}</Text>
-                    <Text
-                      style={[styles.podiumName, u.id === currentUserId && styles.podiumNameSelf]}
-                      numberOfLines={1}
+              {podiumSlots.map((slot, i) => {
+                if (slot.user) {
+                  const u = slot.user;
+                  return (
+                    <TouchableOpacity
+                      key={`slot-${slot.rank}`}
+                      style={styles.podiumSlot}
+                      activeOpacity={0.7}
+                      onPress={() => openProfile(u.id)}
                     >
-                      {tierMark(u.currentStreak) ? `${tierMark(u.currentStreak)} ` : ''}{u.username}
-                    </Text>
-                    <Text style={styles.podiumWins}>
-                      {u.winCount} {u.winCount === 1 ? 'win' : 'wins'}
-                    </Text>
-                    <View
-                      style={[
-                        styles.podiumBlock,
-                        { height: podiumHeights[i] },
-                        place === 1 && styles.podiumBlockGold,
-                        place === 2 && styles.podiumBlockSilver,
-                        place === 3 && styles.podiumBlockBronze,
-                      ]}
-                    >
-                      <Text style={styles.podiumPlace}>{place}</Text>
+                      <Text style={styles.podiumMedal}>{podiumMedals[i]}</Text>
+                      <Text
+                        style={[styles.podiumName, u.id === currentUserId && styles.podiumNameSelf]}
+                        numberOfLines={1}
+                      >
+                        {tierMark(u.currentStreak) ? `${tierMark(u.currentStreak)} ` : ''}{u.username}
+                      </Text>
+                      <Text style={styles.podiumWins}>
+                        {u.winCount} {u.winCount === 1 ? 'win' : 'wins'}
+                      </Text>
+                      <View
+                        style={[
+                          styles.podiumBlock,
+                          { height: podiumHeights[i] },
+                          slot.rank === 1 && styles.podiumBlockGold,
+                          slot.rank === 2 && styles.podiumBlockSilver,
+                          slot.rank === 3 && styles.podiumBlockBronze,
+                        ]}
+                      >
+                        <Text style={styles.podiumPlace}>{slot.rank}</Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                }
+                if (slot.tied) {
+                  return (
+                    <View key={`slot-tied-${slot.rank}`} style={styles.podiumSlot}>
+                      <Text style={[styles.podiumMedal, styles.podiumMuted]}>{podiumMedals[i]}</Text>
+                      <Text style={[styles.podiumName, styles.podiumMuted]} numberOfLines={1}>Tied</Text>
+                      <Text style={[styles.podiumWins, styles.podiumMuted]}>see below</Text>
+                      <View
+                        style={[
+                          styles.podiumBlock,
+                          styles.podiumBlockMuted,
+                          { height: podiumHeights[i] },
+                        ]}
+                      >
+                        <Text style={styles.podiumPlace}>{slot.rank}</Text>
+                      </View>
                     </View>
-                  </View>
-                );
+                  );
+                }
+                return <View key={`slot-empty-${i}`} style={[styles.podiumSlot, { opacity: 0 }]} />;
               })}
             </View>
           )}
@@ -140,15 +211,45 @@ const LeaderboardScreen = () => {
             </View>
           ) : (
             <FlatList
-              data={rest}
-              keyExtractor={(item) => item.id}
+              data={listEntries}
+              keyExtractor={(item) => item.user.id}
               contentContainerStyle={styles.listContent}
-              renderItem={({ item, index }) => (
-                <View style={[styles.leaderboardItem, item.id === currentUserId && styles.currentUserItem]}>
-                  <Text style={styles.rankNumber}>{index + 4}</Text>
-                  <Text style={styles.username}>{tierMark(item.currentStreak) ? `${tierMark(item.currentStreak)} ` : ''}{item.username}</Text>
-                  <Text style={styles.wins}>{item.winCount} {item.winCount === 1 ? 'win' : 'wins'}</Text>
-                </View>
+              ListHeaderComponent={
+                tiedPodiumGroups.length > 0 ? (
+                  <View style={styles.tiedGroupsContainer}>
+                    {tiedPodiumGroups.map((g) => (
+                      <View key={`tied-${g.rank}`} style={styles.tiedGroupCard}>
+                        <Text style={styles.tiedGroupHeader}>Tied for {ord(g.rank)}</Text>
+                        {g.users.map((u) => (
+                          <TouchableOpacity
+                            key={u.id}
+                            activeOpacity={0.7}
+                            onPress={() => openProfile(u.id)}
+                            style={[styles.tiedUserRow, u.id === currentUserId && styles.currentUserItem]}
+                          >
+                            <Text style={styles.username}>
+                              {tierMark(u.currentStreak) ? `${tierMark(u.currentStreak)} ` : ''}{u.username}
+                            </Text>
+                            <Text style={styles.wins}>
+                              {u.winCount} {u.winCount === 1 ? 'win' : 'wins'}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    ))}
+                  </View>
+                ) : null
+              }
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => openProfile(item.user.id)}
+                  style={[styles.leaderboardItem, item.user.id === currentUserId && styles.currentUserItem]}
+                >
+                  <Text style={styles.rankNumber}>{item.rank}</Text>
+                  <Text style={styles.username}>{tierMark(item.user.currentStreak) ? `${tierMark(item.user.currentStreak)} ` : ''}{item.user.username}</Text>
+                  <Text style={styles.wins}>{item.user.winCount} {item.user.winCount === 1 ? 'win' : 'wins'}</Text>
+                </TouchableOpacity>
               )}
               showsVerticalScrollIndicator={false}
             />
@@ -179,12 +280,6 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
     backgroundColor: colors.surface,
   },
-  headerTitle: {
-    fontFamily: 'Poppins_700Bold',
-    fontSize: 20,
-    color: colors.textPrimary,
-    marginBottom: 12,
-  },
   segmented: {
     flexDirection: 'row',
     backgroundColor: colors.surfaceTrack,
@@ -213,6 +308,10 @@ const styles = StyleSheet.create({
   segmentTextActive: {
     fontFamily: 'Poppins_700Bold',
     color: colors.navy,
+  },
+  tipSpacing: {
+    marginHorizontal: 16,
+    marginTop: 12,
   },
   podiumContainer: {
     flexDirection: 'row',
@@ -258,6 +357,38 @@ const styles = StyleSheet.create({
   podiumBlockGold: { backgroundColor: colors.gold },
   podiumBlockSilver: { backgroundColor: colors.silver },
   podiumBlockBronze: { backgroundColor: colors.bronze },
+  podiumBlockMuted: { backgroundColor: colors.textMuted },
+  podiumMuted: { opacity: 0.5 },
+  tiedGroupsContainer: {
+    marginBottom: 4,
+  },
+  tiedGroupCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    marginBottom: 12,
+    shadowColor: colors.shadow,
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  tiedGroupHeader: {
+    fontFamily: 'Poppins_700Bold',
+    fontSize: 13,
+    color: colors.textMuted,
+    marginBottom: 6,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  tiedUserRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+  },
   podiumPlace: {
     fontFamily: 'Poppins_700Bold',
     fontSize: 22,

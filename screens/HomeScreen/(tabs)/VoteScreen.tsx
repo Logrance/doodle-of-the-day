@@ -4,15 +4,17 @@ import { usePresence } from '../../../hooks/usePresence';
 import { View, StyleSheet, Image, FlatList, Text, Modal, Alert, TouchableWithoutFeedback, Dimensions, ScrollView } from 'react-native';
 import CowLoader from '../../../components/CowLoader';
 import { auth, db, getCallableFunction } from '../../../firebaseConfig';
+import { onAuthStateChanged, User } from 'firebase/auth';
 import { collection, query, orderBy, limit, onSnapshot } from "firebase/firestore";
 import { TouchableOpacity, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Entypo from '@expo/vector-icons/Entypo';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useIsFocused } from '@react-navigation/native';
+import { useIsFocused, useNavigation } from '@react-navigation/native';
 import { drawingImageUri, shareDrawing } from '../../../theme/drawingImage';
 import ConfettiCannon from 'react-native-confetti-cannon';
 import { colors } from '../../../theme/colors';
+import FeatureTip from '../../../components/FeatureTip';
 
 type Drawing = {
   id: string;
@@ -31,6 +33,8 @@ type GetRoomDrawingsResponse = {
 
 type ResultDrawing = {
   id: string;
+  userId: string;
+  username: string;
   image?: string;
   imageUrl?: string;
   votes: number;
@@ -44,6 +48,7 @@ type RoomResults = {
   roomAssigned?: boolean;
   totalInRoom?: number;
   drawings?: ResultDrawing[];
+  winnerUserId?: string;
   winnerUsername?: string;
   roomName?: string | null;
 };
@@ -67,7 +72,16 @@ export default function VoteScreen() {
   const loaderSize = screenHeight < 667 ? 80 : 100;
   const cardWidth = Math.min(screenWidth - 32, 600);
 
-  const { phase, countdown } = usePhaseTimer();
+  const navigation = useNavigation<any>();
+  // VoteScreen is a tab; PublicProfileScreen lives in the Profile tab's stack,
+  // so jump to that tab and push the profile screen onto its stack.
+  const openProfile = (userId: string) =>
+    navigation.navigate('Profile', {
+      screen: 'PublicProfileScreen',
+      params: { userId },
+    });
+
+  const { phase, countdown, ukDate } = usePhaseTimer();
   const { presence, refresh: refreshPresence } = usePresence();
   const [drawingInfo, setDrawingInfo] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -84,6 +98,12 @@ export default function VoteScreen() {
   //screen reload variable
   const isFocused = useIsFocused();
 
+  const [authUser, setAuthUser] = useState<User | null>(auth.currentUser);
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (u) => setAuthUser(u));
+    return () => unsub();
+  }, []);
+
   const openModal = (imageUri: string) => {
     setSelectedImage(imageUri);
     setModalVisible(true);
@@ -95,13 +115,10 @@ export default function VoteScreen() {
   };
 
   const fetchData = async () => {
+    const user = auth.currentUser;
+    if (!user) return;
     setLoading(true);
     try {
-        const user = auth.currentUser;
-        if (!user) {
-            throw new Error("No user is signed in");
-        }
-
         const getRoomDrawings = getCallableFunction("getRoomDrawings") as (
             data: { date: string; userId: string }
         ) => Promise<{ data: GetRoomDrawingsResponse }>;
@@ -115,12 +132,14 @@ export default function VoteScreen() {
         setDrawingInfo(drawings);
 
     } catch (error) {
+        console.warn('VoteScreen.fetchData failed:', error);
     } finally {
       setLoading(false);
   }
 };
 
 const fetchResults = async () => {
+  if (!auth.currentUser) return;
   setLoading(true);
   try {
     const getRoomResults = getCallableFunction("getRoomResults") as (
@@ -129,6 +148,7 @@ const fetchResults = async () => {
     const response = await getRoomResults({ date: new Date().toISOString() });
     setResults(response.data);
   } catch (error) {
+    console.warn('VoteScreen.fetchResults failed:', error);
     setResults(null);
   } finally {
     setLoading(false);
@@ -239,12 +259,19 @@ useEffect(() => {
 
 useEffect(() => {
   if (!isFocused) return;
+  if (!authUser) return;
   if (phase === 'results') {
     fetchResults();
   } else {
     fetchData();
   }
- }, [isFocused, phase])
+ }, [isFocused, phase, authUser, ukDate])
+
+// Reset per-day client state when the UK date rolls over so a user who voted
+// yesterday isn't shown as "already voted" today.
+useEffect(() => {
+  setVotedForId(null);
+}, [ukDate]);
 
 
   return (
@@ -294,22 +321,64 @@ useEffect(() => {
             (() => {
               const userIndex = results.drawings.findIndex(d => d.isYou);
               const userDrawing = userIndex >= 0 ? results.drawings[userIndex] : null;
-              const winnerIsYou = results.drawings[0].isYou;
+              const topVotes = results.drawings[0].votes;
+              const winnersCount = results.drawings.filter(d => d.votes === topVotes).length;
+              const userIsWinner = !!userDrawing && userDrawing.votes === topVotes;
+              // Dense ranking: tied drawings share a rank, next distinct vote count
+              // is rank+1 (so three tied for 1st → next drawing is 2nd, not 4th).
+              const ranks: number[] = [];
+              results.drawings.forEach((d, i) => {
+                if (i === 0) ranks.push(1);
+                else if (d.votes === results.drawings[i - 1].votes) ranks.push(ranks[i - 1]);
+                else ranks.push(ranks[i - 1] + 1);
+              });
+              const bannerText = (() => {
+                if (winnersCount > 1) {
+                  return userIsWinner
+                    ? '🏆 You tied for the win today!'
+                    : `🏆 Tied for the win today (${winnersCount} drawings)`;
+                }
+                return userIsWinner
+                  ? '🏆 You won today!'
+                  : `🏆 Today's winner: @${results.winnerUsername}`;
+              })();
+              // A single, other-than-you winner gets a tappable name.
+              const winnerClickable =
+                winnersCount === 1 && !userIsWinner && !!results.winnerUserId;
               return (
                 <ScrollView contentContainerStyle={[styles.listContent, { alignItems: 'center' }]} showsVerticalScrollIndicator={false}>
                   <View style={[styles.resultsBanner, { width: cardWidth }]}>
                     {results.roomName && (
                       <Text style={styles.roomNameBannerText}>{results.roomName}</Text>
                     )}
-                    <Text style={styles.resultsBannerText}>
-                      {winnerIsYou ? '🏆 You won today!' : `🏆 Today's winner: @${results.winnerUsername}`}
-                    </Text>
-                    {userDrawing && !winnerIsYou && (
+                    {winnerClickable ? (
+                      <Text style={styles.resultsBannerText}>
+                        🏆 Today's winner:{' '}
+                        <Text
+                          style={styles.bannerLink}
+                          onPress={() => openProfile(results.winnerUserId!)}
+                        >
+                          @{results.winnerUsername}
+                        </Text>
+                      </Text>
+                    ) : (
+                      <Text style={styles.resultsBannerText}>{bannerText}</Text>
+                    )}
+                    {userDrawing && !userIsWinner && (
                       <Text style={styles.resultsBannerSubText}>
-                        You placed {ord(userIndex + 1)} of {results.totalInRoom} · {userDrawing.votes} {userDrawing.votes === 1 ? 'vote' : 'votes'}
+                        You placed {ord(ranks[userIndex])} of {results.totalInRoom} · {userDrawing.votes} {userDrawing.votes === 1 ? 'vote' : 'votes'}
                       </Text>
                     )}
                   </View>
+
+                  {results.drawings.some((d) => !d.isYou) && (
+                    <FeatureTip
+                      tipId="tap-author-names"
+                      style={{ width: cardWidth, marginBottom: 16 }}
+                      title="See who drew what"
+                      text="Now that results are in, tap an artist's name to view their profile and gallery."
+                    />
+                  )}
 
                   {results.drawings.map((drawing, index) => (
                     <View
@@ -322,9 +391,17 @@ useEffect(() => {
                     >
                       <View style={styles.resultsHeader}>
                         <Text style={styles.resultsSubHeaderText}>
-                          {index === 0 ? '🏆 ' : ''}{ord(index + 1)} · {drawing.votes} {drawing.votes === 1 ? 'vote' : 'votes'}
-                          {drawing.isYou ? ' · you' : ''}
+                          {ranks[index] === 1 ? '🏆 ' : ''}{ord(ranks[index])} · {drawing.votes} {drawing.votes === 1 ? 'vote' : 'votes'}
                         </Text>
+                        {drawing.isYou ? (
+                          <Text style={styles.resultsAuthorYou}>you</Text>
+                        ) : (
+                          <TouchableOpacity onPress={() => openProfile(drawing.userId)} hitSlop={8}>
+                            <Text style={styles.resultsAuthorLink} numberOfLines={1}>
+                              @{drawing.username}
+                            </Text>
+                          </TouchableOpacity>
+                        )}
                       </View>
                       <TouchableOpacity onPress={() => openModal(drawingImageUri(drawing))}>
                         <Image
@@ -370,7 +447,7 @@ useEffect(() => {
               </Text>
             </View>
           )
-        ) : drawingInfo.length > 0 ? (
+        ) : phase === 'voting' && drawingInfo.length > 0 ? (
         <FlatList
           data={drawingInfo}
           keyExtractor={(item) => item.id}
@@ -433,11 +510,11 @@ useEffect(() => {
       <View style={styles.emptyContainer}>
         <Text style={styles.emptyTitle}>
           {phase === 'drawing' && `Voting opens in ${countdown}`}
-          {phase === 'voting' && 'No drawings to vote on yet'}
+          {phase === 'voting' && 'Missed your chance to vote today'}
         </Text>
         <Text style={styles.emptySubtitle}>
           {phase === 'drawing' && 'Submit your drawing before 14:00 UK time.'}
-          {phase === 'voting' && 'Check back in a moment.'}
+          {phase === 'voting' && 'Submit a drawing tomorrow before 14:00 UK time to get involved.'}
         </Text>
       </View>
   )}
@@ -531,6 +608,9 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   resultsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderBottomWidth: 1,
@@ -540,6 +620,25 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins_700Bold',
     fontSize: 14,
     color: colors.textSecondary,
+    flexShrink: 1,
+  },
+  resultsAuthorLink: {
+    fontFamily: 'Poppins_700Bold',
+    fontSize: 14,
+    color: colors.navy,
+    marginLeft: 8,
+  },
+  resultsAuthorYou: {
+    fontFamily: 'Poppins_700Bold',
+    fontSize: 14,
+    color: colors.textMuted,
+    marginLeft: 8,
+  },
+  bannerLink: {
+    fontFamily: 'Poppins_700Bold',
+    fontSize: 17,
+    color: colors.navy,
+    textDecorationLine: 'underline',
   },
   drawingContainerSelf: {
     borderWidth: 2,

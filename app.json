@@ -2,13 +2,13 @@
   "expo": {
     "name": "Doodle of the Day",
     "slug": "Doodle-of-the-Day",
-    "version": "1.0.24",
+    "version": "1.0.26",
     "scheme": "doodleoftheday",
     "orientation": "portrait",
-    "icon": "./assets/cow2_highcontrast.png",
+    "icon": "./assets/icon-mark.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/cow2_highcontrast.png",
+      "image": "./assets/icon-mark.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -22,7 +22,7 @@
     },
     "android": {
       "package": "com.doodleOfThe.day",
-      "versionCode": 23,
+      "versionCode": 24,
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/cow2_highcontrast.png",

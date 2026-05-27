@@ -2,23 +2,18 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert, SafeAreaView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { sendPasswordResetEmail, sendEmailVerification } from 'firebase/auth';
 import { auth, getCallableFunction } from "../firebaseConfig";
-import { useNavigation } from '@react-navigation/core';
-import { StackNavigationProp } from '@react-navigation/stack';
 import { colors } from '../theme/colors';
-
-type RootStackParamList = {
-  Welcome: undefined;
-};
 
 type DeleteUserResponse = { message: string };
 
 
 export default function Deets() {
-  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
     //Password reset
     const user = auth.currentUser;
+    const navigation = useNavigation<any>();
     const [isResettingPassword, setIsResettingPassword] = useState(false);
     const [isDeletingAccount, setIsDeletingAccount] = useState(false);
     const [isVerified, setIsVerified] = useState(auth.currentUser?.emailVerified ?? false);
@@ -76,7 +71,6 @@ export default function Deets() {
                 Alert.alert("Account Deleted", data.message);
   
                 await auth.signOut();
-                navigation.replace('Welcome');
               } catch (error: any) {
                 Alert.alert("Error", error.message || "Error deleting account");
               }
@@ -113,8 +107,6 @@ export default function Deets() {
     <SafeAreaView style={styles.container}>
       <LinearGradient colors={colors.authGradient} style={styles.backgroundImage}>
         <View style={styles.card}>
-          <Text style={styles.heading}>Account</Text>
-
           <View style={styles.row}>
             <MaterialCommunityIcons name="email-outline" size={20} color={colors.textSecondary} style={styles.rowIcon} />
             <Text style={styles.rowText}>{auth.currentUser?.email}</Text>
@@ -155,6 +147,13 @@ export default function Deets() {
           </TouchableOpacity>
 
           <TouchableOpacity
+            onPress={() => navigation.navigate('BlockedUsersScreen')}
+            style={styles.resetButton}
+          >
+            <Text style={styles.resetText}>Blocked users</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
             onPress={handleDeleteAccount}
             style={styles.deleteButton}
             disabled={isDeletingAccount}
@@ -178,12 +177,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.cardOverlay92,
     borderRadius: 16,
     padding: 28,
-  },
-  heading: {
-    fontFamily: 'Poppins_700Bold',
-    fontSize: 22,
-    color: colors.textPrimary,
-    marginBottom: 20,
   },
   row: {
     flexDirection: 'row',

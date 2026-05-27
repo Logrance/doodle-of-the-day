@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
-import { View, Text, FlatList, Image, StyleSheet, Modal, TouchableWithoutFeedback, Dimensions } from "react-native";
+import { View, Text, FlatList, Image, StyleSheet, Modal, TouchableWithoutFeedback, Dimensions, Alert } from "react-native";
 import CowLoader from '../components/CowLoader';
-import { auth, db } from "../firebaseConfig";
+import { auth, db, getCallableFunction } from "../firebaseConfig";
 import { TouchableOpacity, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Entypo from '@expo/vector-icons/Entypo';
-import { collection, query, where, getDocs, orderBy, limit, startAfter } from "firebase/firestore";
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { collection, query, where, getDocs, orderBy, limit, startAfter, doc, getDoc } from "firebase/firestore";
 import { Timestamp } from "firebase/firestore";
 import { colors } from '../theme/colors';
 import { drawingImageUri, shareDrawing } from '../theme/drawingImage';
+import FeatureTip from '../components/FeatureTip';
 
 interface Drawing {
     id: string;
@@ -17,8 +19,11 @@ interface Drawing {
     theme: string;
 }
 
+const MAX_FEATURED = 8;
+
 const UserDrawingsScreen = () => {
     const [drawings, setDrawings] = useState<Drawing[]>([]);
+    const [featuredIds, setFeaturedIds] = useState<string[]>([]);
 
      //Modal logic
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -129,7 +134,39 @@ useEffect(() => {
   fetchData();
 }, []);
 
+  // Load which drawings the user has featured on their public profile.
+  useEffect(() => {
+    const loadFeatured = async () => {
+      const user = auth.currentUser;
+      if (!user) return;
+      try {
+        const snap = await getDoc(doc(db, 'users', user.uid));
+        const ids = snap.exists() ? snap.data().galleryDrawingIds : [];
+        setFeaturedIds(Array.isArray(ids) ? ids : []);
+      } catch {}
+    };
+    loadFeatured();
+  }, []);
 
+  const toggleFeature = async (id: string) => {
+    const isFeatured = featuredIds.includes(id);
+    if (!isFeatured && featuredIds.length >= MAX_FEATURED) {
+      Alert.alert('Gallery full', `You can feature up to ${MAX_FEATURED} drawings. Remove one first.`);
+      return;
+    }
+    const prev = featuredIds;
+    const next = isFeatured
+      ? featuredIds.filter((x) => x !== id)
+      : [...featuredIds, id];
+    setFeaturedIds(next); // optimistic
+    try {
+      const setGalleryDrawings = getCallableFunction('setGalleryDrawings');
+      await setGalleryDrawings({ drawingIds: next });
+    } catch (e: any) {
+      setFeaturedIds(prev); // revert on failure
+      Alert.alert("Couldn't update gallery", e?.message || 'Please try again.');
+    }
+  };
 
     const cardWidth = Math.min(Dimensions.get('window').width - 32, 600);
 
@@ -145,6 +182,19 @@ useEffect(() => {
                     data={drawings}
                     keyExtractor={(item) => item.id}
                     contentContainerStyle={[styles.listContent, { alignItems: 'center' }]}
+                    ListHeaderComponent={
+                      <View style={{ width: cardWidth, alignSelf: 'center' }}>
+                        <FeatureTip
+                          tipId="gallery-star-feature"
+                          style={{ marginBottom: 12 }}
+                          title="Build your gallery"
+                          text={`Tap the ★ on any doodle to feature it on your public profile (up to ${MAX_FEATURED}).`}
+                        />
+                        <Text style={styles.featureHint}>
+                          Tap ★ to feature a doodle on your profile · {featuredIds.length}/{MAX_FEATURED}
+                        </Text>
+                      </View>
+                    }
                     renderItem={({ item }) => (
                         <View style={[styles.drawingContainer, { width: cardWidth }]}>
                             <TouchableOpacity onPress={() => openModal(drawingImageUri(item))}>
@@ -155,9 +205,22 @@ useEffect(() => {
                             </TouchableOpacity>
                             <View style={styles.cardFooter}>
                               <Text style={styles.themeText}>{item.theme}</Text>
-                              <TouchableOpacity onPress={() => handleShare(item)} style={styles.buttonOther}>
-                                <Entypo name="share" size={18} color={colors.textMuted} />
-                              </TouchableOpacity>
+                              <View style={styles.footerButtons}>
+                                <TouchableOpacity
+                                  onPress={() => toggleFeature(item.id)}
+                                  style={styles.buttonOther}
+                                  accessibilityLabel={featuredIds.includes(item.id) ? 'Remove from profile' : 'Feature on profile'}
+                                >
+                                  <Ionicons
+                                    name={featuredIds.includes(item.id) ? 'star' : 'star-outline'}
+                                    size={18}
+                                    color={featuredIds.includes(item.id) ? colors.navy : colors.textMuted}
+                                  />
+                                </TouchableOpacity>
+                                <TouchableOpacity onPress={() => handleShare(item)} style={styles.buttonOther}>
+                                  <Entypo name="share" size={18} color={colors.textMuted} />
+                                </TouchableOpacity>
+                              </View>
                             </View>
                         </View>
                     )}
@@ -227,10 +290,22 @@ const styles = StyleSheet.create({
         color: colors.textSecondary,
         flex: 1,
     },
+    footerButtons: {
+        flexDirection: 'row',
+        gap: 8,
+    },
     buttonOther: {
         padding: 8,
         borderRadius: 8,
         backgroundColor: colors.surfaceMuted,
+    },
+    featureHint: {
+        fontFamily: 'Poppins_400Regular',
+        fontSize: 12,
+        color: colors.textMuted,
+        textAlign: 'center',
+        marginBottom: 12,
+        paddingHorizontal: 24,
     },
     emptyContainer: {
         flex: 1,

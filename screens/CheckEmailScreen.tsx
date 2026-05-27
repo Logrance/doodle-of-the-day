@@ -4,11 +4,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/core';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { auth } from '../firebaseConfig';
-import { sendEmailVerification } from 'firebase/auth';
+import { sendEmailVerification, signOut } from 'firebase/auth';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 
 type RootStackParamList = {
+  Welcome: undefined;
   Login: undefined;
   CheckEmail: { email: string };
 };
@@ -62,8 +63,17 @@ const CheckEmailScreen: React.FC = () => {
             </TouchableOpacity>
           )}
 
-          <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('Login')}>
-            <Text style={styles.buttonText}>Go to Log In</Text>
+          <Text style={styles.autoHint}>
+            We'll let you in automatically once your email is verified.
+          </Text>
+
+          <TouchableOpacity
+            style={styles.button}
+            onPress={async () => {
+              try { await signOut(auth); } catch {}
+            }}
+          >
+            <Text style={styles.buttonText}>Sign out</Text>
           </TouchableOpacity>
         </View>
       </LinearGradient>
@@ -98,6 +108,14 @@ const styles = StyleSheet.create({
   resendButton: { marginTop: 20 },
   resendText: { fontFamily: 'Poppins_400Regular', fontSize: 13, color: colors.textSecondary, textDecorationLine: 'underline' },
   resentText: { fontFamily: 'Poppins_400Regular', fontSize: 13, color: colors.success, marginTop: 20 },
+  autoHint: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 12,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginTop: 16,
+    fontStyle: 'italic',
+  },
   button: {
     backgroundColor: colors.navyAlpha80,
     padding: 15,

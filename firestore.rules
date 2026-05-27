@@ -13,6 +13,13 @@ service cloud.firestore {
       allow create: if isOwner(userId);
       allow update: if isOwner(userId) && changedKeysHasOnly(['expoPushToken']);
       allow delete: if isOwner(userId);
+
+      // Blocks are owner-readable (for the Blocked-users list) but written
+      // only via the blockUser/unblockUser callables (admin SDK).
+      match /blocked/{blockedId} {
+        allow read: if isOwner(userId);
+        allow write: if false;
+      }
     }
 
     match /themes_today/{themeId} {
@@ -27,6 +34,11 @@ service cloud.firestore {
     }
 
     match /flags/{flagId} {
+      allow read, write: if false;
+    }
+
+    // Moderation reports — written only via the reportUser callable.
+    match /user_reports/{reportId} {
       allow read, write: if false;
     }
 

@@ -41,7 +41,7 @@ function requireVerifiedEmail(context) {
  * @param {Array<{to: string, title: string, body: string}>} messages
  */
 async function sendExpoPushNotifications(messages) {
-  if (!messages.length) return;
+  if (!messages.length) return [];
 
   // Expo accepts up to 100 messages per request
   const chunks = [];
@@ -49,9 +49,10 @@ async function sendExpoPushNotifications(messages) {
     chunks.push(messages.slice(i, i + 100));
   }
 
+  const allTickets = [];
   for (const chunk of chunks) {
     const payload = JSON.stringify(chunk);
-    await new Promise((resolve, reject) => {
+    const body = await new Promise((resolve, reject) => {
       const req = https.request(
           {
             hostname: "exp.host",
@@ -63,32 +64,105 @@ async function sendExpoPushNotifications(messages) {
             },
           },
           (res) => {
-            res.resume();
-            res.on("end", resolve);
+            const parts = [];
+            res.on("data", (d) => parts.push(d));
+            res.on("end", () => resolve(Buffer.concat(parts).toString("utf8")));
           },
       );
       req.on("error", reject);
       req.write(payload);
       req.end();
     });
+
+    let parsed;
+    try {
+      parsed = JSON.parse(body);
+    } catch (e) {
+      console.error("Expo push: non-JSON response:", body);
+      continue;
+    }
+
+    if (parsed.errors) {
+      console.error(
+          "Expo push: top-level errors:",
+          JSON.stringify(parsed.errors),
+      );
+    }
+    const tickets = parsed.data || [];
+    tickets.forEach((ticket, i) => {
+      if (ticket.status === "error") {
+        const token = chunk[i] && chunk[i].to;
+        console.error(
+            "Expo push ticket error:",
+            JSON.stringify({token, ticket}),
+        );
+      }
+    });
+    const okCount = tickets.filter((t) => t.status === "ok").length;
+    console.log(
+        `Expo push chunk: ${okCount}/${chunk.length} accepted.`,
+    );
+    allTickets.push(...tickets);
   }
+  return allTickets;
+}
+
+/**
+ * Fetch Expo push receipts for the given ticket IDs.
+ * @param {string[]} ids
+ */
+async function fetchPushReceipts(ids) {
+  if (!ids.length) return {};
+  const payload = JSON.stringify({ids});
+  const body = await new Promise((resolve, reject) => {
+    const req = https.request(
+        {
+          hostname: "exp.host",
+          path: "/--/api/v2/push/getReceipts",
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+          },
+        },
+        (res) => {
+          const parts = [];
+          res.on("data", (d) => parts.push(d));
+          res.on("end", () => resolve(Buffer.concat(parts).toString("utf8")));
+        },
+    );
+    req.on("error", reject);
+    req.write(payload);
+    req.end();
+  });
+  let parsed;
+  try {
+    parsed = JSON.parse(body);
+  } catch (e) {
+    console.error("Expo receipts: non-JSON response:", body);
+    return {};
+  }
+  if (parsed.errors) {
+    console.error(
+        "Expo receipts: top-level errors:",
+        JSON.stringify(parsed.errors),
+    );
+  }
+  return parsed.data || {};
 }
 
 exports.pickDailyWinner = functions.pubsub.schedule("00 20 * * *")
     .timeZone("Europe/London").onRun(async (context) => {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const tomorrow = new Date(today);
-      tomorrow.setDate(today.getDate() + 1);
+      const {startOfDay, endOfDay} = londonDayWindow(new Date());
 
       const drawingsRef = db.collection("drawings");
 
       try {
         // Query to get distinct roomIds for today
         const roomQuery = drawingsRef
-            .where("date", ">=", today.getTime())
-            .where("date", "<", tomorrow.getTime())
-            .select("roomId");
+            .where("date", ">=", startOfDay)
+            .where("date", "<", endOfDay)
+            .select("roomId", "userId");
 
         const roomSnapshot = await roomQuery.get();
         if (roomSnapshot.empty) {
@@ -96,10 +170,12 @@ exports.pickDailyWinner = functions.pubsub.schedule("00 20 * * *")
           return;
         }
 
-        // Extract unique roomIds
+        // Skip drawings without a roomId — otherwise an `undefined` entry
+        // crashes the .where("roomId","==",...) below and no pushes fire.
         const roomIds = new Set();
         roomSnapshot.forEach((doc) => {
-          roomIds.add(doc.data().roomId);
+          const rid = doc.data().roomId;
+          if (rid) roomIds.add(rid);
         });
 
         // Collect winner userIds for push notifications
@@ -112,8 +188,8 @@ exports.pickDailyWinner = functions.pubsub.schedule("00 20 * * *")
           // Get the drawing with the maximum votes in the room
           const maxVotesQuery = drawingsRef
               .where("roomId", "==", roomId)
-              .where("date", ">=", today.getTime())
-              .where("date", "<", tomorrow.getTime())
+              .where("date", ">=", startOfDay)
+              .where("date", "<", endOfDay)
               .orderBy("votes", "desc")
               .limit(1);
 
@@ -125,8 +201,8 @@ exports.pickDailyWinner = functions.pubsub.schedule("00 20 * * *")
             // Query all drawings with the maximum votes in the room
             const topDrawingsQuery = drawingsRef
                 .where("roomId", "==", roomId)
-                .where("date", ">=", today.getTime())
-                .where("date", "<", tomorrow.getTime())
+                .where("date", ">=", startOfDay)
+                .where("date", "<", endOfDay)
                 .where("votes", "==", maxVotes);
 
             const topDrawingsSnapshot = await topDrawingsQuery.get();
@@ -135,14 +211,20 @@ exports.pickDailyWinner = functions.pubsub.schedule("00 20 * * *")
               const drawingsWithMaxVotes = topDrawingsSnapshot.docs;
 
               for (const drawing of drawingsWithMaxVotes) {
+                const drawingData = drawing.data();
                 const winnerData = {
                   id: drawing.id,
-                  votes: drawing.data().votes,
-                  userId: drawing.data().userId,
+                  votes: drawingData.votes,
+                  userId: drawingData.userId,
                   roomId: roomId,
-                  image: drawing.data().image,
                   date: admin.firestore.Timestamp.fromDate(new Date()),
                 };
+                if (drawingData.imageUrl) {
+                  winnerData.imageUrl = drawingData.imageUrl;
+                }
+                if (drawingData.image) {
+                  winnerData.image = drawingData.image;
+                }
 
                 // Save the winner's data to the "winners" collection
                 await db.collection("winners").add(winnerData);
@@ -182,6 +264,8 @@ exports.pickDailyWinner = functions.pubsub.schedule("00 20 * * *")
                     "Congratulations — your doodle won today's vote!" :
                     "Did you win? Check the results now.",
                   sound: "default",
+                  channelId: "default",
+                  priority: "high",
                   data: {url: "doodleoftheday://home/vote"},
                 };
               });
@@ -213,6 +297,8 @@ exports.notifyMorningTheme = functions.pubsub.schedule("00 08 * * *")
               title: `Today's theme: ${word} 🎨`,
               body: "You have until 14:00 UK to submit your doodle.",
               sound: "default",
+              channelId: "default",
+              priority: "high",
               data: {url: "doodleoftheday://home/draw"},
             }));
         await sendExpoPushNotifications(messages);
@@ -226,10 +312,7 @@ exports.notifyMorningTheme = functions.pubsub.schedule("00 08 * * *")
 exports.notifyDrawingDeadline = functions.pubsub.schedule("30 13 * * *")
     .timeZone("Europe/London").onRun(async (context) => {
       try {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const startOfDay = today.getTime();
-        const endOfDay = startOfDay + 24 * 60 * 60 * 1000;
+        const {startOfDay, endOfDay} = londonDayWindow(new Date());
 
         const drawingsSnapshot = await db.collection("drawings")
             .where("date", ">=", startOfDay)
@@ -258,6 +341,8 @@ exports.notifyDrawingDeadline = functions.pubsub.schedule("30 13 * * *")
                   "30 min left — submit before 14:00 UK to keep it alive." :
                   "Submit your doodle before 14:00 UK time.",
                 sound: "default",
+                channelId: "default",
+                priority: "high",
                 data: {url: "doodleoftheday://home/draw"},
               };
             });
@@ -338,12 +423,11 @@ function generateRoomName() {
 
 exports.assignRooms = functions.pubsub.schedule("00 14 * * *")
     .timeZone("Europe/London").onRun(async (context) => {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      const {startOfDay, endOfDay} = londonDayWindow(new Date());
 
       const drawings = await db.collection("drawings")
-          .where("date", ">=", today.getTime())
-          .where("date", "<", today.getTime() + (24 * 60 * 60 * 1000))
+          .where("date", ">=", startOfDay)
+          .where("date", "<", endOfDay)
           .get();
 
       const totalDrawings = drawings.docs.length;
@@ -376,6 +460,8 @@ exports.assignRooms = functions.pubsub.schedule("00 14 * * *")
               title: "Time to vote! 🗳️",
               body: "Voting is open — go pick your favourite doodle.",
               sound: "default",
+              channelId: "default",
+              priority: "high",
               data: {url: "doodleoftheday://home/vote"},
             }));
         await sendExpoPushNotifications(messages);
@@ -395,11 +481,10 @@ exports.getRoomDrawings = functions.https.onCall(async (data, context) => {
     );
   }
 
-  // Get the provided date or default to today
-  const today = new Date(data.date || Date.now());
-  today.setHours(0, 0, 0, 0);
-  const startOfDay = today.getTime();
-  const endOfDay = startOfDay + 24 * 60 * 60 * 1000;
+  // Anchor the day to Europe/London (not the UTC runtime) so the room window
+  // matches the London-based phases the client renders against.
+  const {startOfDay, endOfDay} = londonDayWindow(
+      new Date(data.date || Date.now()));
 
   try {
   // Step 1: Fetch the user's drawing for today to get the roomId
@@ -428,10 +513,22 @@ exports.getRoomDrawings = functions.https.onCall(async (data, context) => {
         .orderBy("userId", "desc")
         .get();
 
-    // Map other drawings, then append the user's own with an isYou flag.
-    const drawings = roomDrawingsSnapshot.docs.map((doc) =>
-      ({id: doc.id, ...doc.data(), isYou: false}));
-    drawings.push({id: userDrawingDoc.id, ...userDrawing, isYou: true});
+    // During voting we must NOT reveal standings: order is stable and
+    // vote-independent (sorted by doc id) and the vote count is stripped from
+    // the payload entirely. Vote-ranked order and counts are revealed only at
+    // the 20:00 reveal in getRoomResults. The query still orderBy("votes") to
+    // reuse the existing composite index; that order is discarded here.
+    const drawings = roomDrawingsSnapshot.docs
+        .map((doc) => {
+          const d = {id: doc.id, ...doc.data(), isYou: false};
+          delete d.votes;
+          return d;
+        })
+        .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+    // Own drawing appended last (isYou → "Your drawing" badge on the client).
+    const own = {id: userDrawingDoc.id, ...userDrawing, isYou: true};
+    delete own.votes;
+    drawings.push(own);
     return {drawings};
   } catch (error) {
     console.error("Error fetching room drawings:", error);
@@ -453,10 +550,8 @@ exports.getRoomResults = functions.https.onCall(async (data, context) => {
   }
 
   const userId = context.auth.uid;
-  const today = new Date(data.date || Date.now());
-  today.setHours(0, 0, 0, 0);
-  const startOfDay = today.getTime();
-  const endOfDay = startOfDay + 24 * 60 * 60 * 1000;
+  const {startOfDay, endOfDay} = londonDayWindow(
+      new Date(data.date || Date.now()));
 
   try {
     const userDrawingSnap = await db.collection("drawings")
@@ -499,10 +594,25 @@ exports.getRoomResults = functions.https.onCall(async (data, context) => {
           (doc.data().types || []) : [];
     });
 
+    // Resolve author usernames for the reveal. Identities are shown ONLY at
+    // results time — getRoomDrawings keeps voting anonymous. Tapping a name on
+    // the client opens getPublicProfile, which enforces blocking both ways.
+    const authorIds = [...new Set(roomSnap.docs.map((d) => d.data().userId))];
+    const authorDocs = await db.getAll(
+        ...authorIds.map((id) => db.collection("users").doc(id)),
+    );
+    const usernameMap = {};
+    authorDocs.forEach((doc) => {
+      usernameMap[doc.id] = doc.exists ?
+          (doc.data().username || "Anonymous") : "Anonymous";
+    });
+
     const drawings = roomSnap.docs.map((d) => {
       const dData = d.data();
       return {
         id: d.id,
+        userId: dData.userId,
+        username: usernameMap[dData.userId] || "Anonymous",
         image: dData.image,
         imageUrl: dData.imageUrl,
         votes: dData.votes || 0,
@@ -513,16 +623,14 @@ exports.getRoomResults = functions.https.onCall(async (data, context) => {
     });
 
     const winnerUserId = roomSnap.docs[0].data().userId;
-    const winnerUserDoc = await db.collection("users")
-        .doc(winnerUserId).get();
-    const winnerUsername = winnerUserDoc.exists ?
-        winnerUserDoc.data().username : "Anonymous";
+    const winnerUsername = usernameMap[winnerUserId] || "Anonymous";
 
     return {
       hasDrawing: true,
       roomAssigned: true,
       totalInRoom: drawings.length,
       drawings,
+      winnerUserId,
       winnerUsername,
       roomName: roomSnap.docs[0].data().roomName || null,
     };
@@ -665,11 +773,8 @@ exports.handleVote = functions.https.onCall(async (data, context) => {
     );
   }
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const startOfDay = today.getTime();
-  const endOfDay = startOfDay + 24 * 60 * 60 * 1000;
-  const dateKey = today.toISOString().split("T")[0];
+  const {startOfDay, endOfDay, startDate, dateKey} =
+      londonDayWindow(new Date());
 
   // Caller must have submitted today; their drawing's roomId scopes who they
   // can vote for.
@@ -738,7 +843,7 @@ exports.handleVote = functions.https.onCall(async (data, context) => {
       transaction.set(voteRef, {
         userId: currentUser,
         drawingId: targetDrawingId,
-        voteDate: admin.firestore.Timestamp.fromDate(today),
+        voteDate: admin.firestore.Timestamp.fromDate(startDate),
       });
     });
     return {message: "Vote successfully cast!"};
@@ -807,6 +912,21 @@ exports.createUserDocument = functions.https.onCall(async (data, context) => {
 
 exports.addImageToDB = functions.https.onCall(async (data, context) => {
   requireVerifiedEmail(context);
+  // Reject anything after 14:00 UK — otherwise the drawing lands without
+  // a roomId (assignRooms ran at 14:00) and then crashes pickDailyWinner.
+  const ukParts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/London",
+    hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
+  }).formatToParts(new Date());
+  const ukH = parseInt(ukParts.find((p) => p.type === "hour").value, 10);
+  const ukM = parseInt(ukParts.find((p) => p.type === "minute").value, 10);
+  const ukS = parseInt(ukParts.find((p) => p.type === "second").value, 10);
+  if (ukH * 3600 + ukM * 60 + ukS >= 14 * 3600) {
+    throw new functions.https.HttpsError(
+        "failed-precondition",
+        "Drawing submissions close at 14:00 UK. Come back tomorrow!",
+    );
+  }
   const {imageBase64} = data || {};
   if (typeof imageBase64 !== "string" || imageBase64.length < 100) {
     throw new functions.https.HttpsError(
@@ -823,10 +943,7 @@ exports.addImageToDB = functions.https.onCall(async (data, context) => {
     );
   }
   const userId = context.auth.uid;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const startOfDay = today.getTime();
-  const endOfDay = startOfDay + 24 * 60 * 60 * 1000;
+  const {startOfDay, endOfDay, dateKey} = londonDayWindow(new Date());
 
   try {
     const drawingQuery = await db.collection("drawings")
@@ -843,17 +960,13 @@ exports.addImageToDB = functions.https.onCall(async (data, context) => {
     }
 
 
-    const startOfDayTwo = admin.firestore.Timestamp.fromDate(
-        new Date(new Date().setUTCHours(-1, 0, 0, 0)));
-
-    const endOfDayTwo = admin.firestore.Timestamp.fromDate(
-        new Date(new Date().setUTCHours(23, 59, 59, 999)));
-
-    // Fetch the theme of the day
+    // Fetch the theme of the day. themes_today gets exactly one doc per day
+    // (written by selectRandomWord at London midnight) and is never pruned,
+    // so the most recent by timestamp is always today's — no day-window math,
+    // which sidesteps the BST boundary ambiguity entirely.
     const themeQuery = await db
         .collection("themes_today")
-        .where("timestamp", ">=", startOfDayTwo)
-        .where("timestamp", "<", endOfDayTwo)
+        .orderBy("timestamp", "desc")
         .limit(1)
         .get();
 
@@ -863,10 +976,28 @@ exports.addImageToDB = functions.https.onCall(async (data, context) => {
       theme = themeDoc.word; // Assuming 'word' is the field storing the theme
     }
 
-    await db.collection("drawings").add({
+    // Upload bytes to Cloud Storage and store only the URL in Firestore.
+    // Keeps drawing docs ~80 bytes instead of ~1 MB base64 — huge read-cost
+    // and bandwidth savings at scale, plus images become CDN-cacheable.
+    const buffer = Buffer.from(imageBase64, "base64");
+    const drawingRef = db.collection("drawings").doc();
+    const bucket = admin.storage().bucket();
+    const filePath = `drawings/${userId}/${drawingRef.id}.png`;
+    const token = crypto.randomBytes(16).toString("hex");
+    await bucket.file(filePath).save(buffer, {
+      metadata: {
+        contentType: "image/png",
+        metadata: {firebaseStorageDownloadTokens: token},
+      },
+    });
+    const encodedPath = encodeURIComponent(filePath);
+    const imageUrl = `https://firebasestorage.googleapis.com/v0/b/` +
+        `${bucket.name}/o/${encodedPath}?alt=media&token=${token}`;
+
+    await drawingRef.set({
       title: "Captured Image",
       done: false,
-      image: imageBase64,
+      imageUrl,
       userId,
       votes: 0,
       date: Date.now(),
@@ -879,10 +1010,11 @@ exports.addImageToDB = functions.https.onCall(async (data, context) => {
     let usedFreeze = false;
     if (userDoc.exists) {
       const userData = userDoc.data();
-      const todayStr = new Date().toISOString().split("T")[0];
+      // London day key (YYYY-MM-DD), consistent with the submission window —
+      // a UTC date string here would mis-bucket early-morning BST submissions
+      // and could wrongly break or extend a streak.
+      const todayStr = dateKey;
       const lastSubmission = userData.lastSubmissionDate;
-
-      const paletteWasAvailable = userData.paletteAvailable || false;
 
       // Streak freezes: 1 every 7 days, capped at 1. Auto-consumed to bridge
       // a single missed day so a one-off miss doesn't reset the streak.
@@ -901,7 +1033,6 @@ exports.addImageToDB = functions.https.onCall(async (data, context) => {
       }
 
       let newStreak = 1;
-      let consecutive = false;
       if (lastSubmission) {
         const diffDays = Math.round(
             (new Date(todayStr) - new Date(lastSubmission)) /
@@ -909,36 +1040,24 @@ exports.addImageToDB = functions.https.onCall(async (data, context) => {
         );
         if (diffDays === 1) {
           newStreak = (userData.currentStreak || 0) + 1;
-          consecutive = true;
         } else if (diffDays === 2 && freezesAvailable > 0) {
           newStreak = (userData.currentStreak || 0) + 1;
-          consecutive = true;
           usedFreeze = true;
           freezesAvailable -= 1;
         }
       }
 
-      // Palette unlocks the day after hitting a streak multiple of 3.
-      // Using it (submitting while it was available) consumes it.
-      // Breaking the streak forfeits any pending unlock.
-      let newPaletteAvailable = false;
-      let newPaletteUnlockedOn = null;
-      if (consecutive) {
-        if (newStreak % 3 === 0) {
-          newPaletteAvailable = true; // Unlocked, gated to next day by date
-          newPaletteUnlockedOn = todayStr;
-        } else if (paletteWasAvailable) {
-          newPaletteAvailable = false; // Consumed today
-          newPaletteUnlockedOn = null;
-        }
-      }
+      // Palette is a permanent unlock once the user has ever reached a
+      // 3-day streak. Once true, never reset.
+      const newLongestStreak = Math.max(newStreak, userData.longestStreak || 0);
+      const newPaletteAvailable = userData.paletteAvailable === true ||
+          newLongestStreak >= 3;
 
       await userRef.update({
         currentStreak: newStreak,
-        longestStreak: Math.max(newStreak, userData.longestStreak || 0),
+        longestStreak: newLongestStreak,
         lastSubmissionDate: todayStr,
         paletteAvailable: newPaletteAvailable,
-        paletteUnlockedOn: newPaletteUnlockedOn,
         freezesAvailable,
         lastFreezeGrantedDate,
       });
@@ -955,6 +1074,42 @@ exports.addImageToDB = functions.https.onCall(async (data, context) => {
         "internal",
         "Failed to submit drawing.", error);
   }
+});
+
+exports.testPushToMe = functions.https.onCall(async (data, context) => {
+  requireAuth(context);
+  const userId = context.auth.uid;
+  const userDoc = await db.collection("users").doc(userId).get();
+  const token = userDoc.exists && userDoc.data().expoPushToken;
+  if (!token) {
+    throw new functions.https.HttpsError(
+        "failed-precondition",
+        "No expoPushToken on your user document.",
+    );
+  }
+  console.log(`testPushToMe: sending to ${userId}, token=${token}`);
+  const tickets = await sendExpoPushNotifications([{
+    to: token,
+    title: "Test push 🧪",
+    body: "If you see this, FCM is wired up correctly.",
+    sound: "default",
+    channelId: "default",
+    priority: "high",
+  }]);
+  const ticket = tickets[0];
+  console.log("testPushToMe ticket:", JSON.stringify(ticket));
+  if (!ticket || ticket.status !== "ok") {
+    return {success: false, token, ticket};
+  }
+  // Wait for FCM delivery, then fetch receipt to see what FCM did.
+  await new Promise((r) => setTimeout(r, 8000));
+  const receipts = await fetchPushReceipts([ticket.id]);
+  const receipt = receipts[ticket.id];
+  console.log(
+      "testPushToMe receipt:",
+      JSON.stringify({id: ticket.id, receipt}),
+  );
+  return {success: true, token, ticket, receipt};
 });
 
 exports.fetchUserAndCheckTutorial = functions.https.onCall(
@@ -1054,6 +1209,7 @@ exports.deleteUserAccount = functions.https.onCall(async (data, context) => {
     await Promise.all([
       bucket.file(`avatars/${uid}.jpg`).delete().catch(() => {}),
       bucket.file(`avatars/${uid}.png`).delete().catch(() => {}),
+      bucket.deleteFiles({prefix: `drawings/${uid}/`}).catch(() => {}),
     ]);
 
     await db.collection("users").doc(uid).delete();
@@ -1098,6 +1254,31 @@ exports.updateUserVerification = functions.https.onCall(
       }
     });
 
+/**
+ * Rank a user by all-time winCount without reading the whole users
+ * collection — a count() aggregation of users strictly ahead. Ties share a
+ * rank. Returns {rank, data} (data null if the user doc is missing).
+ * @param {string} userId
+ * @return {Promise<object>}
+ */
+async function rankByWinCount(userId) {
+  const meDoc = await db.collection("users").doc(userId).get();
+  if (!meDoc.exists) return {rank: null, data: null};
+  const winCount = meDoc.data().winCount || 0;
+  const ahead = await db.collection("users")
+      .where("winCount", ">", winCount)
+      .count().get();
+  return {
+    rank: ahead.data().count + 1,
+    data: {
+      id: meDoc.id,
+      username: meDoc.data().username,
+      winCount,
+      currentStreak: meDoc.data().currentStreak || 0,
+    },
+  };
+}
+
 exports.getLeaderboard = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError(
@@ -1125,24 +1306,9 @@ exports.getLeaderboard = functions.https.onCall(async (data, context) => {
     let currentUserRank = null;
     let currentUserData = null;
     if (!leaderboard.find((user) => user.id === currentUserId)) {
-      const allUsersSnapshot = await db
-          .collection("users")
-          .orderBy("winCount", "desc")
-          .get();
-
-      const allUsers = allUsersSnapshot.docs.map((doc) => doc.id);
-      currentUserRank = allUsers.indexOf(currentUserId) + 1;
-
-      const currentUserDoc = allUsersSnapshot.docs.find(
-          (doc) => doc.id === currentUserId,
-      );
-      if (currentUserDoc) {
-        currentUserData = {
-          id: currentUserDoc.id,
-          username: currentUserDoc.data().username,
-          winCount: currentUserDoc.data().winCount,
-        };
-      }
+      const ranked = await rankByWinCount(currentUserId);
+      currentUserRank = ranked.rank;
+      currentUserData = ranked.data;
     }
 
     return {
@@ -1157,6 +1323,91 @@ exports.getLeaderboard = functions.https.onCall(async (data, context) => {
     );
   }
 });
+
+/**
+ * Convert a London-local Y/M/D at 00:00 into the matching UTC Date.
+ * Handles BST/GMT by reading the London offset at that instant.
+ * @param {number} y
+ * @param {number} m one-based month
+ * @param {number} d
+ * @return {Date}
+ */
+function londonMidnightToUtc(y, m, d) {
+  const guess = new Date(Date.UTC(y, m - 1, d, 0, 0, 0));
+  const offsetName = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/London",
+    timeZoneName: "shortOffset",
+  }).formatToParts(guess).find((p) => p.type === "timeZoneName").value;
+  const match = offsetName.match(/GMT([+-]\d+)/);
+  const offsetHours = match ? parseInt(match[1], 10) : 0;
+  return new Date(guess.getTime() - offsetHours * 3600 * 1000);
+}
+
+/**
+ * Current date parts in Europe/London plus the weekday (1=Mon..7=Sun).
+ * @param {Date} now
+ * @return {{y: number, m: number, d: number, wd: number}}
+ */
+function londonDateParts(now) {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/London",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    weekday: "short",
+  }).formatToParts(now);
+  const get = (type) => parts.find((p) => p.type === type).value;
+  const wdMap = {Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7};
+  return {
+    y: parseInt(get("year"), 10),
+    m: parseInt(get("month"), 10),
+    d: parseInt(get("day"), 10),
+    wd: wdMap[get("weekday")],
+  };
+}
+
+/**
+ * The current "doodle day" as a [start, end) window plus formatting helpers,
+ * anchored to 00:00 Europe/London (BST/GMT aware). Use this everywhere a day
+ * boundary is needed: the Functions runtime is UTC, so `new Date().setHours(0)`
+ * snaps to UTC midnight, which is an hour off the London day during BST and
+ * silently buckets early-morning submissions/views into the wrong day.
+ * @param {Date} now
+ * @return {{startOfDay: number, endOfDay: number, startDate: Date,
+ *   dateKey: string}}
+ */
+function londonDayWindow(now) {
+  const {y, m, d} = londonDateParts(now);
+  const start = londonMidnightToUtc(y, m, d);
+  const end = londonMidnightToUtc(y, m, d + 1);
+  const pad = (n) => String(n).padStart(2, "0");
+  return {
+    startOfDay: start.getTime(),
+    endOfDay: end.getTime(),
+    startDate: start,
+    dateKey: `${y}-${pad(m)}-${pad(d)}`,
+  };
+}
+
+/**
+ * Start of the current Mon-Sun week, anchored at 00:00 Europe/London.
+ * @param {Date} now
+ * @return {Date}
+ */
+function startOfWeekLondon(now) {
+  const {y, m, d, wd} = londonDateParts(now);
+  return londonMidnightToUtc(y, m, d - (wd - 1));
+}
+
+/**
+ * Start of the current calendar month at 00:00 Europe/London.
+ * @param {Date} now
+ * @return {Date}
+ */
+function startOfMonthLondon(now) {
+  const {y, m} = londonDateParts(now);
+  return londonMidnightToUtc(y, m, 1);
+}
 
 /**
  * Aggregate winners for the given range and return a leaderboard.
@@ -1182,29 +1433,17 @@ async function buildRangedLeaderboard(range, currentUserId) {
     let currentUserRank = null;
     let currentUserData = null;
     if (!leaderboard.find((u) => u.id === currentUserId)) {
-      const all = await db.collection("users")
-          .orderBy("winCount", "desc")
-          .get();
-      const ids = all.docs.map((d) => d.id);
-      currentUserRank = ids.indexOf(currentUserId) + 1;
-      const me = all.docs.find((d) => d.id === currentUserId);
-      if (me) {
-        currentUserData = {
-          id: me.id,
-          username: me.data().username,
-          winCount: me.data().winCount,
-          currentStreak: me.data().currentStreak || 0,
-        };
-      }
+      const ranked = await rankByWinCount(currentUserId);
+      currentUserRank = ranked.rank;
+      currentUserData = ranked.data;
     }
     return {leaderboard, currentUserRank, currentUserData};
   }
 
   const now = new Date();
-  const start = new Date(now);
-  if (range === "week") start.setDate(now.getDate() - 7);
-  else start.setDate(now.getDate() - 30);
-  start.setHours(0, 0, 0, 0);
+  const start = range === "week" ?
+    startOfWeekLondon(now) :
+    startOfMonthLondon(now);
 
   const winSnap = await db.collection("winners")
       .where("date", ">=", admin.firestore.Timestamp.fromDate(start))
@@ -1289,10 +1528,7 @@ exports.getPresence = functions.https.onCall(async (data, context) => {
     );
   }
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const startOfDay = today.getTime();
-  const endOfDay = startOfDay + 24 * 60 * 60 * 1000;
+  const {startOfDay, endOfDay, startDate} = londonDayWindow(new Date());
 
   try {
     const drawCount = await db.collection("drawings")
@@ -1301,7 +1537,7 @@ exports.getPresence = functions.https.onCall(async (data, context) => {
         .count().get();
 
     const voteCount = await db.collection("user_votes")
-        .where("voteDate", "==", admin.firestore.Timestamp.fromDate(today))
+        .where("voteDate", "==", admin.firestore.Timestamp.fromDate(startDate))
         .count().get();
 
     return {
@@ -1331,10 +1567,11 @@ exports.getUserStats = functions.https.onCall(async (data, context) => {
       throw new functions.https.HttpsError("not-found", "User not found.");
     }
     const userData = userDoc.data();
-    const todayStr = new Date().toISOString().split("T")[0];
-    const unlockedOn = userData.paletteUnlockedOn || null;
-    const paletteAvailable = (userData.paletteAvailable || false) &&
-        unlockedOn !== todayStr;
+    // Palette is permanently unlocked once the user has ever reached a
+    // 3-day streak. The OR with longestStreak backfills users who unlocked
+    // (and possibly consumed) under the old consumable mechanic.
+    const paletteAvailable = userData.paletteAvailable === true ||
+        (userData.longestStreak || 0) >= 3;
     return {
       username: userData.username || "",
       avatarUrl: userData.avatarUrl || "",
@@ -1343,6 +1580,7 @@ exports.getUserStats = functions.https.onCall(async (data, context) => {
       winCount: userData.winCount || 0,
       paletteAvailable,
       freezesAvailable: userData.freezesAvailable || 0,
+      profileLink: userData.profileLink || "",
     };
   } catch (error) {
     throw new functions.https.HttpsError(
@@ -1418,4 +1656,219 @@ exports.setAvatar = functions.https.onCall(async (data, context) => {
         "Failed to save avatar.",
     );
   }
+});
+
+// Public, read-only profile for another user — safe fields plus the curated
+// gallery. Hidden if either party has blocked the other. Badges are derived
+// client-side from the returned streak/win stats (single-source unlocks.ts).
+exports.getPublicProfile = functions.https.onCall(async (data, context) => {
+  requireAuth(context);
+  const viewerId = context.auth.uid;
+  const targetId = (data && data.userId) || "";
+  if (typeof targetId !== "string" || !targetId) {
+    throw new functions.https.HttpsError(
+        "invalid-argument", "userId is required.");
+  }
+
+  // Block check, both directions — any block hides the profile.
+  const blockedRef = (a, b) => db.collection("users").doc(a)
+      .collection("blocked").doc(b);
+  const [iBlockedThem, theyBlockedMe] = await Promise.all([
+    blockedRef(viewerId, targetId).get(),
+    blockedRef(targetId, viewerId).get(),
+  ]);
+  if (iBlockedThem.exists || theyBlockedMe.exists) {
+    return {available: false, blocked: true};
+  }
+
+  const userDoc = await db.collection("users").doc(targetId).get();
+  if (!userDoc.exists) return {available: false};
+  const u = userDoc.data();
+
+  // Resolve the curated gallery: caller-owned drawings only, order preserved.
+  const ids = Array.isArray(u.galleryDrawingIds) ?
+      u.galleryDrawingIds.slice(0, 8) : [];
+  let gallery = [];
+  if (ids.length > 0) {
+    const docs = await Promise.all(
+        ids.map((id) => db.collection("drawings").doc(id).get()),
+    );
+    gallery = docs
+        .filter((d) => d.exists && d.data().userId === targetId)
+        .map((d) => ({
+          id: d.id,
+          imageUrl: d.data().imageUrl,
+          image: d.data().image,
+          theme: d.data().theme || null,
+        }));
+  }
+
+  return {
+    available: true,
+    id: targetId,
+    username: u.username || null,
+    avatarUrl: u.avatarUrl || null,
+    currentStreak: u.currentStreak || 0,
+    longestStreak: u.longestStreak || 0,
+    winCount: u.winCount || 0,
+    profileLink: u.profileLink || null,
+    gallery,
+  };
+});
+
+// Set the caller's curated gallery (up to 8 of their own drawings). Written
+// via callable because the users update rule only permits expoPushToken.
+exports.setGalleryDrawings = functions.https.onCall(async (data, context) => {
+  requireVerifiedEmail(context);
+  const userId = context.auth.uid;
+  const ids = (data && data.drawingIds) || [];
+  if (!Array.isArray(ids) || ids.some((id) => typeof id !== "string")) {
+    throw new functions.https.HttpsError(
+        "invalid-argument", "drawingIds must be an array of strings.");
+  }
+  if (ids.length > 8) {
+    throw new functions.https.HttpsError(
+        "invalid-argument", "You can feature up to 8 drawings.");
+  }
+  const unique = [...new Set(ids)]; // de-dupe, preserve order
+
+  // Every featured drawing must exist and belong to the caller.
+  if (unique.length > 0) {
+    const docs = await Promise.all(
+        unique.map((id) => db.collection("drawings").doc(id).get()),
+    );
+    const allOwned = docs.every(
+        (d) => d.exists && d.data().userId === userId);
+    if (!allOwned) {
+      throw new functions.https.HttpsError(
+          "permission-denied", "You can only feature your own drawings.");
+    }
+  }
+
+  await db.collection("users").doc(userId)
+      .update({galleryDrawingIds: unique});
+  return {success: true, galleryDrawingIds: unique};
+});
+
+// Set the caller's single profile link (artist website / social). Validated
+// as an http(s) URL — it's shown to other users, so reject javascript:, data:
+// and other unsafe schemes. An empty string clears the link.
+exports.setProfileLink = functions.https.onCall(async (data, context) => {
+  requireVerifiedEmail(context);
+  const userId = context.auth.uid;
+  let url = (data && typeof data.url === "string") ? data.url.trim() : "";
+  if (url.length > 200) {
+    throw new functions.https.HttpsError(
+        "invalid-argument", "Link is too long.");
+  }
+  if (url === "") {
+    await db.collection("users").doc(userId).update({profileLink: ""});
+    return {success: true, profileLink: ""};
+  }
+  if (!/^https?:\/\//i.test(url)) url = "https://" + url;
+  let parsed;
+  try {
+    parsed = new URL(url);
+  } catch (e) {
+    throw new functions.https.HttpsError(
+        "invalid-argument", "Enter a valid link.");
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new functions.https.HttpsError(
+        "invalid-argument", "Links must start with http:// or https://.");
+  }
+  if (!parsed.hostname.includes(".")) {
+    throw new functions.https.HttpsError(
+        "invalid-argument", "Enter a valid link.");
+  }
+  await db.collection("users").doc(userId)
+      .update({profileLink: parsed.toString()});
+  return {success: true, profileLink: parsed.toString()};
+});
+
+const REPORT_TYPES = ["profile", "avatar", "drawing"];
+
+// Record a user/content report for moderation. user_reports is closed to
+// client reads/writes (rules); only this callable writes it.
+exports.reportUser = functions.https.onCall(async (data, context) => {
+  requireAuth(context);
+  const reporterId = context.auth.uid;
+  const reportedUserId = (data && data.reportedUserId) || "";
+  const type = (data && data.type) || "profile";
+  const reason = (data && typeof data.reason === "string") ?
+      data.reason.slice(0, 500) : "";
+  if (typeof reportedUserId !== "string" || !reportedUserId) {
+    throw new functions.https.HttpsError(
+        "invalid-argument", "reportedUserId is required.");
+  }
+  if (reportedUserId === reporterId) {
+    throw new functions.https.HttpsError(
+        "failed-precondition", "You can't report yourself.");
+  }
+  if (!REPORT_TYPES.includes(type)) {
+    throw new functions.https.HttpsError(
+        "invalid-argument", "Invalid report type.");
+  }
+  await db.collection("user_reports").add({
+    reporterId,
+    reportedUserId,
+    type,
+    reason,
+    status: "open",
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+  return {success: true};
+});
+
+// Block another user. getPublicProfile hides both profiles from each other.
+exports.blockUser = functions.https.onCall(async (data, context) => {
+  requireAuth(context);
+  const userId = context.auth.uid;
+  const targetId = (data && data.userId) || "";
+  if (typeof targetId !== "string" || !targetId) {
+    throw new functions.https.HttpsError(
+        "invalid-argument", "userId is required.");
+  }
+  if (targetId === userId) {
+    throw new functions.https.HttpsError(
+        "failed-precondition", "You can't block yourself.");
+  }
+  await db.collection("users").doc(userId)
+      .collection("blocked").doc(targetId)
+      .set({createdAt: admin.firestore.FieldValue.serverTimestamp()});
+  return {success: true};
+});
+
+// Remove a block.
+exports.unblockUser = functions.https.onCall(async (data, context) => {
+  requireAuth(context);
+  const userId = context.auth.uid;
+  const targetId = (data && data.userId) || "";
+  if (typeof targetId !== "string" || !targetId) {
+    throw new functions.https.HttpsError(
+        "invalid-argument", "userId is required.");
+  }
+  await db.collection("users").doc(userId)
+      .collection("blocked").doc(targetId).delete();
+  return {success: true};
+});
+
+// List the users the caller has blocked, with display info for the
+// "Blocked users" management screen.
+exports.getBlockedUsers = functions.https.onCall(async (data, context) => {
+  requireAuth(context);
+  const userId = context.auth.uid;
+  const snap = await db.collection("users").doc(userId)
+      .collection("blocked").get();
+  const ids = snap.docs.map((d) => d.id);
+  if (ids.length === 0) return {blocked: []};
+  const docs = await Promise.all(
+      ids.map((id) => db.collection("users").doc(id).get()),
+  );
+  const blocked = docs.map((d, i) => ({
+    id: ids[i],
+    username: d.exists ? (d.data().username || null) : null,
+    avatarUrl: d.exists ? (d.data().avatarUrl || null) : null,
+  }));
+  return {blocked};
 });

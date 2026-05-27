@@ -4,6 +4,7 @@ export type TierId =
   | 'palette'
   | 'doodlerBadge'
   | 'redFlame'
+  | 'eraser'
   | 'goldFrame'
   | 'veteran'
   | 'master';
@@ -33,6 +34,12 @@ export const TIERS: Tier[] = [
     threshold: 14,
     label: 'Red flame',
     description: 'Your streak fire turns red.',
+  },
+  {
+    id: 'eraser',
+    threshold: 21,
+    label: 'Eraser',
+    description: 'Unlock an eraser to fix mistakes on your canvas.',
   },
   {
     id: 'goldFrame',

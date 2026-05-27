@@ -11,6 +11,7 @@ export interface UserStats {
   winCount: number;
   paletteAvailable: boolean;
   freezesAvailable: number;
+  profileLink: string;
 }
 
 const DEFAULT_STATS: UserStats = {
@@ -21,9 +22,10 @@ const DEFAULT_STATS: UserStats = {
   winCount: 0,
   paletteAvailable: false,
   freezesAvailable: 0,
+  profileLink: '',
 };
 
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
 const cacheKey = (uid: string) => `userStats:v${SCHEMA_VERSION}:${uid}`;
 
 const isValidStats = (v: unknown): v is UserStats =>
@@ -35,7 +37,8 @@ const isValidStats = (v: unknown): v is UserStats =>
   typeof (v as UserStats).longestStreak === 'number' &&
   typeof (v as UserStats).winCount === 'number' &&
   typeof (v as UserStats).paletteAvailable === 'boolean' &&
-  typeof (v as UserStats).freezesAvailable === 'number';
+  typeof (v as UserStats).freezesAvailable === 'number' &&
+  typeof (v as UserStats).profileLink === 'string';
 
 export function useCachedUserStats() {
   const [stats, setStats] = useState<UserStats>(DEFAULT_STATS);

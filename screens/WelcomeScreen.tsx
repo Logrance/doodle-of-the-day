@@ -1,9 +1,8 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/core';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { auth } from '../firebaseConfig';
 import { colors } from '../theme/colors';
 import LogoMark from '../components/LogoMark';
 
@@ -15,13 +14,6 @@ type RootStackParamList = {
 
 const WelcomeScreen: React.FC = () => {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
-
-  useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(user => {
-      if (user) navigation.replace('HomeScreen');
-    });
-    return unsubscribe;
-  }, []);
 
   return (
     <SafeAreaView style={styles.container}>

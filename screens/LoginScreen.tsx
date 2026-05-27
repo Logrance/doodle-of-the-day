@@ -16,6 +16,7 @@ import { colors } from '../theme/colors';
 type RootStackParamList = {
   HomeScreen: undefined;
   ForgotPassword: undefined;
+  CheckEmail: { email: string };
 };
 
 const friendlyError = (code: string): string => {
@@ -53,7 +54,10 @@ const LoginScreen: React.FC = () => {
     setLoading(true);
     setErrors({});
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const cred = await signInWithEmailAndPassword(auth, email, password);
+      if (!cred.user.emailVerified) {
+        navigation.navigate('CheckEmail', { email: cred.user.email ?? email });
+      }
     } catch (error: any) {
       const code = error?.code ?? '';
       setErrors({ form: friendlyError(code) });
