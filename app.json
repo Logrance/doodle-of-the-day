@@ -22,7 +22,6 @@
     },
     "android": {
       "package": "com.doodleOfThe.day",
-      "versionCode": 24,
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/cow2_highcontrast.png",
