@@ -8,6 +8,7 @@ import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import CowLoader from '../components/CowLoader';
 import Badge from '../components/Badge';
+import FeatureTip from '../components/FeatureTip';
 import { auth, getCallableFunction } from '../firebaseConfig';
 import { colors } from '../theme/colors';
 import { hasUnlock, getStreakColor } from '../theme/unlocks';
@@ -18,6 +19,12 @@ type GalleryItem = {
   imageUrl?: string;
   image?: string;
   theme?: string | null;
+};
+
+type Favorite = {
+  id: string;
+  username: string | null;
+  avatarUrl: string | null;
 };
 
 type PublicProfile = {
@@ -31,6 +38,8 @@ type PublicProfile = {
   winCount?: number;
   profileLink?: string | null;
   gallery?: GalleryItem[];
+  favorites?: Favorite[];
+  viewerHasFavorited?: boolean;
 };
 
 const displayLink = (url: string) =>
@@ -50,19 +59,25 @@ const PublicProfileScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [favBusy, setFavBusy] = useState(false);
 
   const screenWidth = Dimensions.get('window').width;
   const thumbSize = (Math.min(screenWidth, 600) - 32 - 16) / 3;
+
+  const fetchProfile = async () => {
+    const getPublicProfile = getCallableFunction('getPublicProfile') as (
+      d: { userId: string }
+    ) => Promise<{ data: PublicProfile }>;
+    const res = await getPublicProfile({ userId });
+    return res.data;
+  };
 
   useEffect(() => {
     let active = true;
     (async () => {
       try {
-        const getPublicProfile = getCallableFunction('getPublicProfile') as (
-          d: { userId: string }
-        ) => Promise<{ data: PublicProfile }>;
-        const res = await getPublicProfile({ userId });
-        if (active) setProfile(res.data);
+        const data = await fetchProfile();
+        if (active) setProfile(data);
       } catch {
         if (active) setProfile({ available: false });
       } finally {
@@ -139,6 +154,83 @@ const PublicProfileScreen: React.FC = () => {
     ]);
   };
 
+  const handleToggleFavorite = async () => {
+    if (!profile || favBusy) return;
+    const wasFavorited = profile.viewerHasFavorited === true;
+    setFavBusy(true);
+    try {
+      const fn = getCallableFunction(wasFavorited ? 'removeFavorite' : 'addFavorite');
+      await fn({ userId });
+      // Re-fetch so the favourites list (on the favouriter's own profile) and
+      // the toggle state stay in sync.
+      const fresh = await fetchProfile();
+      setProfile(fresh);
+    } catch (e: any) {
+      Alert.alert(
+        wasFavorited ? "Couldn't remove favourite" : "Couldn't add favourite",
+        e?.message || 'Please try again.',
+      );
+    } finally {
+      setFavBusy(false);
+    }
+  };
+
+  const handleRemoveGalleryItem = (drawingId: string) => {
+    if (!isSelf || !profile) return;
+    Alert.alert(
+      'Remove from gallery?',
+      'This drawing will no longer appear on your public profile.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            const current = (profile.gallery || []).map((g) => g.id);
+            const next = current.filter((id) => id !== drawingId);
+            try {
+              const setGalleryDrawings = getCallableFunction('setGalleryDrawings');
+              await setGalleryDrawings({ drawingIds: next });
+              const fresh = await fetchProfile();
+              setProfile(fresh);
+            } catch (e: any) {
+              Alert.alert("Couldn't remove", e?.message || 'Please try again.');
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  const handleRemoveFavoriteSelf = (favId: string, favUsername: string | null) => {
+    if (!isSelf) return;
+    Alert.alert(
+      `Remove ${favUsername || 'this user'}?`,
+      "They'll no longer appear on your favourites.",
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const removeFavorite = getCallableFunction('removeFavorite');
+              await removeFavorite({ userId: favId });
+              const fresh = await fetchProfile();
+              setProfile(fresh);
+            } catch (e: any) {
+              Alert.alert("Couldn't remove", e?.message || 'Please try again.');
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  const openFavorite = (favId: string) => {
+    navigation.push('PublicProfileScreen', { userId: favId });
+  };
+
   if (loading) {
     return (
       <View style={styles.centered}>
@@ -162,14 +254,38 @@ const PublicProfileScreen: React.FC = () => {
 
   const streak = profile.currentStreak ?? 0;
   const gallery = profile.gallery ?? [];
+  const favorites = profile.favorites ?? [];
+  const hasFavorited = profile.viewerHasFavorited === true;
+  const favAvatarSize = 64;
 
   return (
     <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {!isSelf && (
-          <TouchableOpacity onPress={openOverflow} style={styles.overflowButton} hitSlop={12} accessibilityLabel="Report or block">
-            <Ionicons name="ellipsis-horizontal" size={22} color={colors.textMuted} />
-          </TouchableOpacity>
+          <View style={styles.topActionsRow}>
+            <TouchableOpacity
+              onPress={handleToggleFavorite}
+              disabled={favBusy}
+              style={styles.topActionButton}
+              hitSlop={12}
+              accessibilityLabel={hasFavorited ? 'Remove from favourites' : 'Add to favourites'}
+            >
+              <Ionicons
+                name={hasFavorited ? 'star' : 'star-outline'}
+                size={24}
+                color={hasFavorited ? colors.navy : colors.textMuted}
+              />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={openOverflow} style={styles.topActionButton} hitSlop={12} accessibilityLabel="Report or block">
+              <Ionicons name="ellipsis-horizontal" size={22} color={colors.textMuted} />
+            </TouchableOpacity>
+          </View>
+        )}
+        {isSelf && (
+          <View style={styles.selfViewBanner}>
+            <Ionicons name="eye-outline" size={14} color={colors.textMuted} />
+            <Text style={styles.selfViewBannerText}>This is how your profile looks to others</Text>
+          </View>
         )}
 
         <View style={styles.identityBlock}>
@@ -223,22 +339,92 @@ const PublicProfileScreen: React.FC = () => {
           </View>
         )}
 
+        {!isSelf && !hasFavorited && (
+          <FeatureTip
+            tipId="favourite-this-doodler"
+            style={styles.favouriteTip}
+            title="Save your favourite doodlers"
+            text="Tap the star to add this artist to your top 10 favourites — they'll show on your profile so you can find them again."
+          />
+        )}
+
         <Text style={styles.sectionTitle}>Featured doodles</Text>
         {gallery.length > 0 ? (
           <View style={styles.galleryGrid}>
             {gallery.map((item) => (
-              <TouchableOpacity
+              <View
                 key={item.id}
-                onPress={() => setSelectedImage(drawingImageUri(item))}
                 style={[styles.thumbWrap, { width: thumbSize, height: thumbSize }]}
               >
-                <Image source={{ uri: drawingImageUri(item) }} style={styles.thumb} />
-              </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setSelectedImage(drawingImageUri(item))}
+                  style={styles.thumbTouch}
+                >
+                  <Image source={{ uri: drawingImageUri(item) }} style={styles.thumb} />
+                </TouchableOpacity>
+                {isSelf && (
+                  <TouchableOpacity
+                    onPress={() => handleRemoveGalleryItem(item.id)}
+                    style={styles.removeBadge}
+                    hitSlop={8}
+                    accessibilityLabel="Remove from gallery"
+                  >
+                    <Ionicons name="close" size={14} color={colors.white} />
+                  </TouchableOpacity>
+                )}
+              </View>
             ))}
           </View>
         ) : (
           <Text style={styles.galleryEmpty}>
-            {profile.username || 'This user'} hasn't featured any doodles yet.
+            {isSelf
+              ? "You haven't featured any doodles yet — star drawings in My drawings to add them."
+              : `${profile.username || 'This user'} hasn't featured any doodles yet.`}
+          </Text>
+        )}
+
+        <Text style={[styles.sectionTitle, styles.favouritesSectionTitle]}>Favourite doodlers</Text>
+        {favorites.length > 0 ? (
+          <View style={styles.favouritesGrid}>
+            {favorites.map((f) => (
+              <View key={f.id} style={[styles.favItem, { width: favAvatarSize + 16 }]}>
+                <TouchableOpacity onPress={() => openFavorite(f.id)} activeOpacity={0.7}>
+                  {f.avatarUrl ? (
+                    <Image
+                      source={{ uri: f.avatarUrl }}
+                      style={[styles.favAvatar, { width: favAvatarSize, height: favAvatarSize, borderRadius: favAvatarSize / 2 }]}
+                    />
+                  ) : (
+                    <View
+                      style={[
+                        styles.favAvatar,
+                        styles.favAvatarPlaceholder,
+                        { width: favAvatarSize, height: favAvatarSize, borderRadius: favAvatarSize / 2 },
+                      ]}
+                    >
+                      <Text style={styles.favAvatarLetter}>{(f.username || 'D')[0].toUpperCase()}</Text>
+                    </View>
+                  )}
+                  <Text style={styles.favLabel} numberOfLines={1}>{f.username || '—'}</Text>
+                </TouchableOpacity>
+                {isSelf && (
+                  <TouchableOpacity
+                    onPress={() => handleRemoveFavoriteSelf(f.id, f.username)}
+                    style={styles.removeBadge}
+                    hitSlop={8}
+                    accessibilityLabel={`Remove ${f.username || 'user'} from favourites`}
+                  >
+                    <Ionicons name="close" size={14} color={colors.white} />
+                  </TouchableOpacity>
+                )}
+              </View>
+            ))}
+          </View>
+        ) : (
+          <Text style={styles.galleryEmpty}>
+            {isSelf
+              ? "You haven't favourited anyone yet — tap the star on someone's profile to add them."
+              : `${profile.username || 'This user'} hasn't favourited anyone yet.`}
           </Text>
         )}
       </ScrollView>
@@ -265,11 +451,90 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32, backgroundColor: colors.surfaceAlt,
   },
   scrollContent: { paddingBottom: 40 },
-  overflowButton: {
-    alignSelf: 'flex-end',
+  topActionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    paddingRight: 8,
+    paddingTop: 4,
+    gap: 4,
+  },
+  topActionButton: {
     padding: 12,
-    marginRight: 8,
+  },
+  selfViewBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    marginHorizontal: 20,
+    marginTop: 8,
+    backgroundColor: colors.surface,
+    borderRadius: 10,
+  },
+  selfViewBannerText: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 12,
+    color: colors.textMuted,
+  },
+  favouriteTip: {
+    marginHorizontal: 20,
+    marginBottom: 16,
+  },
+  favouritesSectionTitle: {
+    marginTop: 24,
+  },
+  favouritesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    paddingHorizontal: 16,
+  },
+  favItem: {
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  favAvatar: {
+    backgroundColor: colors.surfaceMuted,
+  },
+  favAvatarPlaceholder: {
+    backgroundColor: colors.navy,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  favAvatarLetter: {
+    fontFamily: 'Poppins_700Bold',
+    fontSize: 22,
+    color: colors.white,
+  },
+  favLabel: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 12,
+    color: colors.textPrimary,
+    textAlign: 'center',
     marginTop: 4,
+    maxWidth: 80,
+  },
+  thumbTouch: { width: '100%', height: '100%' },
+  removeBadge: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: colors.danger,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.surface,
+    shadowColor: colors.shadow,
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 3,
   },
   identityBlock: { alignItems: 'center', marginTop: 4, marginBottom: 20, paddingHorizontal: 24 },
   avatar: { width: 96, height: 96, borderRadius: 48, backgroundColor: colors.surfaceMuted, marginBottom: 12 },

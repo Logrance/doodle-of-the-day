@@ -20,6 +20,14 @@ service cloud.firestore {
         allow read: if isOwner(userId);
         allow write: if false;
       }
+
+      // Favourites are owner-readable; public visibility is via the
+      // getPublicProfile callable (admin SDK), which joins usernames/avatars.
+      // Writes go through addFavorite/removeFavorite for the cap check.
+      match /favorites/{favoriteId} {
+        allow read: if isOwner(userId);
+        allow write: if false;
+      }
     }
 
     match /themes_today/{themeId} {

@@ -61,6 +61,9 @@ const linking: LinkingOptions<RootStackParamList> = {
 function navigateFromNotificationUrl(url: string, attempt = 0) {
   const lower = url.toLowerCase();
   let tab: 'Profile' | 'Draw' | 'Vote' | null = null;
+  // `/profile/<uid>` is the favouriter deep-link — sends the tap to the
+  // favouriter's public profile inside the Profile tab's stack.
+  const profileMatch = lower.match(/\/profile\/([a-z0-9]+)/i);
   if (lower.includes('/draw')) tab = 'Draw';
   else if (lower.includes('/vote')) tab = 'Vote';
   else if (lower.includes('/profile')) tab = 'Profile';
@@ -71,6 +74,17 @@ function navigateFromNotificationUrl(url: string, attempt = 0) {
   // shows its default landing tab (Profile), which looks like wrong-screen routing.
   if (!navigationRef.isReady()) {
     if (attempt < 40) setTimeout(() => navigateFromNotificationUrl(url, attempt + 1), 100);
+    return;
+  }
+  if (tab === 'Profile' && profileMatch && profileMatch[1]) {
+    // @ts-expect-error nested-navigator typing — runtime form is correct
+    navigationRef.navigate('HomeScreen', {
+      screen: 'Profile',
+      params: {
+        screen: 'PublicProfileScreen',
+        params: { userId: profileMatch[1] },
+      },
+    });
     return;
   }
   // @ts-expect-error nested-navigator typing — runtime form is correct

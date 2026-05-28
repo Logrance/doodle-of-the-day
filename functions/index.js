@@ -178,9 +178,6 @@ exports.pickDailyWinner = functions.pubsub.schedule("00 20 * * *")
           if (rid) roomIds.add(rid);
         });
 
-        // Collect winner userIds for push notifications
-        const winnerUserIds = new Set();
-
         // Iterate through each roomId and select the winner
         for (const roomId of roomIds) {
           console.log(`Selecting winner for room: ${roomId}`);
@@ -234,7 +231,6 @@ exports.pickDailyWinner = functions.pubsub.schedule("00 20 * * *")
                   winCount: admin.firestore.FieldValue.increment(1),
                 });
 
-                winnerUserIds.add(winnerData.userId);
                 console.log(`Winner for room ${roomId} is: ${drawing.id}`);
               }
             }
@@ -255,20 +251,15 @@ exports.pickDailyWinner = functions.pubsub.schedule("00 20 * * *")
           );
           const messages = userDocs
               .filter((doc) => doc.exists && doc.data().expoPushToken)
-              .map((doc) => {
-                const isWinner = winnerUserIds.has(doc.id);
-                return {
-                  to: doc.data().expoPushToken,
-                  title: isWinner ? "🏆 You won today!" : "Results are in!",
-                  body: isWinner ?
-                    "Congratulations — your doodle won today's vote!" :
-                    "Did you win? Check the results now.",
-                  sound: "default",
-                  channelId: "default",
-                  priority: "high",
-                  data: {url: "doodleoftheday://home/vote"},
-                };
-              });
+              .map((doc) => ({
+                to: doc.data().expoPushToken,
+                title: "Results are in!",
+                body: "Did you win? Check the results now.",
+                sound: "default",
+                channelId: "default",
+                priority: "high",
+                data: {url: "doodleoftheday://home/vote"},
+              }));
           await sendExpoPushNotifications(messages);
         }
       } catch (error) {
@@ -1703,6 +1694,33 @@ exports.getPublicProfile = functions.https.onCall(async (data, context) => {
         }));
   }
 
+  // Resolve the target's favourites (who THEY favourited) — shown publicly on
+  // their profile. Ordered oldest-first by createdAt for stability.
+  const favSnap = await db.collection("users").doc(targetId)
+      .collection("favorites").orderBy("createdAt", "asc").get();
+  const favIds = favSnap.docs.map((d) => d.id);
+  let favorites = [];
+  if (favIds.length > 0) {
+    const favDocs = await Promise.all(
+        favIds.map((id) => db.collection("users").doc(id).get()),
+    );
+    favorites = favDocs
+        .map((d, i) => ({
+          id: favIds[i],
+          username: d.exists ? (d.data().username || null) : null,
+          avatarUrl: d.exists ? (d.data().avatarUrl || null) : null,
+        }))
+        .filter((f) => f.username); // skip deleted/missing users
+  }
+
+  // Whether the viewer has favourited the target — drives the star toggle.
+  let viewerHasFavorited = false;
+  if (viewerId !== targetId) {
+    const viewerFavDoc = await db.collection("users").doc(viewerId)
+        .collection("favorites").doc(targetId).get();
+    viewerHasFavorited = viewerFavDoc.exists;
+  }
+
   return {
     available: true,
     id: targetId,
@@ -1713,6 +1731,8 @@ exports.getPublicProfile = functions.https.onCall(async (data, context) => {
     winCount: u.winCount || 0,
     profileLink: u.profileLink || null,
     gallery,
+    favorites,
+    viewerHasFavorited,
   };
 });
 
@@ -1871,4 +1891,97 @@ exports.getBlockedUsers = functions.https.onCall(async (data, context) => {
     avatarUrl: d.exists ? (d.data().avatarUrl || null) : null,
   }));
   return {blocked};
+});
+
+const MAX_FAVORITES = 10;
+
+// Add another user to the caller's favourites. Hard cap of 10 — at the cap,
+// the client must remove one first (no auto-eviction). Also sends a push
+// notification to the favourited user with a deep-link to the favouriter's
+// public profile, so they can tap through and (optionally) favourite back.
+exports.addFavorite = functions.https.onCall(async (data, context) => {
+  requireVerifiedEmail(context);
+  const userId = context.auth.uid;
+  const targetId = (data && data.userId) || "";
+  if (typeof targetId !== "string" || !targetId) {
+    throw new functions.https.HttpsError(
+        "invalid-argument", "userId is required.");
+  }
+  if (targetId === userId) {
+    throw new functions.https.HttpsError(
+        "failed-precondition", "You can't favourite yourself.");
+  }
+
+  // Reject if either party has blocked the other — block is bidirectional.
+  const blockedRef = (a, b) => db.collection("users").doc(a)
+      .collection("blocked").doc(b);
+  const [iBlockedThem, theyBlockedMe] = await Promise.all([
+    blockedRef(userId, targetId).get(),
+    blockedRef(targetId, userId).get(),
+  ]);
+  if (iBlockedThem.exists || theyBlockedMe.exists) {
+    throw new functions.https.HttpsError(
+        "permission-denied", "This profile is unavailable.");
+  }
+
+  const favRef = db.collection("users").doc(userId)
+      .collection("favorites").doc(targetId);
+  const existing = await favRef.get();
+  if (existing.exists) return {success: true, alreadyFavorited: true};
+
+  // Cap enforcement — count() avoids reading the whole subcollection.
+  const countSnap = await db.collection("users").doc(userId)
+      .collection("favorites").count().get();
+  if (countSnap.data().count >= MAX_FAVORITES) {
+    throw new functions.https.HttpsError(
+        "failed-precondition",
+        `You can have at most ${MAX_FAVORITES} favourites. ` +
+        "Remove one first.");
+  }
+
+  await favRef.set({
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+
+  // Fire-and-forget push to the favourited user. Don't fail the call if push
+  // fails — the favourite is still saved.
+  try {
+    const [favouriterDoc, targetDoc] = await Promise.all([
+      db.collection("users").doc(userId).get(),
+      db.collection("users").doc(targetId).get(),
+    ]);
+    const favouriterName = favouriterDoc.exists ?
+        (favouriterDoc.data().username || "Someone") : "Someone";
+    const targetToken = targetDoc.exists ?
+        targetDoc.data().expoPushToken : null;
+    if (targetToken) {
+      await sendExpoPushNotifications([{
+        to: targetToken,
+        title: "You've got a new favouriter! ⭐",
+        body: `${favouriterName} added you to their favourites.`,
+        sound: "default",
+        channelId: "default",
+        priority: "high",
+        data: {url: `doodleoftheday://home/profile/${userId}`},
+      }]);
+    }
+  } catch (e) {
+    console.error("addFavorite push failed:", e);
+  }
+
+  return {success: true};
+});
+
+// Remove a user from the caller's favourites. Idempotent.
+exports.removeFavorite = functions.https.onCall(async (data, context) => {
+  requireAuth(context);
+  const userId = context.auth.uid;
+  const targetId = (data && data.userId) || "";
+  if (typeof targetId !== "string" || !targetId) {
+    throw new functions.https.HttpsError(
+        "invalid-argument", "userId is required.");
+  }
+  await db.collection("users").doc(userId)
+      .collection("favorites").doc(targetId).delete();
+  return {success: true};
 });

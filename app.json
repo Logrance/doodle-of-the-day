@@ -2,7 +2,7 @@
   "expo": {
     "name": "Doodle of the Day",
     "slug": "Doodle-of-the-Day",
-    "version": "1.0.26",
+    "version": "1.0.27",
     "scheme": "doodleoftheday",
     "orientation": "portrait",
     "icon": "./assets/icon-mark.png",

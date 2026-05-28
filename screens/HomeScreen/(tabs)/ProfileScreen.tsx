@@ -18,6 +18,7 @@ type RootStackParamList = {
   GalleryScreen: { initialTab?: 'drawings' | 'winners' } | undefined;
   Deets: undefined;
   LeaderboardScreen: undefined;
+  PublicProfileScreen: { userId: string };
 };
 
 
@@ -200,6 +201,17 @@ const ProfileScreen: React.FC = () => {
             <TouchableOpacity onPress={() => navigation.navigate('Deets')} style={styles.buttonSecondary}>
               <Ionicons name="person-circle-outline" size={22} color={colors.textPrimary} style={styles.buttonIcon} />
               <Text style={styles.buttonText}>Account</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => {
+                const uid = auth.currentUser?.uid;
+                if (uid) navigation.navigate('PublicProfileScreen', { userId: uid });
+              }}
+              style={styles.buttonSecondary}
+            >
+              <Ionicons name="eye-outline" size={22} color={colors.textPrimary} style={styles.buttonIcon} />
+              <Text style={styles.buttonText}>My public profile</Text>
             </TouchableOpacity>
 
             <TouchableOpacity onPress={() => navigation.navigate('GalleryScreen')} style={styles.buttonSecondary}>
