@@ -64,7 +64,7 @@ const FavouritersScreen: React.FC = () => {
   if (favouriters.length === 0) {
     return (
       <View style={styles.centered}>
-        <Text style={styles.emptyTitle}>No favouriters yet</Text>
+        <Text style={styles.emptyTitle}>Your inbox is empty</Text>
         <Text style={styles.emptySubtitle}>
           When someone adds you to their favourites, they'll show up here.
         </Text>

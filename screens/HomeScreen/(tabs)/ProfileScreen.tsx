@@ -225,8 +225,8 @@ const ProfileScreen: React.FC = () => {
               }}
               style={styles.buttonSecondary}
             >
-              <Ionicons name="star-outline" size={22} color={colors.textPrimary} style={styles.buttonIcon} />
-              <Text style={styles.buttonText}>Favouriters</Text>
+              <Ionicons name="mail-outline" size={22} color={colors.textPrimary} style={styles.buttonIcon} />
+              <Text style={styles.buttonText}>Inbox</Text>
               {unreadFavouritersCount > 0 && (
                 <View style={styles.unreadBadge}>
                   <Text style={styles.unreadBadgeText}>
