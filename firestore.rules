@@ -28,6 +28,14 @@ service cloud.firestore {
         allow read: if isOwner(userId);
         allow write: if false;
       }
+
+      // Favouriters (reverse direction — who favourited you). Owner-only read
+      // surfaces the in-app inbox; writes go through addFavorite (admin SDK)
+      // so we mirror the favourite without trusting the client.
+      match /favouriters/{favouriterId} {
+        allow read: if isOwner(userId);
+        allow write: if false;
+      }
     }
 
     match /themes_today/{themeId} {

@@ -11,6 +11,7 @@ import Deets from "./Deets";
 import LeaderboardScreen from "./LeaderboardScreen";
 import PublicProfileScreen from "./PublicProfileScreen";
 import BlockedUsersScreen from "./BlockedUsersScreen";
+import FavouritersScreen from "./FavouritersScreen";
 import { colors } from "../theme/colors";
 
 const Stack = createNativeStackNavigator();
@@ -79,6 +80,7 @@ export default function ProfileStack() {
             <Stack.Screen name="LeaderboardScreen" component={LeaderboardScreen} options={{ title: 'Leaderboard' }}/>
             <Stack.Screen name="PublicProfileScreen" component={PublicProfileScreen} options={{ title: 'Profile' }}/>
             <Stack.Screen name="BlockedUsersScreen" component={BlockedUsersScreen} options={{ title: 'Blocked users' }}/>
+            <Stack.Screen name="FavouritersScreen" component={FavouritersScreen} options={{ title: 'Favouriters' }}/>
         </Stack.Navigator>
     );
 }

@@ -519,14 +519,22 @@ useEffect(() => {
       </View>
   )}
 
-  {phase === 'results' && results?.drawings?.[0]?.isYou && (
-    <ConfettiCannon
-      count={150}
-      origin={{ x: screenWidth / 2, y: 0 }}
-      autoStart
-      fadeOut
-    />
-  )}
+  {phase === 'results' && (() => {
+    // Confetti fires for any user whose drawing matches the top vote count,
+    // including ties — the old `drawings[0].isYou` check missed tied winners
+    // whose drawing wasn't sorted to index 0.
+    const top = results?.drawings?.[0];
+    const userDrawing = results?.drawings?.find((d) => d.isYou);
+    const userIsWinner = !!top && !!userDrawing && userDrawing.votes === top.votes;
+    return userIsWinner ? (
+      <ConfettiCannon
+        count={150}
+        origin={{ x: screenWidth / 2, y: 0 }}
+        autoStart
+        fadeOut
+      />
+    ) : null;
+  })()}
 
       <Modal
         visible={modalVisible}

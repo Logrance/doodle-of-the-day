@@ -249,8 +249,18 @@ exports.pickDailyWinner = functions.pubsub.schedule("00 20 * * *")
           const userDocs = await Promise.all(
               allUserIds.map((uid) => db.collection("users").doc(uid).get()),
           );
+          // Dedupe by push token — one device can have several user docs
+          // (multiple accounts signed in over time), all carrying the same
+          // Expo token, which would otherwise produce duplicate pushes.
+          const seenTokens = new Set();
           const messages = userDocs
-              .filter((doc) => doc.exists && doc.data().expoPushToken)
+              .filter((doc) => {
+                if (!doc.exists) return false;
+                const token = doc.data().expoPushToken;
+                if (!token || seenTokens.has(token)) return false;
+                seenTokens.add(token);
+                return true;
+              })
               .map((doc) => ({
                 to: doc.data().expoPushToken,
                 title: "Results are in!",
@@ -281,8 +291,15 @@ exports.notifyMorningTheme = functions.pubsub.schedule("00 08 * * *")
         const word = themeSnapshot.docs[0].data().word;
 
         const usersSnapshot = await db.collection("users").get();
+        // Dedupe by push token (see pickDailyWinner for the rationale).
+        const seenTokens = new Set();
         const messages = usersSnapshot.docs
-            .filter((doc) => doc.data().expoPushToken)
+            .filter((doc) => {
+              const token = doc.data().expoPushToken;
+              if (!token || seenTokens.has(token)) return false;
+              seenTokens.add(token);
+              return true;
+            })
             .map((doc) => ({
               to: doc.data().expoPushToken,
               title: `Today's theme: ${word} 🎨`,
@@ -315,10 +332,16 @@ exports.notifyDrawingDeadline = functions.pubsub.schedule("30 13 * * *")
         );
 
         const usersSnapshot = await db.collection("users").get();
+        // Dedupe by push token (see pickDailyWinner for the rationale).
+        const seenTokens = new Set();
         const messages = usersSnapshot.docs
             .filter((doc) => {
               const data = doc.data();
-              return data.expoPushToken && !submittedUserIds.has(doc.id);
+              if (!data.expoPushToken) return false;
+              if (submittedUserIds.has(doc.id)) return false;
+              if (seenTokens.has(data.expoPushToken)) return false;
+              seenTokens.add(data.expoPushToken);
+              return true;
             })
             .map((doc) => {
               const streak = doc.data().currentStreak || 0;
@@ -1563,6 +1586,17 @@ exports.getUserStats = functions.https.onCall(async (data, context) => {
     // (and possibly consumed) under the old consumable mechanic.
     const paletteAvailable = userData.paletteAvailable === true ||
         (userData.longestStreak || 0) >= 3;
+
+    // Count favouriters newer than the last time the user opened the inbox —
+    // drives the unread badge on the Profile button. count() avoids reading
+    // the whole subcollection.
+    const lastReadAt = userData.favouritersLastReadAt || null;
+    let unreadFavouritersCount = 0;
+    let q = db.collection("users").doc(userId).collection("favouriters");
+    if (lastReadAt) q = q.where("createdAt", ">", lastReadAt);
+    const unreadSnap = await q.count().get();
+    unreadFavouritersCount = unreadSnap.data().count;
+
     return {
       username: userData.username || "",
       avatarUrl: userData.avatarUrl || "",
@@ -1572,6 +1606,7 @@ exports.getUserStats = functions.https.onCall(async (data, context) => {
       paletteAvailable,
       freezesAvailable: userData.freezesAvailable || 0,
       profileLink: userData.profileLink || "",
+      unreadFavouritersCount,
     };
   } catch (error) {
     throw new functions.https.HttpsError(
@@ -1939,40 +1974,24 @@ exports.addFavorite = functions.https.onCall(async (data, context) => {
         "Remove one first.");
   }
 
-  await favRef.set({
-    createdAt: admin.firestore.FieldValue.serverTimestamp(),
-  });
-
-  // Fire-and-forget push to the favourited user. Don't fail the call if push
-  // fails — the favourite is still saved.
-  try {
-    const [favouriterDoc, targetDoc] = await Promise.all([
-      db.collection("users").doc(userId).get(),
-      db.collection("users").doc(targetId).get(),
-    ]);
-    const favouriterName = favouriterDoc.exists ?
-        (favouriterDoc.data().username || "Someone") : "Someone";
-    const targetToken = targetDoc.exists ?
-        targetDoc.data().expoPushToken : null;
-    if (targetToken) {
-      await sendExpoPushNotifications([{
-        to: targetToken,
-        title: "You've got a new favouriter! ⭐",
-        body: `${favouriterName} added you to their favourites.`,
-        sound: "default",
-        channelId: "default",
-        priority: "high",
-        data: {url: `doodleoftheday://home/profile/${userId}`},
-      }]);
-    }
-  } catch (e) {
-    console.error("addFavorite push failed:", e);
-  }
+  const now = admin.firestore.FieldValue.serverTimestamp();
+  // Mirror the favourite on the target's `favouriters` subcollection so the
+  // target can browse who's favourited them in their in-app inbox. Persistent
+  // (we never delete on removeFavorite) — feels less passive-aggressive than
+  // entries vanishing if someone unfavourites. Re-favouriting just bumps the
+  // createdAt because the doc id is the favouriter's uid.
+  await Promise.all([
+    favRef.set({createdAt: now}),
+    db.collection("users").doc(targetId).collection("favouriters")
+        .doc(userId).set({createdAt: now}),
+  ]);
 
   return {success: true};
 });
 
-// Remove a user from the caller's favourites. Idempotent.
+// Remove a user from the caller's favourites. Idempotent. Deliberately does
+// NOT delete the entry from the target's `favouriters` inbox — the inbox is
+// a persistent log of who's ever favourited you (see addFavorite comment).
 exports.removeFavorite = functions.https.onCall(async (data, context) => {
   requireAuth(context);
   const userId = context.auth.uid;
@@ -1983,5 +2002,45 @@ exports.removeFavorite = functions.https.onCall(async (data, context) => {
   }
   await db.collection("users").doc(userId)
       .collection("favorites").doc(targetId).delete();
+  return {success: true};
+});
+
+// Returns the caller's favouriters (people who favourited them), most-recent
+// first, joined with username/avatar. Used by the in-app inbox.
+exports.getFavouriters = functions.https.onCall(async (data, context) => {
+  requireAuth(context);
+  const userId = context.auth.uid;
+  const snap = await db.collection("users").doc(userId)
+      .collection("favouriters").orderBy("createdAt", "desc").get();
+  const docs = snap.docs;
+  if (docs.length === 0) return {favouriters: []};
+
+  const userDocs = await Promise.all(
+      docs.map((d) => db.collection("users").doc(d.id).get()),
+  );
+  const favouriters = docs
+      .map((d, i) => {
+        const u = userDocs[i];
+        if (!u.exists) return null;
+        const created = d.data().createdAt;
+        return {
+          id: d.id,
+          username: u.data().username || null,
+          avatarUrl: u.data().avatarUrl || null,
+          createdAt: created ? created.toMillis() : 0,
+        };
+      })
+      .filter((f) => f && f.username);
+  return {favouriters};
+});
+
+// Sets favouritersLastReadAt = now so the unread badge clears on next stats
+// refresh. Idempotent — called whenever the inbox is opened.
+exports.markFavouritersRead = functions.https.onCall(async (data, context) => {
+  requireAuth(context);
+  const userId = context.auth.uid;
+  await db.collection("users").doc(userId).update({
+    favouritersLastReadAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
   return {success: true};
 });

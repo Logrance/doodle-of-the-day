@@ -157,15 +157,19 @@ const PublicProfileScreen: React.FC = () => {
   const handleToggleFavorite = async () => {
     if (!profile || favBusy) return;
     const wasFavorited = profile.viewerHasFavorited === true;
+    // Optimistic update — flip the star immediately so the press feels
+    // instant, instead of waiting on the callable + a refetch. Favouriting
+    // doesn't change anything visible on the target's profile (the target's
+    // favourites array is whom THEY favourited, not who favourited them),
+    // so the local toggle is the only state that needs to move.
+    setProfile({ ...profile, viewerHasFavorited: !wasFavorited });
     setFavBusy(true);
     try {
       const fn = getCallableFunction(wasFavorited ? 'removeFavorite' : 'addFavorite');
       await fn({ userId });
-      // Re-fetch so the favourites list (on the favouriter's own profile) and
-      // the toggle state stay in sync.
-      const fresh = await fetchProfile();
-      setProfile(fresh);
     } catch (e: any) {
+      // Revert on failure (cap reached, blocked, network error, etc.).
+      setProfile((p) => (p ? { ...p, viewerHasFavorited: wasFavorited } : p));
       Alert.alert(
         wasFavorited ? "Couldn't remove favourite" : "Couldn't add favourite",
         e?.message || 'Please try again.',

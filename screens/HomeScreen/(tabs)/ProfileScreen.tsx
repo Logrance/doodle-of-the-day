@@ -19,13 +19,14 @@ type RootStackParamList = {
   Deets: undefined;
   LeaderboardScreen: undefined;
   PublicProfileScreen: { userId: string };
+  FavouritersScreen: undefined;
 };
 
 
 const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const { stats, refresh } = useCachedUserStats();
-  const { username, avatarUrl, currentStreak, longestStreak, winCount, freezesAvailable, profileLink } = stats;
+  const { username, avatarUrl, currentStreak, longestStreak, winCount, freezesAvailable, profileLink, unreadFavouritersCount } = stats;
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [unlocksModalVisible, setUnlocksModalVisible] = useState(false);
   const [linkModalVisible, setLinkModalVisible] = useState(false);
@@ -212,6 +213,27 @@ const ProfileScreen: React.FC = () => {
             >
               <Ionicons name="eye-outline" size={22} color={colors.textPrimary} style={styles.buttonIcon} />
               <Text style={styles.buttonText}>My public profile</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => {
+                navigation.navigate('FavouritersScreen');
+                // Optimistically clear the badge — the server is marked read
+                // when FavouritersScreen mounts, and the next stats refresh
+                // will confirm. Avoids a stale dot after the user taps in.
+                refresh();
+              }}
+              style={styles.buttonSecondary}
+            >
+              <Ionicons name="star-outline" size={22} color={colors.textPrimary} style={styles.buttonIcon} />
+              <Text style={styles.buttonText}>Favouriters</Text>
+              {unreadFavouritersCount > 0 && (
+                <View style={styles.unreadBadge}>
+                  <Text style={styles.unreadBadgeText}>
+                    {unreadFavouritersCount > 9 ? '9+' : unreadFavouritersCount}
+                  </Text>
+                </View>
+              )}
             </TouchableOpacity>
 
             <TouchableOpacity onPress={() => navigation.navigate('GalleryScreen')} style={styles.buttonSecondary}>
@@ -612,5 +634,20 @@ const styles = StyleSheet.create({
   },
   buttonIcon: {
     marginRight: 10,
+  },
+  unreadBadge: {
+    marginLeft: 8,
+    minWidth: 22,
+    height: 22,
+    borderRadius: 11,
+    paddingHorizontal: 6,
+    backgroundColor: colors.danger,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  unreadBadgeText: {
+    fontFamily: 'Poppins_700Bold',
+    fontSize: 12,
+    color: colors.white,
   },
 });
