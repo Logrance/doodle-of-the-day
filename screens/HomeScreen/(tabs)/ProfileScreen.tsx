@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View, Image, SafeAreaView, ScrollView, Share, Alert, ActivityIndicator, Modal, TouchableWithoutFeedback, TextInput, Linking } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Badge from '../../../components/Badge';
 import { hasUnlock, getStreakColor, getNextUnlock, TIERS } from '../../../theme/unlocks';
 import { useCachedUserStats } from '../../../hooks/useCachedUserStats';
 import { auth, getCallableFunction } from '../../../firebaseConfig';
-import { useNavigation } from '@react-navigation/core';
+import { useFocusEffect, useNavigation } from '@react-navigation/core';
 import { StackNavigationProp } from '@react-navigation/stack';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors } from '../../../theme/colors';
@@ -33,6 +33,14 @@ const ProfileScreen: React.FC = () => {
   const [linkInput, setLinkInput] = useState('');
   const [savingLink, setSavingLink] = useState(false);
   const nextUnlock = getNextUnlock(currentStreak);
+
+  // Refresh stats whenever the Profile screen gains focus — so coming back
+  // from the inbox clears the unread badge once the server has committed
+  // markFavouritersRead. Without this, the count would only update on the
+  // next inbox tap or an AppState 'active' event.
+  useFocusEffect(useCallback(() => {
+    refresh();
+  }, [refresh]));
 
   const displayLink = (url: string) => url.replace(/^https?:\/\//i, '').replace(/\/$/, '');
 
@@ -216,13 +224,7 @@ const ProfileScreen: React.FC = () => {
             </TouchableOpacity>
 
             <TouchableOpacity
-              onPress={() => {
-                navigation.navigate('FavouritersScreen');
-                // Optimistically clear the badge — the server is marked read
-                // when FavouritersScreen mounts, and the next stats refresh
-                // will confirm. Avoids a stale dot after the user taps in.
-                refresh();
-              }}
+              onPress={() => navigation.navigate('FavouritersScreen')}
               style={styles.buttonSecondary}
             >
               <Ionicons name="mail-outline" size={22} color={colors.textPrimary} style={styles.buttonIcon} />
