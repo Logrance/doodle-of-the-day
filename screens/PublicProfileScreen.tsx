@@ -521,7 +521,15 @@ const styles = StyleSheet.create({
     marginTop: 4,
     maxWidth: 80,
   },
-  thumbTouch: { width: '100%', height: '100%' },
+  thumbTouch: {
+    // Inner — clips the image to rounded corners. Keeping overflow:hidden
+    // here (instead of on thumbWrap) lets the remove badge render outside
+    // the thumbnail without being cut off.
+    width: '100%', height: '100%',
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: colors.surface,
+  },
   removeBadge: {
     position: 'absolute',
     top: -6,
@@ -581,7 +589,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 16,
   },
   thumbWrap: {
-    borderRadius: 12, overflow: 'hidden', backgroundColor: colors.surface,
+    // Outer wrapper — positioning context for the remove badge and shadow
+    // host. No overflow:hidden, otherwise the badge (which sits at the
+    // top-right corner with negative offsets) gets clipped where it overlaps
+    // the thumbnail.
+    borderRadius: 12,
     shadowColor: colors.shadow, shadowOpacity: 0.06, shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 }, elevation: 2,
   },

@@ -2044,3 +2044,20 @@ exports.markFavouritersRead = functions.https.onCall(async (data, context) => {
   });
   return {success: true};
 });
+
+// Delete a single entry from the caller's inbox. Doesn't break the favourite
+// relationship itself — the favouriter's `favorites` doc stays intact, so if
+// they re-favourite later the inbox entry reappears via addFavorite's mirror
+// write.
+exports.deleteFavouriter = functions.https.onCall(async (data, context) => {
+  requireAuth(context);
+  const userId = context.auth.uid;
+  const favouriterId = (data && data.favouriterId) || "";
+  if (typeof favouriterId !== "string" || !favouriterId) {
+    throw new functions.https.HttpsError(
+        "invalid-argument", "favouriterId is required.");
+  }
+  await db.collection("users").doc(userId)
+      .collection("favouriters").doc(favouriterId).delete();
+  return {success: true};
+});

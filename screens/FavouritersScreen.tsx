@@ -1,9 +1,15 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  View, Text, FlatList, Image, StyleSheet, TouchableOpacity,
+  View, Text, FlatList, Image, StyleSheet, TouchableOpacity, Alert,
 } from 'react-native';
+import {
+  GestureHandlerRootView,
+  Swipeable,
+} from 'react-native-gesture-handler';
 import { useNavigation } from '@react-navigation/native';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import CowLoader from '../components/CowLoader';
+import FeatureTip from '../components/FeatureTip';
 import { getCallableFunction } from '../firebaseConfig';
 import { colors } from '../theme/colors';
 
@@ -32,6 +38,9 @@ const FavouritersScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const [loading, setLoading] = useState(true);
   const [favouriters, setFavouriters] = useState<Favouriter[]>([]);
+  // Track the open row so swiping a second row closes the first, and so we
+  // can close the row after the user confirms the delete dialog.
+  const openRowRef = useRef<Swipeable | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -53,6 +62,37 @@ const FavouritersScreen: React.FC = () => {
     markFavouritersRead({}).catch(() => {});
   }, [load]);
 
+  const handleDelete = (item: Favouriter, swipeRef: Swipeable | null) => {
+    Alert.alert(
+      'Remove from inbox?',
+      `${item.username || 'This user'} will be removed from your inbox.`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+          onPress: () => swipeRef?.close(),
+        },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            // Optimistic remove — drop the row immediately, revert on error.
+            setFavouriters((prev) => prev.filter((f) => f.id !== item.id));
+            try {
+              const deleteFavouriter = getCallableFunction('deleteFavouriter');
+              await deleteFavouriter({ favouriterId: item.id });
+            } catch (e: any) {
+              setFavouriters((prev) =>
+                prev.some((f) => f.id === item.id) ? prev : [item, ...prev].sort((a, b) => b.createdAt - a.createdAt),
+              );
+              Alert.alert("Couldn't remove", e?.message || 'Please try again.');
+            }
+          },
+        },
+      ],
+    );
+  };
+
   if (loading) {
     return (
       <View style={styles.centered}>
@@ -73,38 +113,71 @@ const FavouritersScreen: React.FC = () => {
   }
 
   return (
-    <View style={styles.container}>
+    <GestureHandlerRootView style={styles.container}>
       <FlatList
         data={favouriters}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            onPress={() => navigation.push('PublicProfileScreen', { userId: item.id })}
-            activeOpacity={0.7}
-            style={styles.row}
-          >
-            {item.avatarUrl ? (
-              <Image source={{ uri: item.avatarUrl }} style={styles.avatar} />
-            ) : (
-              <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                <Text style={styles.avatarLetter}>
-                  {(item.username || 'D')[0].toUpperCase()}
-                </Text>
-              </View>
-            )}
-            <View style={styles.body}>
-              <Text style={styles.username} numberOfLines={1}>
-                {item.username || 'Unknown user'}
-              </Text>
-              <Text style={styles.subtitle}>added you to their favourites</Text>
-              <Text style={styles.timestamp}>{formatRelative(item.createdAt)}</Text>
-            </View>
-          </TouchableOpacity>
-        )}
+        ListHeaderComponent={
+          <FeatureTip
+            tipId="inbox-swipe-to-delete"
+            style={styles.tip}
+            title="Tidy your inbox"
+            text="Swipe left on any item to remove it from your inbox."
+          />
+        }
+        renderItem={({ item }) => {
+          let swipeRef: Swipeable | null = null;
+          const renderRightActions = () => (
+            <TouchableOpacity
+              style={styles.deleteAction}
+              onPress={() => handleDelete(item, swipeRef)}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="trash-outline" size={22} color={colors.white} />
+              <Text style={styles.deleteActionText}>Delete</Text>
+            </TouchableOpacity>
+          );
+          return (
+            <Swipeable
+              ref={(r) => { swipeRef = r; }}
+              renderRightActions={renderRightActions}
+              onSwipeableOpen={() => {
+                if (openRowRef.current && openRowRef.current !== swipeRef) {
+                  openRowRef.current.close();
+                }
+                openRowRef.current = swipeRef;
+              }}
+              overshootRight={false}
+            >
+              <TouchableOpacity
+                onPress={() => navigation.push('PublicProfileScreen', { userId: item.id })}
+                activeOpacity={0.7}
+                style={styles.row}
+              >
+                {item.avatarUrl ? (
+                  <Image source={{ uri: item.avatarUrl }} style={styles.avatar} />
+                ) : (
+                  <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                    <Text style={styles.avatarLetter}>
+                      {(item.username || 'D')[0].toUpperCase()}
+                    </Text>
+                  </View>
+                )}
+                <View style={styles.body}>
+                  <Text style={styles.username} numberOfLines={1}>
+                    {item.username || 'Unknown user'}
+                  </Text>
+                  <Text style={styles.subtitle}>added you to their favourites</Text>
+                  <Text style={styles.timestamp}>{formatRelative(item.createdAt)}</Text>
+                </View>
+              </TouchableOpacity>
+            </Swipeable>
+          );
+        }}
         showsVerticalScrollIndicator={false}
       />
-    </View>
+    </GestureHandlerRootView>
   );
 };
 
@@ -147,5 +220,20 @@ const styles = StyleSheet.create({
   emptySubtitle: {
     fontFamily: 'Poppins_400Regular', fontSize: 14, color: colors.textMuted,
     textAlign: 'center', lineHeight: 22,
+  },
+  tip: { marginBottom: 12 },
+  deleteAction: {
+    backgroundColor: colors.danger,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 88,
+    marginBottom: 10,
+    borderRadius: 12,
+  },
+  deleteActionText: {
+    fontFamily: 'Poppins_700Bold',
+    fontSize: 12,
+    color: colors.white,
+    marginTop: 4,
   },
 });
