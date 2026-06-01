@@ -237,7 +237,7 @@ export default function CanvasScreen() {
               <TouchableOpacity
                 onPress={() => Alert.alert(
                   "❄️ Streak Freeze",
-                  "If you miss a day, your freeze automatically saves your streak. You earn 1 freeze every 7 days."
+                  "If you miss a day, your freeze automatically saves your streak. Capped at 1 — a new freeze becomes available 7 days after you use yours."
                 )}
                 style={[styles.streakBadge, styles.freezeBadge]}
               >
