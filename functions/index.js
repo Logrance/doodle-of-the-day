@@ -290,6 +290,12 @@ exports.notifyMorningTheme = functions.pubsub.schedule("00 08 * * *")
         }
         const word = themeSnapshot.docs[0].data().word;
 
+        // Users whose freeze was burned yesterday by resolveDailyStreaks get a
+        // different copy this morning — and only one push, not two. Compare
+        // against yesterday's London dateKey rather than "any recent freeze".
+        const {dateKey: todayStr} = londonDayWindow(new Date());
+        const yesterdayStr = shiftDateKey(todayStr, -1);
+
         const usersSnapshot = await db.collection("users").get();
         // Dedupe by push token (see pickDailyWinner for the rationale).
         const seenTokens = new Set();
@@ -300,15 +306,31 @@ exports.notifyMorningTheme = functions.pubsub.schedule("00 08 * * *")
               seenTokens.add(token);
               return true;
             })
-            .map((doc) => ({
-              to: doc.data().expoPushToken,
-              title: `Today's theme: ${word} 🎨`,
-              body: "You have until 14:00 UK to submit your doodle.",
-              sound: "default",
-              channelId: "default",
-              priority: "high",
-              data: {url: "doodleoftheday://home/draw"},
-            }));
+            .map((doc) => {
+              const data = doc.data();
+              const streak = data.currentStreak || 0;
+              const freezeUsedYesterday = data.freezeUsedAt === yesterdayStr;
+              if (freezeUsedYesterday && streak > 0) {
+                return {
+                  to: data.expoPushToken,
+                  title: "❄️ Your freeze saved your streak",
+                  body: `Doodle today or your ${streak}-day streak is gone.`,
+                  sound: "default",
+                  channelId: "default",
+                  priority: "high",
+                  data: {url: "doodleoftheday://home/draw"},
+                };
+              }
+              return {
+                to: data.expoPushToken,
+                title: `Today's theme: ${word} 🎨`,
+                body: "You have until 14:00 UK to submit your doodle.",
+                sound: "default",
+                channelId: "default",
+                priority: "high",
+                data: {url: "doodleoftheday://home/draw"},
+              };
+            });
         await sendExpoPushNotifications(messages);
         console.log(`Sent morning push to ${messages.length} users.`);
       } catch (error) {
@@ -343,23 +365,15 @@ exports.notifyDrawingDeadline = functions.pubsub.schedule("30 13 * * *")
               seenTokens.add(data.expoPushToken);
               return true;
             })
-            .map((doc) => {
-              const streak = doc.data().currentStreak || 0;
-              const isStreak = streak > 0;
-              return {
-                to: doc.data().expoPushToken,
-                title: isStreak ?
-                  `🔥 Don't break your ${streak}-day streak!` :
-                  "⏰ 30 min left to doodle",
-                body: isStreak ?
-                  "30 min left — submit before 14:00 UK to keep it alive." :
-                  "Submit your doodle before 14:00 UK time.",
-                sound: "default",
-                channelId: "default",
-                priority: "high",
-                data: {url: "doodleoftheday://home/draw"},
-              };
-            });
+            .map((doc) => ({
+              to: doc.data().expoPushToken,
+              title: "Hurry up and doodle ⏰",
+              body: "30 min left — submit before 14:00 UK.",
+              sound: "default",
+              channelId: "default",
+              priority: "high",
+              data: {url: "doodleoftheday://home/draw"},
+            }));
         await sendExpoPushNotifications(messages);
         console.log(`Sent deadline push to ${messages.length} users.`);
       } catch (error) {
@@ -482,6 +496,80 @@ exports.assignRooms = functions.pubsub.schedule("00 14 * * *")
       }
 
       return {message: "Room IDs assigned to drawings successfully"};
+    });
+
+// Eagerly resolve streaks at the daily cutoff. For each user:
+//   - submitted today → no-op (and refill weekly freeze if due)
+//   - didn't submit, has a freeze, gap === 1 day → consume freeze, bridge
+//   - otherwise → break the streak (currentStreak = 0; unlocks fall away
+//     because every unlock derives from currentStreak)
+// 14:05 (not 14:00) leaves a small margin for submissions that race the
+// cutoff. submitDrawing still contains lazy fallback logic that mirrors this
+// resolution, so a cron skip self-heals on the user's next submission.
+exports.resolveDailyStreaks = functions.pubsub.schedule("05 14 * * *")
+    .timeZone("Europe/London").onRun(async () => {
+      try {
+        const {dateKey: todayStr} = londonDayWindow(new Date());
+        const FREEZE_REFILL_DAYS = 7;
+
+        const usersSnapshot = await db.collection("users").get();
+        const writes = [];
+        for (const doc of usersSnapshot.docs) {
+          const u = doc.data();
+          const updates = {};
+          let freezesAvailable = u.freezesAvailable || 0;
+          let lastFreezeGrantedDate = u.lastFreezeGrantedDate || null;
+
+          // Weekly freeze refill — moved out of submitDrawing onto a real
+          // clock so it doesn't only tick on submissions.
+          const daysSinceFreezeGrant = lastFreezeGrantedDate ?
+              Math.round(
+                  (new Date(todayStr) - new Date(lastFreezeGrantedDate)) /
+                  (1000 * 60 * 60 * 24),
+              ) : Infinity;
+          if (freezesAvailable < 1 &&
+              daysSinceFreezeGrant >= FREEZE_REFILL_DAYS) {
+            freezesAvailable = 1;
+            lastFreezeGrantedDate = todayStr;
+            updates.freezesAvailable = freezesAvailable;
+            updates.lastFreezeGrantedDate = lastFreezeGrantedDate;
+          }
+
+          const currentStreak = u.currentStreak || 0;
+          if (currentStreak > 0) {
+            const lastSubmission = u.lastSubmissionDate;
+            const daysSince = lastSubmission ?
+                Math.round(
+                    (new Date(todayStr) - new Date(lastSubmission)) /
+                    (1000 * 60 * 60 * 24),
+                ) : Infinity;
+
+            if (daysSince === 0) {
+              // Submitted today — streak safe, nothing to do.
+            } else if (daysSince === 1 && freezesAvailable > 0) {
+              // Missed today only — bridge with the freeze.
+              updates.freezesAvailable = freezesAvailable - 1;
+              updates.lastSubmissionDate = todayStr;
+              updates.freezeUsedAt = todayStr;
+            } else {
+              // No freeze, or gap too large for one freeze to bridge.
+              updates.currentStreak = 0;
+            }
+          }
+
+          if (Object.keys(updates).length > 0) {
+            writes.push(doc.ref.update(updates));
+          }
+        }
+        await Promise.all(writes);
+        console.log(
+            `Resolved daily streaks: ${writes.length}/${usersSnapshot.size} ` +
+            `user docs updated.`,
+        );
+      } catch (error) {
+        console.error("Error resolving daily streaks:", error);
+      }
+      return null;
     });
 
 //  fetch drawings logic
@@ -1061,17 +1149,15 @@ exports.addImageToDB = functions.https.onCall(async (data, context) => {
         }
       }
 
-      // Palette is a permanent unlock once the user has ever reached a
-      // 3-day streak. Once true, never reset.
+      // longestStreak is a high-watermark trophy and never decays.
+      // paletteAvailable (and every other unlock) is derived from
+      // currentStreak on read — losing the streak loses the unlock.
       const newLongestStreak = Math.max(newStreak, userData.longestStreak || 0);
-      const newPaletteAvailable = userData.paletteAvailable === true ||
-          newLongestStreak >= 3;
 
       await userRef.update({
         currentStreak: newStreak,
         longestStreak: newLongestStreak,
         lastSubmissionDate: todayStr,
-        paletteAvailable: newPaletteAvailable,
         freezesAvailable,
         lastFreezeGrantedDate,
       });
@@ -1288,7 +1374,7 @@ async function rankByWinCount(userId) {
       id: meDoc.id,
       username: meDoc.data().username,
       winCount,
-      currentStreak: meDoc.data().currentStreak || 0,
+      currentStreak: effectiveStreak(meDoc.data()),
     },
   };
 }
@@ -1404,6 +1490,50 @@ function londonDayWindow(now) {
 }
 
 /**
+ * Shift a YYYY-MM-DD dateKey by an integer number of days. Operates in UTC to
+ * avoid TZ shenanigans — both inputs and outputs are calendar-date strings
+ * with no TZ semantics, so UTC arithmetic gives the right answer.
+ * @param {string} dateKey
+ * @param {number} delta
+ * @return {string}
+ */
+function shiftDateKey(dateKey, delta) {
+  const [y, m, d] = dateKey.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  dt.setUTCDate(dt.getUTCDate() + delta);
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${dt.getUTCFullYear()}-${pad(dt.getUTCMonth() + 1)}-` +
+      pad(dt.getUTCDate());
+}
+
+/**
+ * Streak value to display, given the gap between today (Europe/London) and the
+ * user's last submission. The DB value is only written at submission time and
+ * by resolveDailyStreaks at 14:05; this read-side helper exists as a safety
+ * net so that even between resolution windows (or if the cron drops a day) we
+ * never serve a streak we know to be stale.
+ *   gap <= 1 day:                 streak is intact
+ *   gap === 2 + has freeze:       streak is intact (freeze would bridge it)
+ *   otherwise:                    streak is dead → 0
+ * @param {object} userData
+ * @return {number}
+ */
+function effectiveStreak(userData) {
+  const stored = userData.currentStreak || 0;
+  if (stored <= 0) return 0;
+  const lastSubmission = userData.lastSubmissionDate;
+  if (!lastSubmission) return stored;
+  const {dateKey} = londonDayWindow(new Date());
+  const diffDays = Math.round(
+      (new Date(dateKey) - new Date(lastSubmission)) /
+      (1000 * 60 * 60 * 24),
+  );
+  if (diffDays <= 1) return stored;
+  if (diffDays === 2 && (userData.freezesAvailable || 0) > 0) return stored;
+  return 0;
+}
+
+/**
  * Start of the current Mon-Sun week, anchored at 00:00 Europe/London.
  * @param {Date} now
  * @return {Date}
@@ -1442,7 +1572,7 @@ async function buildRangedLeaderboard(range, currentUserId) {
       id: doc.id,
       username: doc.data().username,
       winCount: doc.data().winCount,
-      currentStreak: doc.data().currentStreak || 0,
+      currentStreak: effectiveStreak(doc.data()),
     }));
     let currentUserRank = null;
     let currentUserData = null;
@@ -1486,8 +1616,7 @@ async function buildRangedLeaderboard(range, currentUserId) {
       "Unknown",
     winCount: entry.winCount,
     currentStreak: userDocs[idx].exists ?
-      (userDocs[idx].data().currentStreak || 0) :
-      0,
+      effectiveStreak(userDocs[idx].data()) : 0,
   }));
 
   let currentUserRank = null;
@@ -1503,7 +1632,7 @@ async function buildRangedLeaderboard(range, currentUserId) {
           id: me.id,
           username: me.data().username,
           winCount: sorted[idx].winCount,
-          currentStreak: me.data().currentStreak || 0,
+          currentStreak: effectiveStreak(me.data()),
         };
       }
     }
@@ -1581,11 +1710,11 @@ exports.getUserStats = functions.https.onCall(async (data, context) => {
       throw new functions.https.HttpsError("not-found", "User not found.");
     }
     const userData = userDoc.data();
-    // Palette is permanently unlocked once the user has ever reached a
-    // 3-day streak. The OR with longestStreak backfills users who unlocked
-    // (and possibly consumed) under the old consumable mechanic.
-    const paletteAvailable = userData.paletteAvailable === true ||
-        (userData.longestStreak || 0) >= 3;
+    // All unlocks are derived from the *current* streak, not a high-watermark,
+    // so losing the streak loses the unlock. Palette is the only unlock that
+    // used to be persistent — now it tracks currentStreak like the others.
+    const effective = effectiveStreak(userData);
+    const paletteAvailable = effective >= 3;
 
     // Count favouriters newer than the last time the user opened the inbox —
     // drives the unread badge on the Profile button. count() avoids reading
@@ -1600,7 +1729,7 @@ exports.getUserStats = functions.https.onCall(async (data, context) => {
     return {
       username: userData.username || "",
       avatarUrl: userData.avatarUrl || "",
-      currentStreak: userData.currentStreak || 0,
+      currentStreak: effective,
       longestStreak: userData.longestStreak || 0,
       winCount: userData.winCount || 0,
       paletteAvailable,
@@ -1761,7 +1890,7 @@ exports.getPublicProfile = functions.https.onCall(async (data, context) => {
     id: targetId,
     username: u.username || null,
     avatarUrl: u.avatarUrl || null,
-    currentStreak: u.currentStreak || 0,
+    currentStreak: effectiveStreak(u),
     longestStreak: u.longestStreak || 0,
     winCount: u.winCount || 0,
     profileLink: u.profileLink || null,
