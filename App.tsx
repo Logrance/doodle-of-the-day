@@ -143,30 +143,36 @@ export default function App() {
     <SafeAreaProvider>
       <StatusBar style="dark" translucent backgroundColor="transparent" />
       <NavigationContainer ref={navigationRef} linking={linking}>
-        <Stack.Navigator
-          initialRouteName={user ? 'CheckEmail' : 'Welcome'}
-          screenOptions={{ headerShown: false }}
-        >
-          {isAuthed ? (
-            <>
-              <Stack.Screen name="HomeScreen" component={HomeScreen} />
-              <Stack.Screen name="Deets" component={Deets} />
-            </>
-          ) : (
-            <>
-              <Stack.Screen name="Welcome" component={WelcomeScreen} />
-              <Stack.Screen name="Login" component={LoginScreen} />
-              <Stack.Screen name="SignUp" component={SignUpScreen} />
-              <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
-              <Stack.Screen
-                name="CheckEmail"
-                component={CheckEmailScreen}
-                initialParams={user ? { email: user.email ?? '' } : undefined}
-              />
-            </>
-          )}
-        </Stack.Navigator>
+        {isAuthed ? <AppStack /> : <AuthStack user={user} />}
       </NavigationContainer>
     </SafeAreaProvider>
+  );
+}
+
+function AppStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="HomeScreen" component={HomeScreen} />
+      <Stack.Screen name="Deets" component={Deets} />
+    </Stack.Navigator>
+  );
+}
+
+function AuthStack({ user }: { user: User | null }) {
+  return (
+    <Stack.Navigator
+      initialRouteName={user ? 'CheckEmail' : 'Welcome'}
+      screenOptions={{ headerShown: false }}
+    >
+      <Stack.Screen name="Welcome" component={WelcomeScreen} />
+      <Stack.Screen name="Login" component={LoginScreen} />
+      <Stack.Screen name="SignUp" component={SignUpScreen} />
+      <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+      <Stack.Screen
+        name="CheckEmail"
+        component={CheckEmailScreen}
+        initialParams={user ? { email: user.email ?? '' } : undefined}
+      />
+    </Stack.Navigator>
   );
 }
