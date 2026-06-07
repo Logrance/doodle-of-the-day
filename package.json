@@ -36,7 +36,8 @@
     "react-native": "^0.79.6",
     "react-native-confetti-cannon": "^1.5.2",
     "react-native-gesture-handler": "~2.24.0",
-    "react-native-reanimated": "3.20.0-nightly-20251222-31bfe9311",
+    "react-native-reanimated": "4.1.7",
+    "react-native-worklets": "0.8.3",
     "react-native-safe-area-context": "5.4.0",
     "react-native-screens": "~4.11.1"
   },

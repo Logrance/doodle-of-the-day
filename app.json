@@ -7,6 +7,7 @@
     "orientation": "portrait",
     "icon": "./assets/icon-mark.png",
     "userInterfaceStyle": "light",
+    "newArchEnabled": true,
     "splash": {
       "image": "./assets/icon-mark.png",
       "resizeMode": "contain",
