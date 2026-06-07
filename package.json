@@ -16,7 +16,7 @@
     "@react-navigation/native": "^6.1.18",
     "@react-navigation/native-stack": "^6.11.0",
     "@react-navigation/stack": "^6.4.1",
-    "@shopify/react-native-skia": "v2.0.0-next.4",
+    "@shopify/react-native-skia": "2.6.2",
     "@types/react-dom": "19.1.7",
     "drawing-canvas": "file:./modules/drawing-canvas",
     "expo": "~53.0.23",
@@ -36,7 +36,7 @@
     "react-native": "^0.79.6",
     "react-native-confetti-cannon": "^1.5.2",
     "react-native-gesture-handler": "~2.24.0",
-    "react-native-reanimated": "~3.17.4",
+    "react-native-reanimated": "3.19.5",
     "react-native-safe-area-context": "5.4.0",
     "react-native-screens": "~4.11.1"
   },
