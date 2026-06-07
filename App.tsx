@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { NavigationContainer, LinkingOptions, createNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
@@ -140,12 +141,14 @@ export default function App() {
   if (!fontsLoaded || !authReady) return null;
 
   return (
-    <SafeAreaProvider>
-      <StatusBar style="dark" translucent backgroundColor="transparent" />
-      <NavigationContainer ref={navigationRef} linking={linking}>
-        {isAuthed ? <AppStack /> : <AuthStack user={user} />}
-      </NavigationContainer>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <StatusBar style="dark" translucent backgroundColor="transparent" />
+        <NavigationContainer ref={navigationRef} linking={linking}>
+          {isAuthed ? <AppStack /> : <AuthStack user={user} />}
+        </NavigationContainer>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
 
