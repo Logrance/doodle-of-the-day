@@ -547,10 +547,14 @@ exports.resolveDailyStreaks = functions.pubsub.schedule("05 14 * * *")
             if (daysSince === 0) {
               // Submitted today — streak safe, nothing to do.
             } else if (daysSince === 1 && freezesAvailable > 0) {
-              // Missed today only — bridge with the freeze.
+              // Missed today only — bridge with the freeze. Reset the
+              // refill cooldown anchor to today so the next freeze isn't
+              // available until 7 days from now; otherwise the same cron
+              // run on a later missed day would refill+consume immediately.
               updates.freezesAvailable = freezesAvailable - 1;
               updates.lastSubmissionDate = todayStr;
               updates.freezeUsedAt = todayStr;
+              updates.lastFreezeGrantedDate = todayStr;
             } else {
               // No freeze, or gap too large for one freeze to bridge.
               updates.currentStreak = 0;
@@ -1146,6 +1150,9 @@ exports.addImageToDB = functions.https.onCall(async (data, context) => {
           newStreak = (userData.currentStreak || 0) + 1;
           usedFreeze = true;
           freezesAvailable -= 1;
+          // Reset refill cooldown so the next freeze is granted 7 days
+          // from this use (not from the original grant date).
+          lastFreezeGrantedDate = todayStr;
         }
       }
 
