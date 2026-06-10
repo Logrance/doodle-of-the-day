@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/core';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -18,44 +18,49 @@ const WelcomeScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.container}>
       <LinearGradient colors={colors.welcomeGradient} style={styles.background}>
-        <View style={styles.top}>
-          <LogoMark size={120} />
-          <Text style={styles.title}>Doodle of the Day</Text>
-          <Text style={styles.subtitle}>One theme. One doodle. Every day.</Text>
-        </View>
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.top}>
+            <LogoMark size={120} />
+            <Text style={styles.title}>Doodle of the Day</Text>
+            <Text style={styles.subtitle}>One theme. One doodle. Every day.</Text>
+          </View>
 
-        <View style={styles.previewContainer}>
-          <View style={styles.previewRow}>
-            <Text style={styles.previewEmoji}>🎨</Text>
-            <View style={styles.previewTextWrap}>
-              <Text style={styles.previewTitle}>Draw the daily theme</Text>
-              <Text style={styles.previewBody}>A fresh word drops each morning — you have until 14:00 UK to doodle.</Text>
+          <View style={styles.previewContainer}>
+            <View style={styles.previewRow}>
+              <Text style={styles.previewEmoji}>🎨</Text>
+              <View style={styles.previewTextWrap}>
+                <Text style={styles.previewTitle}>Draw the daily theme</Text>
+                <Text style={styles.previewBody}>A fresh word drops each morning — you have until 14:00 UK to doodle.</Text>
+              </View>
+            </View>
+            <View style={styles.previewRow}>
+              <Text style={styles.previewEmoji}>🗳️</Text>
+              <View style={styles.previewTextWrap}>
+                <Text style={styles.previewTitle}>Vote in your room</Text>
+                <Text style={styles.previewBody}>Get matched with other doodlers and pick your favourite by 20:00.</Text>
+              </View>
+            </View>
+            <View style={styles.previewRow}>
+              <Text style={styles.previewEmoji}>🏆</Text>
+              <View style={styles.previewTextWrap}>
+                <Text style={styles.previewTitle}>Win, keep your streak</Text>
+                <Text style={styles.previewBody}>3-day streaks unlock the colour palette. Miss a day? Streak freezes have you covered.</Text>
+              </View>
             </View>
           </View>
-          <View style={styles.previewRow}>
-            <Text style={styles.previewEmoji}>🗳️</Text>
-            <View style={styles.previewTextWrap}>
-              <Text style={styles.previewTitle}>Vote in your room</Text>
-              <Text style={styles.previewBody}>Get matched with other doodlers and pick your favourite by 20:00.</Text>
-            </View>
-          </View>
-          <View style={styles.previewRow}>
-            <Text style={styles.previewEmoji}>🏆</Text>
-            <View style={styles.previewTextWrap}>
-              <Text style={styles.previewTitle}>Win, keep your streak</Text>
-              <Text style={styles.previewBody}>3-day streaks unlock the colour palette. Miss a day? Streak freezes have you covered.</Text>
-            </View>
-          </View>
-        </View>
 
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('SignUp')}>
-            <Text style={styles.buttonText}>Sign Up</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.buttonOutline} onPress={() => navigation.navigate('Login')}>
-            <Text style={styles.buttonOutlineText}>Log In</Text>
-          </TouchableOpacity>
-        </View>
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('SignUp')}>
+              <Text style={styles.buttonText}>Sign Up</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.buttonOutline} onPress={() => navigation.navigate('Login')}>
+              <Text style={styles.buttonOutlineText}>Log In</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
       </LinearGradient>
     </SafeAreaView>
   );
@@ -65,7 +70,14 @@ export default WelcomeScreen;
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.navyDark },
-  background: { flex: 1, justifyContent: 'space-between', alignItems: 'center', paddingVertical: 40, paddingHorizontal: 24 },
+  background: { flex: 1 },
+  scroll: {
+    flexGrow: 1,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 40,
+    paddingHorizontal: 24,
+  },
   top: { alignItems: 'center', marginTop: 16 },
   title: { fontFamily: 'Poppins_700Bold', fontSize: 26, marginTop: 18, color: colors.white },
   subtitle: { fontFamily: 'Poppins_400Regular', fontSize: 14, color: colors.whiteAlpha75, marginTop: 6, textAlign: 'center' },
