@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, Alert } from 'r
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/core';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { auth } from '../firebaseConfig';
+import { auth, getCallableFunction } from '../firebaseConfig';
 import { sendEmailVerification, signOut } from 'firebase/auth';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
@@ -70,6 +70,7 @@ const CheckEmailScreen: React.FC = () => {
           <TouchableOpacity
             style={styles.button}
             onPress={async () => {
+              try { await getCallableFunction('clearPushToken')({}); } catch {}
               try { await signOut(auth); } catch {}
             }}
           >

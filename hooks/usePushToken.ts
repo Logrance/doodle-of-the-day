@@ -2,8 +2,7 @@ import { useEffect } from 'react';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
-import { auth, db } from '../firebaseConfig';
-import { doc, updateDoc } from 'firebase/firestore';
+import { auth, getCallableFunction } from '../firebaseConfig';
 
 async function registerForPushNotifications() {
   if (Platform.OS === 'android') {
@@ -28,7 +27,10 @@ async function registerForPushNotifications() {
 
   const user = auth.currentUser;
   if (user && token) {
-    await updateDoc(doc(db, 'users', user.uid), { expoPushToken: token });
+    // Claim the token via callable so any other user docs that previously
+    // held this token (other accounts on the same device) get cleared in
+    // the same write.
+    await getCallableFunction('claimPushToken')({ token });
   }
 }
 

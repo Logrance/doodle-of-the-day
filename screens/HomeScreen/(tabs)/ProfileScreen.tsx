@@ -101,6 +101,7 @@ const ProfileScreen: React.FC = () => {
 
   const handleSignOut = async () => {
     try {
+      try { await getCallableFunction('clearPushToken')({}); } catch {}
       await auth.signOut();
     } catch (error: any) {
       Alert.alert('Error', error.message);

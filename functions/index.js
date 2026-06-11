@@ -354,6 +354,18 @@ exports.notifyDrawingDeadline = functions.pubsub.schedule("30 13 * * *")
         );
 
         const usersSnapshot = await db.collection("users").get();
+        // If any user holding a given token has already submitted, suppress
+        // the deadline push on that token entirely. Defends against stale
+        // token state where multiple accounts on one device kept the same
+        // token (claimPushToken should prevent this at register-time, but
+        // historical state may still exist).
+        const submittedTokens = new Set();
+        usersSnapshot.docs.forEach((doc) => {
+          const data = doc.data();
+          if (data.expoPushToken && submittedUserIds.has(doc.id)) {
+            submittedTokens.add(data.expoPushToken);
+          }
+        });
         // Dedupe by push token (see pickDailyWinner for the rationale).
         const seenTokens = new Set();
         const messages = usersSnapshot.docs
@@ -361,6 +373,7 @@ exports.notifyDrawingDeadline = functions.pubsub.schedule("30 13 * * *")
               const data = doc.data();
               if (!data.expoPushToken) return false;
               if (submittedUserIds.has(doc.id)) return false;
+              if (submittedTokens.has(data.expoPushToken)) return false;
               if (seenTokens.has(data.expoPushToken)) return false;
               seenTokens.add(data.expoPushToken);
               return true;
@@ -2195,5 +2208,50 @@ exports.deleteFavouriter = functions.https.onCall(async (data, context) => {
   }
   await db.collection("users").doc(userId)
       .collection("favouriters").doc(favouriterId).delete();
+  return {success: true};
+});
+
+// Claim an Expo push token for the calling user. Atomically (a) sets the
+// token on the caller's user doc and (b) clears it from any other user
+// docs that previously held the same token. Stops the "multiple accounts
+// on one device" bug where every account held a stale copy of the device's
+// token — the deadline cron would then ping the device about whichever
+// stale account hadn't submitted that day.
+exports.claimPushToken = functions.https.onCall(async (data, context) => {
+  requireAuth(context);
+  const userId = context.auth.uid;
+  const token = data && typeof data.token === "string" ? data.token.trim() : "";
+  if (!token) {
+    throw new functions.https.HttpsError(
+        "invalid-argument", "Missing push token.");
+  }
+  const stale = await db.collection("users")
+      .where("expoPushToken", "==", token)
+      .get();
+  const batch = db.batch();
+  stale.docs.forEach((doc) => {
+    if (doc.id !== userId) {
+      batch.update(doc.ref, {
+        expoPushToken: admin.firestore.FieldValue.delete(),
+      });
+    }
+  });
+  batch.set(db.collection("users").doc(userId),
+      {expoPushToken: token}, {merge: true});
+  await batch.commit();
+  return {success: true};
+});
+
+// Clear the caller's push token. Called from the client before sign-out
+// so the token isn't left attached to the signed-out account.
+exports.clearPushToken = functions.https.onCall(async (data, context) => {
+  requireAuth(context);
+  const userId = context.auth.uid;
+  const ref = db.collection("users").doc(userId);
+  const snap = await ref.get();
+  if (!snap.exists) return {success: true};
+  await ref.update({
+    expoPushToken: admin.firestore.FieldValue.delete(),
+  });
   return {success: true};
 });
